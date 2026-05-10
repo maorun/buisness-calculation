@@ -51,6 +51,7 @@ const MIDIJOB_MONAT_MIN = 556;
 const MIDIJOB_MONAT_MAX = 2000;
 const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
 const MIDIJOB_JAHR_MAX = MIDIJOB_MONAT_MAX * 12;
+const MIDIJOB_HINT = `Midijob-Bereich: ${MIDIJOB_JAHR_MIN.toLocaleString("de-DE")} € bis ${MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} € pro Jahr`;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -96,11 +97,11 @@ export function EndeSection() {
             value={ende.geschaeftsfuehrergehalt}
             onChange={(v) => {
               const parsed = parseFloat(v);
-              const normalized = Number.isFinite(parsed) ? parsed : MIDIJOB_JAHR_MIN;
+              const normalized = Number.isFinite(parsed) ? parsed : ende.geschaeftsfuehrergehalt;
               setEnde({ geschaeftsfuehrergehalt: clamp(normalized, MIDIJOB_JAHR_MIN, MIDIJOB_JAHR_MAX) });
             }}
             suffix="€/Jahr"
-            hint={`Midijob-Bereich: ${MIDIJOB_JAHR_MIN.toLocaleString("de-DE")} € bis ${MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} € pro Jahr`}
+            hint={MIDIJOB_HINT}
             min={MIDIJOB_JAHR_MIN}
             max={MIDIJOB_JAHR_MAX}
           />

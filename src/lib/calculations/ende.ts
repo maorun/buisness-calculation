@@ -88,7 +88,7 @@ export function berechneNettoAusschuettung(
   return { nettoAusschuettung, kstSteuer, ausschuettungsteuer };
 }
 
-const ABGELTUNGSSTEUER_GESAMT = 0.25 * (1 + 0.055);
+const KAPITALERTRAGSTEUER_RATE = 0.25 * (1 + 0.055);
 
 export function berechneDarlehensAuszahlung(
   restschuld: number,
@@ -146,7 +146,7 @@ export function berechneEndeErgebnisse(
       tilgungsanteil: darlehenTilgung,
       gesamtauszahlungBrutto: darlehenGesamtauszahlungBrutto,
     } = berechneDarlehensAuszahlung(restdarlehen, darlehenZinssatzPercent, verbleibendeJahre);
-    const darlehenZinsenSteuer = darlehenZinsen * ABGELTUNGSSTEUER_GESAMT;
+    const darlehenZinsenSteuer = darlehenZinsen * KAPITALERTRAGSTEUER_RATE;
     const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
