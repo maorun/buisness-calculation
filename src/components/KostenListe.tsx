@@ -100,7 +100,11 @@ export function KostenListe({ kosten, onAdd, onUpdate, onRemove, showPeriode = f
                       </td>
                     )}
                     <td className="py-1">
-                      <button onClick={() => setEditId(null)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setEditId(null)}
+                        className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                      >
                         Speichern
                       </button>
                     </td>
@@ -125,16 +129,18 @@ export function KostenListe({ kosten, onAdd, onUpdate, onRemove, showPeriode = f
                     <td className="py-2 pl-2">
                       <div className="flex gap-2">
                         <button
+                          type="button"
                           onClick={() => setEditId(k.id)}
                           className="text-slate-600 hover:text-blue-600 text-xs font-medium"
-                          title="Bearbeiten"
+                          aria-label={`Kostenpunkt ${k.bezeichnung} bearbeiten`}
                         >
                           Bearbeiten
                         </button>
                         <button
+                          type="button"
                           onClick={() => onRemove(k.id)}
                           className="text-slate-600 hover:text-red-600 text-xs font-medium"
-                          title="Löschen"
+                          aria-label={`Kostenpunkt ${k.bezeichnung} löschen`}
                         >
                           Löschen
                         </button>
@@ -191,6 +197,7 @@ export function KostenListe({ kosten, onAdd, onUpdate, onRemove, showPeriode = f
           onChange={(e) => setNeu({ ...neu, betrag: parseFloat(e.target.value) || 0 })}
         />
         <button
+          type="button"
           onClick={handleAdd}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >

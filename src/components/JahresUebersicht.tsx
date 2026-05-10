@@ -64,10 +64,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
           <tbody className="divide-y divide-gray-100">
             {ergebnisse.map((e) => (
               <React.Fragment key={e.jahr}>
-                <tr
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => setExpandedJahr(expandedJahr === e.jahr ? null : e.jahr)}
-                >
+                <tr>
                   <td className="py-2 font-medium text-gray-700">Jahr {e.jahr}</td>
                   <td className="py-2 text-right text-gray-800">{formatEuro(e.gewinn)}</td>
                   <td className="py-2 text-right text-red-600">{formatEuro(e.steuer)}</td>
@@ -77,6 +74,8 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                     <button
                       type="button"
                       className="text-xs font-medium text-slate-600 hover:text-slate-800"
+                      aria-expanded={expandedJahr === e.jahr}
+                      aria-controls={`jahr-details-${e.jahr}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setExpandedJahr(expandedJahr === e.jahr ? null : e.jahr);
@@ -89,7 +88,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                 {expandedJahr === e.jahr && (
                   <tr>
                     <td colSpan={6} className="pb-3 pt-1">
-                      <div className="bg-gray-50 rounded-lg p-3 text-xs space-y-1">
+                      <div id={`jahr-details-${e.jahr}`} className="bg-gray-50 rounded-lg p-3 text-xs space-y-1">
                         <p className="font-semibold text-gray-600 mb-2">Details Jahr {e.jahr}</p>
                         {Object.entries(e.details).map(([key, value]) => (
                           <div key={key} className="flex justify-between text-gray-600">

@@ -21,7 +21,10 @@ export default function Home() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-800">
+          <div
+            aria-hidden="true"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-800"
+          >
             BC
           </div>
           <div>
@@ -34,10 +37,15 @@ export default function Home() {
       {/* Tab navigation */}
       <div className="bg-white border-b border-gray-200 sticky top-[57px] z-10">
         <div className="max-w-4xl mx-auto px-4">
-          <nav className="flex gap-1" aria-label="Abschnitte">
+          <nav className="flex gap-1" aria-label="Abschnitte" role="tablist">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
+                id={`tab-${tab.id}`}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`tab-panel-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
@@ -54,9 +62,21 @@ export default function Home() {
 
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {activeTab === "gruendung" && <GruendungSection />}
-        {activeTab === "betrieb" && <BetriebSection />}
-        {activeTab === "ende" && <EndeSection />}
+        {activeTab === "gruendung" && (
+          <div id="tab-panel-gruendung" role="tabpanel" aria-labelledby="tab-gruendung">
+            <GruendungSection />
+          </div>
+        )}
+        {activeTab === "betrieb" && (
+          <div id="tab-panel-betrieb" role="tabpanel" aria-labelledby="tab-betrieb">
+            <BetriebSection />
+          </div>
+        )}
+        {activeTab === "ende" && (
+          <div id="tab-panel-ende" role="tabpanel" aria-labelledby="tab-ende">
+            <EndeSection />
+          </div>
+        )}
       </main>
 
       {/* Footer */}
