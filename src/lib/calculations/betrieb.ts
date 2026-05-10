@@ -24,6 +24,8 @@ export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
 export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
+export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
+export const SALE_CONVERGENCE_THRESHOLD = 0.01;
 
 /**
  * Vorabpauschale: German annual pre-tax for accumulating ETFs.
@@ -177,7 +179,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
 
     // Solve sale amount iteratively because taxes depend on realized sale gain.
     let etfVerkauf = Math.min(etfWertNachWachstum, fixeAuszahlungen);
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
       const einstandswertVerkauftIter = etfVerkauf * etfBasisQuote;
       const realisierterEtfErtragIter = Math.max(0, etfVerkauf - einstandswertVerkauftIter);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
@@ -190,7 +192,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         etfWertNachWachstum,
         fixeAuszahlungen + gmbhSteuerIter + etfVerkaufssteuerIter
       );
-      if (Math.abs(benoetigterVerkauf - etfVerkauf) < 0.01) {
+      if (Math.abs(benoetigterVerkauf - etfVerkauf) < SALE_CONVERGENCE_THRESHOLD) {
         etfVerkauf = benoetigterVerkauf;
         break;
       }
