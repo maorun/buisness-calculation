@@ -153,46 +153,49 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
 
     // GmbH profit = ETF gains − operating costs − phone costs − loan interest (if paid)
     const etfGewinn = etfWertNachWachstum - etfWertVorjahrEnd;
-    const gewinnVorSteuer = etfGewinn - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
+    // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
+    const gewinnNachBetriebsausgaben = etfGewinn - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
 
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
-    const gmbhSteuer = gewinnVorSteuer > 0
-      ? gewinnVorSteuer * GMBH_STEUER_GESAMT
+    const gmbhSteuer = gewinnNachBetriebsausgaben > 0
+      ? gewinnNachBetriebsausgaben * GMBH_STEUER_GESAMT
       : 0;
 
     // Additional tax on Vorabpauschale (withheld at ETF level, also to Finanzamt)
     const gesamtSteuer = gmbhSteuer + vorabpauschalesteuer;
 
     // Net gain after all taxes and benefit savings
-    const nettogewinn = gewinnVorSteuer - gmbhSteuer - vorabpauschalesteuer + benefitSteuerersparnis;
+    const nettogewinn = gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer + benefitSteuerersparnis;
 
     // Update ETF value (Vorabpauschale tax reduces cash, not ETF directly)
     etfWert = etfWertNachWachstum;
 
-    // Total wealth = ETF value − outstanding loan
-    // For endfaellig loans, the full principal is always outstanding (repaid at end).
-    // For regular loans we model interest-only here (principal tracked separately).
+    // Gesamtvermögen = total gross assets (ETF value).
+    // The outstanding loan is a liability shown separately; net worth = etfWert - offenesDarlehen.
     const offenesDarlehen = state.darlehen.betrag;
-    const gesamtvermoegen = etfWert - offenesDarlehen;
+    const gesamtvermoegen = etfWert;
+    const nettovermoegen = etfWert - offenesDarlehen;
 
     ergebnisse.push({
       jahr,
       gesamtvermoegen,
-      gewinn: gewinnVorSteuer,
+      gewinn: gewinnNachBetriebsausgaben,
       steuer: gesamtSteuer,
       nettogewinn,
       details: {
         etfWert,
         etfGewinn,
-        vorabpauschale,
-        vorabpauschalesteuer,
         jaehrlicheKosten,
         handyNettoKosten,
         jaehrlicheZinsen,
         aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
+        gewinnNachBetriebsausgaben,
+        vorabpauschale,
+        vorabpauschalesteuer,
         gmbhSteuer,
         benefitSteuerersparnis,
         offenesDarlehen,
+        nettovermoegen,
       },
     });
   }

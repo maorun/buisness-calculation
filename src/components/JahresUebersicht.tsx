@@ -13,17 +13,19 @@ function formatEuro(value: number): string {
 }
 
 const DETAIL_LABELS: Record<string, string> = {
-  etfWert: "ETF-Wert",
-  etfGewinn: "ETF-Gewinn",
-  vorabpauschale: "Vorabpauschale",
-  vorabpauschalesteuer: "Steuer auf Vorabpauschale (Finanzamt)",
+  etfWert: "ETF-Wert (Gesamtvermögen)",
+  etfGewinn: "ETF-Gewinn (vor Betriebsausgaben)",
   jaehrlicheKosten: "Betriebskosten (laufend)",
   handyNettoKosten: "Firmenhandy Nettokosten (Betriebsausgabe)",
   jaehrlicheZinsen: "Darlehenszinsen (jährlich, GmbH-Ausgabe)",
   aufgelaufeneZinsen: "Aufgelaufene Darlehenszinsen (endfällig, kumuliert)",
+  gewinnNachBetriebsausgaben: "Gewinn nach Betriebsausgaben (Steuerbemessungsgrundlage)",
+  vorabpauschale: "Vorabpauschale",
+  vorabpauschalesteuer: "Steuer auf Vorabpauschale (Finanzamt)",
   gmbhSteuer: "GmbH-Steuern ans Finanzamt (KSt+GewSt)",
   benefitSteuerersparnis: "Steuerersparnis Benefits",
-  offenesDarlehen: "Offenes Darlehen",
+  offenesDarlehen: "Offenes Darlehen (Verbindlichkeit)",
+  nettovermoegen: "Nettovermögen (ETF-Wert − Darlehen)",
   bruttoGehalt: "Brutto-Gehalt",
   nettoGehalt: "Netto-Gehalt",
   einkommensteuer: "Einkommensteuer (Finanzamt)",
@@ -59,7 +61,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
               <th className="pb-2 font-medium text-right">Gewinn nach Kosten (vor St.)</th>
               <th className="pb-2 font-medium text-right">Steuern (Finanzamt)</th>
               <th className="pb-2 font-medium text-right">Netto-Gewinn</th>
-              <th className="pb-2 font-medium text-right">Gesamtvermögen</th>
+              <th className="pb-2 font-medium text-right">ETF-Gesamtvermögen</th>
               <th className="pb-2 w-8"></th>
             </tr>
           </thead>

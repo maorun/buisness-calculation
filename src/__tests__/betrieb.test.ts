@@ -217,10 +217,17 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[0].details.etfWert).toBeCloseTo(107000);
   });
 
-  it("gesamtvermoegen = etfWert - offenesDarlehen", () => {
+  it("gesamtvermoegen equals etfWert (gross assets, not net of loan)", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     for (const r of results) {
-      expect(r.gesamtvermoegen).toBeCloseTo(r.details.etfWert - r.details.offenesDarlehen);
+      expect(r.gesamtvermoegen).toBeCloseTo(r.details.etfWert);
+    }
+  });
+
+  it("nettovermoegen in details = etfWert - offenesDarlehen", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    for (const r of results) {
+      expect(r.details.nettovermoegen).toBeCloseTo(r.details.etfWert - r.details.offenesDarlehen);
     }
   });
 
