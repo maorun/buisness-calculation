@@ -139,6 +139,7 @@ describe("berechneEndeErgebnisse", () => {
   const defaultState: EndeState = {
     geschaeftsfuehrergehalt: 24000,
     gewinnausschuettung: 0,
+    tilgungsrate: 0,
     laufzeitJahre: 3,
   };
 
@@ -182,6 +183,20 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[0].details.darlehenTilgung).toBe(0);
   });
 
+  it("uses configured annual repayment rate in payout phase", () => {
+    const state = { ...defaultState, tilgungsrate: 2000 };
+    const results = berechneEndeErgebnisse(state, 0, 12000, 6);
+    expect(results[0].details.darlehenTilgung).toBeCloseTo(2000);
+    expect(results[0].details.restdarlehen).toBeCloseTo(10000);
+  });
+
+  it("caps configured repayment at remaining debt", () => {
+    const state = { ...defaultState, tilgungsrate: 20000 };
+    const results = berechneEndeErgebnisse(state, 0, 12000, 6);
+    expect(results[0].details.darlehenTilgung).toBeCloseTo(12000);
+    expect(results[0].details.restdarlehen).toBeCloseTo(0);
+  });
+
   it("tax includes einkommensteuer + soli + kst + ausschuettungsteuer + darlehenZinsenSteuer", () => {
     const results = berechneEndeErgebnisse(defaultState, 0, 12000, 6);
     for (const r of results) {
@@ -219,5 +234,15 @@ describe("berechneEndeErgebnisse", () => {
     const results = berechneEndeErgebnisse(defaultState, etfStart, 12000, 6);
     // gesamtvermoegen starts at etfStart + first year netto
     expect(results[0].gesamtvermoegen).toBeGreaterThan(etfStart);
+  });
+
+  it("includes firm balance details in payout phase", () => {
+    const etfStart = 100000;
+    const results = berechneEndeErgebnisse(defaultState, etfStart, 12000, 6);
+    expect(results[0].details.firmenEtfVermoegen).toBeLessThan(etfStart);
+    expect(results[0].details.firmenDarlehensverbindlichkeit).toBeGreaterThanOrEqual(0);
+    expect(results[0].details.firmenNettovermoegen).toBeCloseTo(
+      results[0].details.firmenEtfVermoegen - results[0].details.firmenDarlehensverbindlichkeit
+    );
   });
 });

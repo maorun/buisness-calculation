@@ -200,6 +200,39 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         bold
         colorClass="text-green-700"
       />
+      <BilanzRow
+        label="= Gesamt Netto pro Monat"
+        value={e.nettogewinn / 12}
+        prefix={e.nettogewinn >= 0 ? "+" : "−"}
+        bold
+        colorClass="text-green-700"
+      />
+
+      {(d.firmenEtfVermoegen !== undefined || d.firmenDarlehensverbindlichkeit !== undefined) && (
+        <>
+          <SectionHeader label="Bilanz der Firma (Jahresende)" />
+          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
+          {d.firmenEtfVermoegen !== undefined && (
+            <BilanzRow label="ETF-/Liquiditätsbestand Firma" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
+          )}
+          {d.firmenDarlehensverbindlichkeit !== undefined && d.firmenDarlehensverbindlichkeit > 0 && (
+            <>
+              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
+              <BilanzRow label="Restdarlehen gegenüber Gesellschafter" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
+            </>
+          )}
+          <Divider />
+          {d.firmenNettovermoegen !== undefined && (
+            <BilanzRow
+              label="= Firmen-Nettovermögen"
+              value={d.firmenNettovermoegen}
+              prefix={d.firmenNettovermoegen >= 0 ? "+" : "−"}
+              bold
+              colorClass="text-blue-800"
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -237,7 +270,14 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                   <td className="py-2 font-medium text-gray-700">Jahr {e.jahr}</td>
                   <td className="py-2 text-right text-gray-800">{formatEuro(e.gewinn)}</td>
                   <td className="py-2 text-right text-red-600">{formatEuro(e.steuer)}</td>
-                  <td className="py-2 text-right text-green-700 font-medium">{formatEuro(e.nettogewinn)}</td>
+                  <td className="py-2 text-right text-green-700 font-medium">
+                    {formatEuro(e.nettogewinn)}
+                    {"bruttoGehalt" in e.details && (
+                      <div className="text-[11px] font-normal text-green-600">
+                        ({formatEuro(e.nettogewinn / 12)} / Monat)
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 text-right font-bold text-blue-700">{formatEuro(e.gesamtvermoegen)}</td>
                   <td className="py-2 text-center">
                     <button

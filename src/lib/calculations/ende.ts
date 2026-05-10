@@ -93,18 +93,23 @@ const KAPITALERTRAGSTEUER_MIT_SOLI_RATE = 0.25 * (1 + 0.055);
 export function berechneDarlehensAuszahlung(
   restschuld: number,
   zinssatzPercent: number,
-  verbleibendeJahre: number
+  verbleibendeJahre: number,
+  tilgungsrateJaehrlich: number = 0
 ): { zinsertragBrutto: number; tilgungsanteil: number; gesamtauszahlungBrutto: number } {
   const normalizedRestschuld = Math.max(0, restschuld);
   const normalizedZinssatz = Math.max(0, zinssatzPercent);
   const normalizedVerbleibendeJahre = Math.max(1, verbleibendeJahre);
+  const normalizedTilgungsrate = Math.max(0, tilgungsrateJaehrlich);
 
   if (normalizedRestschuld === 0) {
     return { zinsertragBrutto: 0, tilgungsanteil: 0, gesamtauszahlungBrutto: 0 };
   }
 
   const zinsertragBrutto = normalizedRestschuld * (normalizedZinssatz / 100);
-  const tilgungsanteil = normalizedRestschuld / normalizedVerbleibendeJahre;
+  const tilgungsanteilLinear = normalizedRestschuld / normalizedVerbleibendeJahre;
+  const tilgungsanteil = normalizedTilgungsrate > 0
+    ? Math.min(normalizedRestschuld, normalizedTilgungsrate)
+    : tilgungsanteilLinear;
   return {
     zinsertragBrutto,
     tilgungsanteil,
@@ -132,6 +137,7 @@ export function berechneEndeErgebnisse(
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   let restvermoegen = etfWertAnfang;
+  let firmenEtfVermoegen = Math.max(0, etfWertAnfang);
   let restdarlehen = Math.max(0, darlehenRestschuldAnfang);
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
@@ -145,7 +151,12 @@ export function berechneEndeErgebnisse(
       zinsertragBrutto: darlehenZinsen,
       tilgungsanteil: darlehenTilgung,
       gesamtauszahlungBrutto: darlehenGesamtauszahlungBrutto,
-    } = berechneDarlehensAuszahlung(restdarlehen, darlehenZinssatzPercent, verbleibendeJahre);
+    } = berechneDarlehensAuszahlung(
+      restdarlehen,
+      darlehenZinssatzPercent,
+      verbleibendeJahre,
+      state.tilgungsrate
+    );
     const darlehenZinsenSteuer = darlehenZinsen * KAPITALERTRAGSTEUER_MIT_SOLI_RATE;
     const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
@@ -156,9 +167,12 @@ export function berechneEndeErgebnisse(
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer;
     const gesamtNetto = nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto;
+    const firmenAuszahlungBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer;
 
     restvermoegen += gesamtNetto;
+    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenAuszahlungBrutto);
     restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
+    const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen;
 
     ergebnisse.push({
       jahr,
@@ -178,6 +192,10 @@ export function berechneEndeErgebnisse(
         darlehenGesamtauszahlungBrutto,
         darlehenGesamtauszahlungNetto,
         restdarlehen,
+        firmenAuszahlungBrutto,
+        firmenEtfVermoegen,
+        firmenDarlehensverbindlichkeit: restdarlehen,
+        firmenNettovermoegen,
         gewinnausschuettung: state.gewinnausschuettung,
         nettoAusschuettung,
         kstSteuer,

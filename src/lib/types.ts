@@ -37,6 +37,7 @@ export interface BetriebState {
 export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary
   gewinnausschuettung: number; // annual profit distribution
+  tilgungsrate: number; // annual principal repayment in payout phase (0 = linear by remaining years)
   laufzeitJahre: number;
 }
 

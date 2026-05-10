@@ -67,9 +67,12 @@ export function EndeSection() {
   const offeneDarlehensschuld = letzterBetriebsstand?.details.offenesDarlehen
     ?? Math.max(0, betrieb.darlehen.betrag);
   const zinssatz = Math.max(0, betrieb.darlehen.zinssatz);
-  const tilgungProJahr = ende.laufzeitJahre > 0
+  const tilgungProJahrLinear = ende.laufzeitJahre > 0
     ? offeneDarlehensschuld / ende.laufzeitJahre
     : 0;
+  const tilgungProJahr = ende.tilgungsrate > 0
+    ? Math.min(offeneDarlehensschuld, ende.tilgungsrate)
+    : tilgungProJahrLinear;
   const zinsertragProJahr = offeneDarlehensschuld * (zinssatz / 100);
   const zinsensteuerProJahr = zinsertragProJahr * 0.25 * 1.055;
   const nettoDarlehensauszahlungProJahr = tilgungProJahr + (zinsertragProJahr - zinsensteuerProJahr);
@@ -125,6 +128,14 @@ export function EndeSection() {
           Nur der Zinsanteil ist steuerpflichtig (Abgeltungssteuer 26,375%).
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <InputField
+            label="Tilgungsrate pro Jahr (€)"
+            value={ende.tilgungsrate}
+            onChange={(v) => setEnde({ tilgungsrate: Math.max(0, parseFloat(v) || 0) })}
+            suffix="€/Jahr"
+            hint="0 = lineare Tilgung über die verbleibenden Jahre"
+            min={0}
+          />
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <p className="text-xs text-amber-700 font-medium">Ausgangswerte Jahr 1</p>
             <p className="text-lg font-bold text-amber-900">
@@ -143,7 +154,7 @@ export function EndeSection() {
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
             <p className="text-xs text-slate-700 font-medium">Logik</p>
             <p className="text-xs text-slate-600 mt-1">
-              Pro Jahr wird die Restschuld linear über die verbleibenden Jahre getilgt.
+              Die Tilgungsrate kann frei angegeben werden. Bei 0 erfolgt lineare Tilgung über die verbleibenden Jahre.
               Auf die jeweilige Restschuld fällt zusätzlich der Zinsanteil an.
             </p>
           </div>
