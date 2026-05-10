@@ -125,8 +125,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   const ergebnisse: JahresErgebnis[] = [];
   let etfWert = state.startkapital;
   const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
-  const jaehrlicheZinsen = berechneDarlehenszinsen(state.darlehen);
+  // For endfällig loans, interest is deferred to end and NOT deducted annually.
+  // For regular loans, interest is paid (and deductible) each year.
+  const darlehenszinsJaehrlich = berechneDarlehenszinsen(state.darlehen);
+  const jaehrlicheZinsen = state.darlehen.endfaellig ? 0 : darlehenszinsJaehrlich;
   const benefitSteuerersparnisBasis = berechneBenefitsSteuerersparnis(state.benefits);
+  let aufgelaufeneZinsen = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = etfWert;
@@ -135,51 +139,68 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Vorabpauschale tax
     const vorabpauschale = berechneVorabpauschale(etfWert, etfWertNachWachstum);
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale);
+
+    // Phone costs are operating expenses (Betriebsausgabe), deducted from taxable profit.
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr);
-    const benefitSteuerersparnis = benefitSteuerersparnisBasis + handyNettoKosten * GMBH_STEUER_GESAMT;
 
-    // GmbH profit = ETF gains − operating costs − loan interest + benefit deduction
-    // Simplified: taxable profit at GmbH level
+    // Benefits savings do not include phone costs (those reduce profit directly).
+    const benefitSteuerersparnis = benefitSteuerersparnisBasis;
+
+    // Accumulate deferred interest for endfällig loans (informational).
+    if (state.darlehen.endfaellig) {
+      aufgelaufeneZinsen += darlehenszinsJaehrlich;
+    }
+
+    // GmbH profit = ETF gains − operating costs − phone costs − loan interest (if paid)
     const etfGewinn = etfWertNachWachstum - etfWertVorjahrEnd;
-    const gewinnVorSteuer = etfGewinn - jaehrlicheKosten - jaehrlicheZinsen;
+    // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
+    const gewinnNachBetriebsausgaben = etfGewinn - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
 
-    // GmbH taxes on positive profit
-    const gmbhSteuer = gewinnVorSteuer > 0
-      ? gewinnVorSteuer * GMBH_STEUER_GESAMT
+    // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
+    const gmbhSteuer = gewinnNachBetriebsausgaben > 0
+      ? gewinnNachBetriebsausgaben * GMBH_STEUER_GESAMT
       : 0;
 
-    // Additional tax on Vorabpauschale (withheld at ETF level)
+    // Additional tax on Vorabpauschale (withheld at ETF level, also to Finanzamt)
     const gesamtSteuer = gmbhSteuer + vorabpauschalesteuer;
 
-    // Net gain after all taxes
-    const nettogewinn = gewinnVorSteuer - gmbhSteuer - vorabpauschalesteuer + benefitSteuerersparnis;
+    // Net gain after all taxes and benefit savings
+    const nettogewinn = gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer + benefitSteuerersparnis;
 
-    // Update ETF value (Vorabpauschale tax reduces cash, not ETF directly)
-    etfWert = etfWertNachWachstum;
+    // Cash outflows: all expenses and taxes must be funded by selling ETF units.
+    // This is the total amount of ETF sold each year to cover costs and taxes.
+    const etfVerkauf = jaehrlicheKosten + handyNettoKosten + jaehrlicheZinsen + gmbhSteuer + vorabpauschalesteuer;
 
-    // Total wealth = ETF value − outstanding loan
-    // For endfaellig loans, the full principal is always outstanding (repaid at end).
-    // For regular loans we model interest-only here (principal tracked separately).
+    // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
+    etfWert = Math.max(0, etfWertNachWachstum - etfVerkauf);
+
+    // Gesamtvermögen = total gross assets (ETF value).
+    // The outstanding loan is a liability shown separately; net worth = etfWert - offenesDarlehen.
     const offenesDarlehen = state.darlehen.betrag;
-    const gesamtvermoegen = etfWert - offenesDarlehen;
+    const gesamtvermoegen = etfWert;
+    const nettovermoegen = etfWert - offenesDarlehen;
 
     ergebnisse.push({
       jahr,
       gesamtvermoegen,
-      gewinn: gewinnVorSteuer,
+      gewinn: gewinnNachBetriebsausgaben,
       steuer: gesamtSteuer,
       nettogewinn,
       details: {
         etfWert,
         etfGewinn,
+        etfVerkauf,
+        jaehrlicheKosten,
+        handyNettoKosten,
+        jaehrlicheZinsen,
+        aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
+        gewinnNachBetriebsausgaben,
         vorabpauschale,
         vorabpauschalesteuer,
-        jaehrlicheKosten,
-        jaehrlicheZinsen,
         gmbhSteuer,
         benefitSteuerersparnis,
-        handyNettoKosten,
         offenesDarlehen,
+        nettovermoegen,
       },
     });
   }

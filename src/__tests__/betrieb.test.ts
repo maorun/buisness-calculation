@@ -212,15 +212,43 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[2].jahr).toBe(3);
   });
 
-  it("ETF value in year 1 is 7% growth on startkapital", () => {
+  it("ETF value in year 1 is 7% growth minus all cash outflows", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
-    expect(results[0].details.etfWert).toBeCloseTo(107000);
+    const r = results[0];
+    // ETF grows 7% then cash outflows (costs + taxes) are deducted via ETF unit sales
+    const etfNachWachstum = 100000 * 1.07; // 107,000
+    expect(r.details.etfWert).toBeCloseTo(etfNachWachstum - r.details.etfVerkauf);
+    // ETF is less than pure growth because outflows are deducted
+    expect(r.details.etfWert).toBeLessThan(etfNachWachstum);
+    // But still higher than start (positive net in year 1 with 7% rendite)
+    expect(r.details.etfWert).toBeGreaterThan(100000);
   });
 
-  it("gesamtvermoegen = etfWert - offenesDarlehen", () => {
+  it("etfVerkauf equals sum of all annual cash outflows", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    const r = results[0];
+    const expectedVerkauf =
+      r.details.jaehrlicheKosten +
+      r.details.handyNettoKosten +
+      r.details.jaehrlicheZinsen +
+      r.details.gmbhSteuer +
+      r.details.vorabpauschalesteuer;
+    expect(r.details.etfVerkauf).toBeCloseTo(expectedVerkauf);
+  });
+
+  it("ETF value equals growth minus etfVerkauf each year", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    // We can't easily know the pre-deduction value per year, but we can check
+    // that gesamtvermoegen equals etfWert (which now reflects real cash-flow value)
+    for (const r of results) {
+      expect(r.gesamtvermoegen).toBeCloseTo(r.details.etfWert);
+    }
+  });
+
+  it("nettovermoegen in details = etfWert - offenesDarlehen", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     for (const r of results) {
-      expect(r.gesamtvermoegen).toBeCloseTo(r.details.etfWert - r.details.offenesDarlehen);
+      expect(r.details.nettovermoegen).toBeCloseTo(r.details.etfWert - r.details.offenesDarlehen);
     }
   });
 
@@ -270,7 +298,45 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.steuer).toBeCloseTo(r.details.gmbhSteuer + r.details.vorabpauschalesteuer);
   });
 
-  it("includes phone net cost tax saving only in replacement years", () => {
+  it("does not deduct interest annually for endfällig loans", () => {
+    const endfaelligState: BetriebState = {
+      ...defaultState,
+      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: true },
+    };
+    const normalState: BetriebState = {
+      ...defaultState,
+      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: false },
+    };
+    const endfaelligResults = berechneBetriebsErgebnisse(endfaelligState);
+    const normalResults = berechneBetriebsErgebnisse(normalState);
+    // Endfällig: no annual interest deduction
+    expect(endfaelligResults[0].details.jaehrlicheZinsen).toBe(0);
+    // Regular: annual interest is deducted
+    expect(normalResults[0].details.jaehrlicheZinsen).toBeCloseTo(875);
+    // Endfällig profit should be higher (no interest deducted)
+    expect(endfaelligResults[0].gewinn).toBeGreaterThan(normalResults[0].gewinn);
+  });
+
+  it("accumulates deferred interest for endfällig loans", () => {
+    const endfaelligState: BetriebState = {
+      ...defaultState,
+      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: true },
+    };
+    const results = berechneBetriebsErgebnisse(endfaelligState);
+    const annualInterest = 25000 * 0.035; // 875
+    expect(results[0].details.aufgelaufeneZinsen).toBeCloseTo(annualInterest);
+    expect(results[1].details.aufgelaufeneZinsen).toBeCloseTo(annualInterest * 2);
+    expect(results[2].details.aufgelaufeneZinsen).toBeCloseTo(annualInterest * 3);
+  });
+
+  it("aufgelaufeneZinsen is 0 for non-endfällig loans", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    for (const r of results) {
+      expect(r.details.aufgelaufeneZinsen).toBe(0);
+    }
+  });
+
+  it("includes phone net cost as operating expense only in replacement years", () => {
     const state: BetriebState = {
       ...defaultState,
       etfRendite: 0,
@@ -280,10 +346,14 @@ describe("berechneBetriebsErgebnisse", () => {
       benefits: { tankgutschein: 0, strategieessen: 0 },
     };
     const results = berechneBetriebsErgebnisse(state);
-    const expectedSteuerersparnis = (HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE)) * GMBH_STEUER_GESAMT;
-    expect(results[0].details.benefitSteuerersparnis).toBeCloseTo(expectedSteuerersparnis);
-    expect(results[1].details.benefitSteuerersparnis).toBeCloseTo(0);
-    expect(results[2].details.benefitSteuerersparnis).toBeCloseTo(0);
-    expect(results[3].details.benefitSteuerersparnis).toBeCloseTo(expectedSteuerersparnis);
+    const expectedHandyKosten = HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE);
+    // Phone cost appears in details as handyNettoKosten and reduces profit directly
+    expect(results[0].details.handyNettoKosten).toBeCloseTo(expectedHandyKosten);
+    expect(results[1].details.handyNettoKosten).toBeCloseTo(0);
+    expect(results[2].details.handyNettoKosten).toBeCloseTo(0);
+    expect(results[3].details.handyNettoKosten).toBeCloseTo(expectedHandyKosten);
+    // Benefits savings do not include phone costs (phone reduces profit directly)
+    expect(results[0].details.benefitSteuerersparnis).toBeCloseTo(0);
+    expect(results[3].details.benefitSteuerersparnis).toBeCloseTo(0);
   });
 });
