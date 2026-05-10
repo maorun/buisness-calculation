@@ -158,6 +158,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Vorabpauschale tax
     const vorabpauschale = berechneVorabpauschale(etfWert, etfWertNachWachstum);
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale);
+    // Recompute costs inside the yearly loop so changed expense inputs are reflected directly.
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
     // Phone costs are operating expenses (Betriebsausgabe), deducted from taxable profit.

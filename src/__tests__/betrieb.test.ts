@@ -283,11 +283,11 @@ describe("berechneBetriebsErgebnisse", () => {
   it("adapts required ETF sale when operating expenses change", () => {
     const lowCostState: BetriebState = {
       ...defaultState,
-      kosten: [{ id: "1", bezeichnung: "Niedrige Kosten", betrag: 1000 }],
+      kosten: [{ id: "1", bezeichnung: "Niedrige Kosten", betrag: 1000, periode: "jaehrlich", kategorie: "Test" }],
     };
     const highCostState: BetriebState = {
       ...defaultState,
-      kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 10000 }],
+      kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 10000, periode: "jaehrlich", kategorie: "Test" }],
     };
 
     const low = berechneBetriebsErgebnisse(lowCostState)[0];
