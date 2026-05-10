@@ -130,6 +130,7 @@ export function berechneBetriebskosten(kosten: KostenPosition[]): number {
  * - Strategieessen (annual strategy dinner): fully deductible business expense
  *
  * Returns the annual tax saving (at GmbH tax rate) from deductible benefits.
+ * Used as a reporting helper while benefits themselves are part of Betriebsausgaben.
  */
 export function berechneBenefitsSteuerersparnis(
   benefits: BenefitConfig,

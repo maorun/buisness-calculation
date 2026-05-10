@@ -263,6 +263,17 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.details.etfWert).toBeGreaterThan(0);
   });
 
+  it("ETF value in year 1 is above start when outflows are minimal", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+    };
+    const result = berechneBetriebsErgebnisse(state)[0];
+    expect(result.details.etfWert).toBeGreaterThan(100000);
+  });
+
   it("etfVerkauf equals sum of all annual cash outflows", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     const r = results[0];
