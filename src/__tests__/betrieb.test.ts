@@ -113,10 +113,32 @@ describe("berechneDarlehenszinsen", () => {
 describe("berechneBetriebskosten", () => {
   it("sums annual costs", () => {
     const kosten: KostenPosition[] = [
-      { id: "1", bezeichnung: "Steuerberater", betrag: 3000 },
-      { id: "2", bezeichnung: "Bank", betrag: 240 },
+      { id: "1", bezeichnung: "Steuerberater", betrag: 3000, periode: 'jaehrlich' },
+      { id: "2", bezeichnung: "Bank", betrag: 240, periode: 'jaehrlich' },
     ];
     expect(berechneBetriebskosten(kosten)).toBe(3240);
+  });
+
+  it("converts monthly costs to annual (×12)", () => {
+    const kosten: KostenPosition[] = [
+      { id: "1", bezeichnung: "Software", betrag: 50, periode: 'monatlich' },
+    ];
+    expect(berechneBetriebskosten(kosten)).toBe(600); // 50 × 12
+  });
+
+  it("mixes monthly and annual costs correctly", () => {
+    const kosten: KostenPosition[] = [
+      { id: "1", bezeichnung: "Steuerberater", betrag: 3000, periode: 'jaehrlich' },
+      { id: "2", bezeichnung: "Bank", betrag: 20, periode: 'monatlich' }, // 240/year
+    ];
+    expect(berechneBetriebskosten(kosten)).toBe(3240);
+  });
+
+  it("treats undefined periode as annual", () => {
+    const kosten: KostenPosition[] = [
+      { id: "1", bezeichnung: "Steuerberater", betrag: 3000 },
+    ];
+    expect(berechneBetriebskosten(kosten)).toBe(3000);
   });
 
   it("returns 0 for empty list", () => {
@@ -196,6 +218,15 @@ describe("berechneBetriebsErgebnisse", () => {
     }
   });
 
+  it("handles monthly operating costs correctly (×12)", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      kosten: [{ id: "1", bezeichnung: "Software", betrag: 100, periode: 'monatlich' }],
+    };
+    const results = berechneBetriebsErgebnisse(state);
+    expect(results[0].details.jaehrlicheKosten).toBe(1200); // 100 × 12
+  });
+
   it("handles 0 operating costs", () => {
     const state = { ...defaultState, kosten: [] };
     const results = berechneBetriebsErgebnisse(state);
@@ -233,3 +264,4 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.steuer).toBeCloseTo(r.details.gmbhSteuer + r.details.vorabpauschalesteuer);
   });
 });
+

@@ -91,6 +91,12 @@ export function berechneNettoAusschuettung(
 /**
  * Calculate yearly Ende results.
  * The Ende phase represents the wind-down / distribution phase.
+ *
+ * Income sources:
+ * - Geschäftsführergehalt (salary) – taxed at progressive Einkommensteuer
+ * - Darlehenszinsen (shareholder loan interest) – taxed at 26.375% Abgeltungssteuer
+ * - Gewinnausschüttung (profit distribution) – taxed at best-of Abgeltungssteuer / Teileinkünfte
+ * - Benefits (ongoing non-cash perks from GmbH)
  */
 export function berechneEndeErgebnisse(
   state: EndeState,
@@ -105,14 +111,19 @@ export function berechneEndeErgebnisse(
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
 
+    // Loan interest income: taxed as Kapitalertrag at 26.375%
+    const darlehenZinsen = state.darlehenZinsen ?? 0;
+    const darlehenZinsenSteuer = darlehenZinsen * 0.25 * (1 + 0.055);
+    const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
+
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
 
-    const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung;
-    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer;
-    const gesamtNetto = nettoGehalt + nettoAusschuettung;
+    const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenZinsen;
+    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer;
+    const gesamtNetto = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto;
 
-    restvermoegen += nettoGehalt + nettoAusschuettung;
+    restvermoegen += gesamtNetto;
 
     ergebnisse.push({
       jahr,
@@ -125,6 +136,9 @@ export function berechneEndeErgebnisse(
         nettoGehalt,
         einkommensteuer,
         soli,
+        darlehenZinsen,
+        darlehenZinsenSteuer,
+        darlehenZinsenNetto,
         gewinnausschuettung: state.gewinnausschuettung,
         nettoAusschuettung,
         kstSteuer,

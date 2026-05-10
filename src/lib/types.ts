@@ -4,6 +4,8 @@ export interface KostenPosition {
   betrag: number;
   beschreibung?: string;
   kategorie?: string;
+  /** Whether the amount is per month or per year. Defaults to 'jaehrlich'. */
+  periode?: 'monatlich' | 'jaehrlich';
 }
 
 export interface GruendungState {
@@ -35,6 +37,7 @@ export interface BetriebState {
 export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary
   gewinnausschuettung: number; // annual profit distribution
+  darlehenZinsen: number; // annual interest income from shareholder loan to GmbH
   laufzeitJahre: number;
 }
 

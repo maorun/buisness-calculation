@@ -19,10 +19,10 @@ const defaultGruendungskosten: KostenPosition[] = [
 ];
 
 const defaultBetriebskosten: KostenPosition[] = [
-  { id: generateId(), bezeichnung: "Steuerberatung (jährlich)", betrag: 3000, kategorie: "Beratung" },
-  { id: generateId(), bezeichnung: "Buchhaltungssoftware", betrag: 600, kategorie: "Software" },
-  { id: generateId(), bezeichnung: "IHK-Beitrag", betrag: 250, kategorie: "Pflichtbeiträge" },
-  { id: generateId(), bezeichnung: "Bankgebühren", betrag: 240, kategorie: "Bank" },
+  { id: generateId(), bezeichnung: "Steuerberatung (jährlich)", betrag: 3000, kategorie: "Beratung", periode: 'jaehrlich' },
+  { id: generateId(), bezeichnung: "Buchhaltungssoftware", betrag: 50, kategorie: "Software", periode: 'monatlich' },
+  { id: generateId(), bezeichnung: "IHK-Beitrag", betrag: 250, kategorie: "Pflichtbeiträge", periode: 'jaehrlich' },
+  { id: generateId(), bezeichnung: "Bankgebühren", betrag: 20, kategorie: "Bank", periode: 'monatlich' },
 ];
 
 const initialState: CalculatorState = {
@@ -48,6 +48,7 @@ const initialState: CalculatorState = {
   ende: {
     geschaeftsfuehrergehalt: 60000,
     gewinnausschuettung: 40000,
+    darlehenZinsen: 875, // 3.5% on 25.000€ shareholder loan
     laufzeitJahre: 5,
   },
 };

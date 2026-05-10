@@ -72,11 +72,14 @@ export function berechneDarlehenszinsen(darlehen: DarlehenConfig): number {
 }
 
 /**
- * Sum all operating cost positions (monthly × 12 + one-time).
- * All KostenPositions store annual amounts for simplicity.
+ * Sum all operating cost positions (monthly × 12 + annual).
+ * Supports KostenPositions with periode: 'monatlich' (multiplied by 12) or 'jaehrlich' (as-is).
  */
 export function berechneBetriebskosten(kosten: KostenPosition[]): number {
-  return kosten.reduce((sum, k) => sum + k.betrag, 0);
+  return kosten.reduce((sum, k) => {
+    const jahresBetrag = k.periode === 'monatlich' ? k.betrag * 12 : k.betrag;
+    return sum + jahresBetrag;
+  }, 0);
 }
 
 /**

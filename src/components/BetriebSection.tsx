@@ -171,6 +171,7 @@ export function BetriebSection() {
           onAdd={addBetriebskosten}
           onUpdate={updateBetriebskosten}
           onRemove={removeBetriebskosten}
+          showPeriode
         />
       </div>
 

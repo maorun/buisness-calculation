@@ -122,6 +122,7 @@ describe("berechneEndeErgebnisse", () => {
   const defaultState: EndeState = {
     geschaeftsfuehrergehalt: 60000,
     gewinnausschuettung: 40000,
+    darlehenZinsen: 875,
     laufzeitJahre: 3,
   };
 
@@ -141,11 +142,39 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[1].gesamtvermoegen).toBeGreaterThan(results[0].gesamtvermoegen);
   });
 
-  it("nettogewinn = nettoGehalt + nettoAusschuettung", () => {
+  it("nettogewinn = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto", () => {
     const results = berechneEndeErgebnisse(defaultState);
     for (const r of results) {
-      const expected = r.details.nettoGehalt + r.details.nettoAusschuettung;
+      const expected = r.details.nettoGehalt + r.details.nettoAusschuettung + r.details.darlehenZinsenNetto;
       expect(r.nettogewinn).toBeCloseTo(expected);
+    }
+  });
+
+  it("includes darlehen zinsen in gross income", () => {
+    const results = berechneEndeErgebnisse(defaultState);
+    expect(results[0].details.darlehenZinsen).toBe(875);
+    expect(results[0].details.darlehenZinsenSteuer).toBeCloseTo(875 * 0.25 * 1.055);
+    expect(results[0].details.darlehenZinsenNetto).toBeCloseTo(875 - 875 * 0.25 * 1.055);
+  });
+
+  it("handles 0 darlehen zinsen", () => {
+    const state = { ...defaultState, darlehenZinsen: 0 };
+    const results = berechneEndeErgebnisse(state);
+    expect(results[0].details.darlehenZinsen).toBe(0);
+    expect(results[0].details.darlehenZinsenSteuer).toBe(0);
+    expect(results[0].details.darlehenZinsenNetto).toBe(0);
+  });
+
+  it("tax includes einkommensteuer + soli + kst + ausschuettungsteuer + darlehenZinsenSteuer", () => {
+    const results = berechneEndeErgebnisse(defaultState);
+    for (const r of results) {
+      const expectedTax =
+        r.details.einkommensteuer +
+        r.details.soli +
+        r.details.kstSteuer +
+        r.details.ausschuettungsteuer +
+        r.details.darlehenZinsenSteuer;
+      expect(r.steuer).toBeCloseTo(expectedTax);
     }
   });
 
@@ -173,17 +202,5 @@ describe("berechneEndeErgebnisse", () => {
     const results = berechneEndeErgebnisse(defaultState, etfStart);
     // gesamtvermoegen starts at etfStart + first year netto
     expect(results[0].gesamtvermoegen).toBeGreaterThan(etfStart);
-  });
-
-  it("tax includes einkommensteuer + soli + kst + ausschuettungsteuer", () => {
-    const results = berechneEndeErgebnisse(defaultState);
-    for (const r of results) {
-      const expectedTax =
-        r.details.einkommensteuer +
-        r.details.soli +
-        r.details.kstSteuer +
-        r.details.ausschuettungsteuer;
-      expect(r.steuer).toBeCloseTo(expectedTax);
-    }
   });
 });
