@@ -56,6 +56,21 @@ export function berechneVorabpauschalesteuer(
 }
 
 /**
+ * Tax on realized ETF gains when selling units.
+ * Uses same Teilfreistellung/Abgeltungssteuer logic as ETF taxation.
+ */
+export function berechneEtfVerkaufssteuer(
+  realisierterEtfErtrag: number,
+  teilfreistellung: number = TEILFREISTELLUNG_AKTIEN
+): number {
+  if (realisierterEtfErtrag <= 0) {
+    return 0;
+  }
+  const steuerpflichtig = realisierterEtfErtrag * (1 - teilfreistellung);
+  return steuerpflichtig * ABGELTUNGSSTEUER_GESAMT;
+}
+
+/**
  * ETF value after one year of compound growth.
  */
 export function berechneEtfWachstum(
@@ -124,6 +139,8 @@ export function berechneHandyNettoKostenProJahr(
 export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   let etfWert = state.startkapital;
+  let etfEinstandswert = state.startkapital;
+  let cashReserve = 0;
   const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
   // For regular loans, interest is paid (and deductible) each year.
@@ -135,6 +152,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = etfWert;
     const etfWertNachWachstum = berechneEtfWachstum(etfWert, state.etfRendite);
+    const theoretischerEtfErtrag = Math.max(0, etfWertNachWachstum - etfWertVorjahrEnd);
 
     // Vorabpauschale tax
     const vorabpauschale = berechneVorabpauschale(etfWert, etfWertNachWachstum);
@@ -151,34 +169,68 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       aufgelaufeneZinsen += darlehenszinsJaehrlich;
     }
 
-    // GmbH profit = ETF gains − operating costs − phone costs − loan interest (if paid)
-    const etfGewinn = etfWertNachWachstum - etfWertVorjahrEnd;
+    // Realized ETF gain only comes from actually sold ETF units.
+    const etfBasisQuote = etfWertNachWachstum > 0
+      ? Math.min(1, Math.max(0, etfEinstandswert / etfWertNachWachstum))
+      : 0;
+    const fixeAuszahlungen = jaehrlicheKosten + handyNettoKosten + jaehrlicheZinsen + vorabpauschalesteuer;
+
+    // Solve sale amount iteratively because taxes depend on realized sale gain.
+    let etfVerkauf = Math.min(etfWertNachWachstum, fixeAuszahlungen);
+    for (let i = 0; i < 20; i++) {
+      const einstandswertVerkauftIter = etfVerkauf * etfBasisQuote;
+      const realisierterEtfErtragIter = Math.max(0, etfVerkauf - einstandswertVerkauftIter);
+      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
+      const gewinnNachBetriebsausgabenIter =
+        realisierterEtfErtragIter - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
+      const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
+        ? gewinnNachBetriebsausgabenIter * GMBH_STEUER_GESAMT
+        : 0;
+      const benoetigterVerkauf = Math.min(
+        etfWertNachWachstum,
+        fixeAuszahlungen + gmbhSteuerIter + etfVerkaufssteuerIter
+      );
+      if (Math.abs(benoetigterVerkauf - etfVerkauf) < 0.01) {
+        etfVerkauf = benoetigterVerkauf;
+        break;
+      }
+      etfVerkauf = benoetigterVerkauf;
+    }
+
+    const einstandswertVerkauft = etfVerkauf * etfBasisQuote;
+    const realisierterEtfErtrag = Math.max(0, etfVerkauf - einstandswertVerkauft);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
-    const gewinnNachBetriebsausgaben = etfGewinn - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
+    const gewinnNachBetriebsausgaben =
+      realisierterEtfErtrag - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
 
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
       ? gewinnNachBetriebsausgaben * GMBH_STEUER_GESAMT
       : 0;
 
-    // Additional tax on Vorabpauschale (withheld at ETF level, also to Finanzamt)
-    const gesamtSteuer = gmbhSteuer + vorabpauschalesteuer;
+    // Tax on realized ETF gain due to selling
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag);
+
+    // Additional taxes
+    const gesamtSteuer = gmbhSteuer + vorabpauschalesteuer + etfVerkaufssteuer;
 
     // Net gain after all taxes and benefit savings
-    const nettogewinn = gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer + benefitSteuerersparnis;
+    const nettogewinn =
+      gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer + benefitSteuerersparnis;
 
-    // Cash outflows: all expenses and taxes must be funded by selling ETF units.
-    // This is the total amount of ETF sold each year to cover costs and taxes.
-    const etfVerkauf = jaehrlicheKosten + handyNettoKosten + jaehrlicheZinsen + gmbhSteuer + vorabpauschalesteuer;
+    // Positive retained result is held as cash reserve (Aktiva).
+    const cashReserveZugang = Math.max(0, nettogewinn);
+    cashReserve += cashReserveZugang;
 
     // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
     etfWert = Math.max(0, etfWertNachWachstum - etfVerkauf);
+    etfEinstandswert = Math.max(0, etfEinstandswert - einstandswertVerkauft);
 
-    // Gesamtvermögen = total gross assets (ETF value).
+    // Gesamtvermögen = total gross assets (ETF + cash reserve).
     // The outstanding loan is a liability shown separately; net worth = etfWert - offenesDarlehen.
     const offenesDarlehen = state.darlehen.betrag;
-    const gesamtvermoegen = etfWert;
-    const nettovermoegen = etfWert - offenesDarlehen;
+    const gesamtvermoegen = etfWert + cashReserve;
+    const nettovermoegen = gesamtvermoegen - offenesDarlehen;
 
     ergebnisse.push({
       jahr,
@@ -188,7 +240,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       nettogewinn,
       details: {
         etfWert,
-        etfGewinn,
+        etfGewinn: realisierterEtfErtrag,
+        theoretischerEtfErtrag,
         etfVerkauf,
         jaehrlicheKosten,
         handyNettoKosten,
@@ -197,8 +250,11 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         gewinnNachBetriebsausgaben,
         vorabpauschale,
         vorabpauschalesteuer,
+        etfVerkaufssteuer,
         gmbhSteuer,
         benefitSteuerersparnis,
+        cashReserve,
+        cashReserveZugang,
         offenesDarlehen,
         nettovermoegen,
       },
