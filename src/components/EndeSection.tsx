@@ -3,7 +3,11 @@
 import React from "react";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import { JahresUebersicht } from "./JahresUebersicht";
-import { berechneNettoGehalt, berechneGewinnausschuettungsteuer } from "@/lib/calculations/ende";
+import {
+  berechneNettoGehalt,
+  berechneGewinnausschuettungsteuer,
+  berechneDarlehensAuszahlung,
+} from "@/lib/calculations/ende";
 import {
   berechneBenefitsSteuerersparnis,
   HANDY_ANSCHAFFUNGSKOSTEN,
@@ -67,13 +71,12 @@ export function EndeSection() {
   const offeneDarlehensschuld = letzterBetriebsstand?.details.offenesDarlehen
     ?? Math.max(0, betrieb.darlehen.betrag);
   const zinssatz = Math.max(0, betrieb.darlehen.zinssatz);
-  const tilgungProJahrLinear = ende.laufzeitJahre > 0
-    ? offeneDarlehensschuld / ende.laufzeitJahre
-    : 0;
-  const tilgungProJahr = ende.tilgungsrate > 0
-    ? Math.min(offeneDarlehensschuld, ende.tilgungsrate)
-    : tilgungProJahrLinear;
-  const zinsertragProJahr = offeneDarlehensschuld * (zinssatz / 100);
+  const { zinsertragBrutto: zinsertragProJahr, tilgungsanteil: tilgungProJahr } = berechneDarlehensAuszahlung(
+    offeneDarlehensschuld,
+    zinssatz,
+    Math.max(1, ende.laufzeitJahre),
+    ende.tilgungsrate
+  );
   const zinsensteuerProJahr = zinsertragProJahr * 0.25 * 1.055;
   const nettoDarlehensauszahlungProJahr = tilgungProJahr + (zinsertragProJahr - zinsensteuerProJahr);
   const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
