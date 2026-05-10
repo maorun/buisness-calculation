@@ -135,8 +135,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Update ETF value (Vorabpauschale tax reduces cash, not ETF directly)
     etfWert = etfWertNachWachstum;
 
-    // Total wealth = ETF value − outstanding loan − accrued taxes
-    const offenesDarlehen = state.darlehen.endfaellig ? state.darlehen.betrag : state.darlehen.betrag;
+    // Total wealth = ETF value − outstanding loan
+    // For endfaellig loans, the full principal is always outstanding (repaid at end).
+    // For regular loans we model interest-only here (principal tracked separately).
+    const offenesDarlehen = state.darlehen.betrag;
     const gesamtvermoegen = etfWert - offenesDarlehen;
 
     ergebnisse.push({
