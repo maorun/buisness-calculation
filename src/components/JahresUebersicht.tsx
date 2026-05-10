@@ -61,7 +61,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
       <BilanzRow
-        label={`− Steuer aus Vorabpauschale (Basis: ${formatEuro(d.vorabpauschale)})`}
+        label={`− Steuer auf Vorabpauschale (Basis: ${formatEuro(d.vorabpauschale)})`}
         value={d.vorabpauschalesteuer}
         prefix="−"
         colorClass="text-red-600"
