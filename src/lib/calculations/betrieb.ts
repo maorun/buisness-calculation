@@ -220,6 +220,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Net gain after all taxes and benefit savings
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer + benefitSteuerersparnis;
+    const deckungssaldoNachAusgabenUndSteuern =
+      etfVerkauf - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen - vorabpauschalesteuer - gmbhSteuer - etfVerkaufssteuer;
 
     // Positive retained result is held as cash reserve (Aktiva).
     const cashReserveZugang = Math.max(0, nettogewinn);
@@ -256,6 +258,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         vorabpauschalesteuer,
         etfVerkaufssteuer,
         gmbhSteuer,
+        deckungssaldoNachAusgabenUndSteuern,
         benefitSteuerersparnis,
         cashReserve,
         cashReserveZugang,

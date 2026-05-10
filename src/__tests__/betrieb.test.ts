@@ -257,6 +257,12 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.details.etfVerkauf).toBeCloseTo(r.details.etfEinstandswertVerkauft + r.details.etfGewinn);
   });
 
+  it("deckungssaldo after operating outflows and taxes is approximately zero", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    const r = results[0];
+    expect(r.details.deckungssaldoNachAusgabenUndSteuern).toBeCloseTo(0, 2);
+  });
+
   it("gesamtvermoegen equals ETF + cash reserve each year", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     for (const r of results) {

@@ -50,29 +50,38 @@ function SectionHeader({ label }: { label: string }) {
 /** Structured annual balance sheet (Jahresbilanz) for Betrieb years */
 function BetriebBilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
+  const betriebsausgaben = d.jaehrlicheKosten + d.handyNettoKosten;
   return (
     <div className="space-y-0.5 text-xs">
       {/* ── GuV ──────────────────────────────────────── */}
       <SectionHeader label="Gewinn- und Verlustrechnung" />
-      <BilanzRow label="ETF-Verkaufserlös (Liquidität)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
-      <BilanzRow label="− ETF-Einstandswert (verkaufter Anteil)" value={d.etfEinstandswertVerkauft} prefix="−" colorClass="text-gray-600" indent />
-      <Divider />
-      <BilanzRow label="= ETF-Ertrag (realisiert, steuerrelevant)" value={d.etfGewinn} prefix="+" colorClass="text-gray-700" indent />
-      <BilanzRow label="− Betriebskosten" value={d.jaehrlicheKosten} prefix="−" colorClass="text-gray-600" indent />
-      {d.handyNettoKosten > 0 && (
-        <BilanzRow label="− Firmenhandy (Betriebsausgabe)" value={d.handyNettoKosten} prefix="−" colorClass="text-gray-600" indent />
-      )}
+      <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
+      <BilanzRow label="− Betriebsausgaben" value={betriebsausgaben} prefix="−" colorClass="text-gray-600" indent />
       {d.jaehrlicheZinsen > 0 && (
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
+      <BilanzRow
+        label={`− Steuer aus Vorabpauschale (Basis: ${formatEuro(d.vorabpauschale)})`}
+        value={d.vorabpauschalesteuer}
+        prefix="−"
+        colorClass="text-red-600"
+        indent
+      />
+      {d.gmbhSteuer > 0 && (
+        <BilanzRow label="− Gewinnsteuer (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      <BilanzRow label="− Steuer auf ETF-Verkauf" value={d.etfVerkaufssteuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
       <BilanzRow
-        label="= Gewinn (Steuerbemessungsgrundlage)"
-        value={d.gewinnNachBetriebsausgaben}
-        prefix={d.gewinnNachBetriebsausgaben >= 0 ? "+" : "−"}
+        label="= Saldo nach Ausgaben & Steuern"
+        value={d.deckungssaldoNachAusgabenUndSteuern}
+        prefix={d.deckungssaldoNachAusgabenUndSteuern >= 0 ? "+" : "−"}
         bold
         colorClass="text-gray-800"
       />
+      {d.cashReserveZugang > 0 && (
+        <BilanzRow label="→ als Cash-Reserve in Aktiva" value={d.cashReserveZugang} prefix="+" colorClass="text-blue-700" indent />
+      )}
 
       <SectionHeader label="Steuern (Finanzamt)" />
       <BilanzRow label="− GmbH-Steuern (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
