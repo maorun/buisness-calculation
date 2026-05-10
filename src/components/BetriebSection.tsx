@@ -38,9 +38,9 @@ function InputField({
           max={max}
           onChange={(e) => onChange(e.target.value)}
         />
-        {suffix && <span className="text-sm text-gray-500 whitespace-nowrap">{suffix}</span>}
+        {suffix && <span className="text-sm text-slate-600 whitespace-nowrap">{suffix}</span>}
       </div>
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -80,7 +80,7 @@ export function BetriebSection() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Betrieb</h2>
-        <p className="text-sm text-gray-500">Operative Phase der GmbH mit ETF-Investment</p>
+        <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment</p>
       </div>
 
       {/* Startkapital & ETF */}
@@ -153,7 +153,7 @@ export function BetriebSection() {
       {/* Benefits */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Steuervorteile (Benefits)</h3>
-        <p className="text-xs text-gray-400 mb-4">
+        <p className="text-xs text-slate-500 mb-4">
           Sachbezüge sind auf 50 €/Monat begrenzt (§ 8 Abs. 2 EStG). Das Firmenhandy wird separat als Betriebsausgabe berücksichtigt.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -178,7 +178,7 @@ export function BetriebSection() {
       {/* Firmenhandy */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Firmenhandy (Betrieb)</h3>
-        <p className="text-xs text-gray-400 mb-4">
+        <p className="text-xs text-slate-500 mb-4">
           Berechnung als Betriebsausgabe im Betriebsbereich, nicht als Sachbezug.
         </p>
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
@@ -202,7 +202,7 @@ export function BetriebSection() {
 
       {/* Tax info box */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-        <p className="text-xs font-semibold text-gray-600 mb-2">📊 Steuerparameter (GmbH)</p>
+        <p className="text-xs font-semibold text-slate-700 mb-2">Steuerparameter (GmbH)</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
           <div><span className="font-medium">KSt:</span> 15,00%</div>
           <div><span className="font-medium">KSt + SolZ:</span> 15,825%</div>
