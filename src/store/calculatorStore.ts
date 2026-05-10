@@ -40,7 +40,6 @@ const initialState: CalculatorState = {
     laufzeitJahre: 10,
     kosten: defaultBetriebskosten,
     benefits: {
-      handy: 50,
       tankgutschein: 50,
       strategieessen: 1500,
     },

@@ -5,11 +5,14 @@ import {
   berechneDarlehenszinsen,
   berechneBetriebskosten,
   berechneBenefitsSteuerersparnis,
+  berechneHandyNettoKostenProJahr,
   berechneBetriebsErgebnisse,
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
   GMBH_STEUER_GESAMT,
+  HANDY_ANSCHAFFUNGSKOSTEN,
+  HANDY_VERKAUFSQUOTE,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -147,34 +150,37 @@ describe("berechneBetriebskosten", () => {
 });
 
 describe("berechneBenefitsSteuerersparnis", () => {
-  it("caps phone benefit at 50€/month", () => {
-    const benefits: BenefitConfig = { handy: 100, tankgutschein: 0, strategieessen: 0 };
-    // Only 50€/month counts → 600€/year × GMBH_STEUER_GESAMT
-    const expected = 600 * GMBH_STEUER_GESAMT;
-    expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
-  });
-
   it("caps fuel voucher at 50€/month", () => {
-    const benefits: BenefitConfig = { handy: 0, tankgutschein: 75, strategieessen: 0 };
+    const benefits: BenefitConfig = { tankgutschein: 75, strategieessen: 0 };
     const expected = 600 * GMBH_STEUER_GESAMT;
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
   });
 
   it("includes full strategieessen", () => {
-    const benefits: BenefitConfig = { handy: 0, tankgutschein: 0, strategieessen: 1500 };
+    const benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 1500 };
     const expected = 1500 * GMBH_STEUER_GESAMT;
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
   });
 
   it("returns 0 for all-zero benefits", () => {
-    const benefits: BenefitConfig = { handy: 0, tankgutschein: 0, strategieessen: 0 };
+    const benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 0 };
     expect(berechneBenefitsSteuerersparnis(benefits)).toBe(0);
   });
 
   it("combines all benefits correctly", () => {
-    const benefits: BenefitConfig = { handy: 50, tankgutschein: 50, strategieessen: 1500 };
-    const expected = (600 + 600 + 1500) * GMBH_STEUER_GESAMT;
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 1500 };
+    const expected = (600 + 1500) * GMBH_STEUER_GESAMT;
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
+  });
+});
+
+describe("berechneHandyNettoKostenProJahr", () => {
+  it("applies net phone costs every 3 years", () => {
+    const expected = HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE);
+    expect(berechneHandyNettoKostenProJahr(1)).toBeCloseTo(expected);
+    expect(berechneHandyNettoKostenProJahr(2)).toBe(0);
+    expect(berechneHandyNettoKostenProJahr(3)).toBe(0);
+    expect(berechneHandyNettoKostenProJahr(4)).toBeCloseTo(expected);
   });
 });
 
@@ -185,7 +191,7 @@ describe("berechneBetriebsErgebnisse", () => {
     etfRendite: 7,
     laufzeitJahre: 3,
     kosten: [{ id: "1", bezeichnung: "Steuerberater", betrag: 3000 }],
-    benefits: { handy: 50, tankgutschein: 50, strategieessen: 1500 },
+    benefits: { tankgutschein: 50, strategieessen: 1500 },
   };
 
   it("returns one result per year", () => {
@@ -263,5 +269,21 @@ describe("berechneBetriebsErgebnisse", () => {
     const r = results[0];
     expect(r.steuer).toBeCloseTo(r.details.gmbhSteuer + r.details.vorabpauschalesteuer);
   });
-});
 
+  it("includes phone net cost tax saving only in replacement years", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      etfRendite: 0,
+      laufzeitJahre: 4,
+      kosten: [],
+      darlehen: { betrag: 0, zinssatz: 0, endfaellig: false },
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+    };
+    const results = berechneBetriebsErgebnisse(state);
+    const expectedSteuerersparnis = (HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE)) * GMBH_STEUER_GESAMT;
+    expect(results[0].details.benefitSteuerersparnis).toBeCloseTo(expectedSteuerersparnis);
+    expect(results[1].details.benefitSteuerersparnis).toBeCloseTo(0);
+    expect(results[2].details.benefitSteuerersparnis).toBeCloseTo(0);
+    expect(results[3].details.benefitSteuerersparnis).toBeCloseTo(expectedSteuerersparnis);
+  });
+});

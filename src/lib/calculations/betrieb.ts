@@ -21,6 +21,9 @@ export const GEWERBESTEUER = 0.14;
 
 // Total GmbH tax rate on profits
 export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
+export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
+export const HANDY_VERKAUFSQUOTE = 0.1;
+export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 
 /**
  * Vorabpauschale: German annual pre-tax for accumulating ETFs.
@@ -84,7 +87,6 @@ export function berechneBetriebskosten(kosten: KostenPosition[]): number {
 
 /**
  * Tax saving from benefits in a GmbH:
- * - Handy (phone): up to 50 €/month tax-free as Sachbezug
  * - Tankgutschein (fuel voucher): up to 50 €/month tax-free as Sachbezug
  * - Strategieessen (annual strategy dinner): fully deductible business expense
  *
@@ -94,11 +96,26 @@ export function berechneBenefitsSteuerersparnis(
   benefits: BenefitConfig,
   steuerRate: number = GMBH_STEUER_GESAMT
 ): number {
-  const handyJahr = Math.min(benefits.handy, 50) * 12;
-  const tankJahr = Math.min(benefits.tankgutschein, 50) * 12;
+  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), 50);
+  const tankJahr = clampedTankMonthly * 12;
   const strategieessen = benefits.strategieessen;
-  const totalAbzug = handyJahr + tankJahr + strategieessen;
+  const totalAbzug = tankJahr + strategieessen;
   return totalAbzug * steuerRate;
+}
+
+/**
+ * Firmenhandy als Betriebsausgabe:
+ * alle 3 Jahre 1.000 € Anschaffung, gegenläufig 10% Verkaufserlös.
+ */
+export function berechneHandyNettoKostenProJahr(
+  jahr: number,
+  anschaffungskosten: number = HANDY_ANSCHAFFUNGSKOSTEN
+): number {
+  if (jahr < 1 || (jahr - 1) % HANDY_ERSATZZYKLUS_JAHRE !== 0) {
+    return 0;
+  }
+  const verkaufserloes = anschaffungskosten * HANDY_VERKAUFSQUOTE;
+  return anschaffungskosten - verkaufserloes;
 }
 
 /**
@@ -109,7 +126,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   let etfWert = state.startkapital;
   const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
   const jaehrlicheZinsen = berechneDarlehenszinsen(state.darlehen);
-  const benefitSteuerersparnis = berechneBenefitsSteuerersparnis(state.benefits);
+  const benefitSteuerersparnisBasis = berechneBenefitsSteuerersparnis(state.benefits);
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = etfWert;
@@ -118,6 +135,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Vorabpauschale tax
     const vorabpauschale = berechneVorabpauschale(etfWert, etfWertNachWachstum);
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale);
+    const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr);
+    const benefitSteuerersparnis = benefitSteuerersparnisBasis + handyNettoKosten * GMBH_STEUER_GESAMT;
 
     // GmbH profit = ETF gains − operating costs − loan interest + benefit deduction
     // Simplified: taxable profit at GmbH level
@@ -159,6 +178,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         jaehrlicheZinsen,
         gmbhSteuer,
         benefitSteuerersparnis,
+        handyNettoKosten,
         offenesDarlehen,
       },
     });
