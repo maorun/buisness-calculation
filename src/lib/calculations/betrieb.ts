@@ -94,7 +94,7 @@ export function berechneDarlehenszinsen(darlehen: DarlehenConfig): number {
 
 /**
  * Yearly loan interest with monthly shareholder top-ups.
- * Top-ups increase principal month by month; interest is calculated monthly on current principal.
+ * Interest is calculated on opening monthly principal, then monthly top-up increases principal.
  */
 export function berechneDarlehensjahr(
   darlehenBetragStart: number,
@@ -107,8 +107,8 @@ export function berechneDarlehensjahr(
   let zinsenJaehrlich = 0;
 
   for (let monat = 0; monat < DARLEHEN_MONATE_PRO_JAHR; monat++) {
-    darlehenBetrag += monatlicherBetrag;
     zinsenJaehrlich += darlehenBetrag * monthlyRate;
+    darlehenBetrag += monatlicherBetrag;
   }
 
   return { zinsenJaehrlich, darlehenBetragEnde: darlehenBetrag };

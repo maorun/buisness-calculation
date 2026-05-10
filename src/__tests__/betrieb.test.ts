@@ -140,6 +140,7 @@ describe("berechneDarlehensjahr", () => {
   it("increases principal and annual interest with monthly top-ups", () => {
     const result = berechneDarlehensjahr(25000, 3.5, 100);
     expect(result.darlehenBetragEnde).toBeCloseTo(26200);
+    expect(result.zinsenJaehrlich).toBeCloseTo(894.25, 6);
     expect(result.zinsenJaehrlich).toBeGreaterThan(875);
   });
 });
