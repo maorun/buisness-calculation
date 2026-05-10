@@ -272,7 +272,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                   <td className="py-2 text-right text-red-600">{formatEuro(e.steuer)}</td>
                   <td className="py-2 text-right text-green-700 font-medium">
                     {formatEuro(e.nettogewinn)}
-                    {"bruttoGehalt" in e.details && (
+                    {"firmenNettovermoegen" in e.details && (
                       <div className="text-[11px] font-normal text-green-600">
                         ({formatEuro(e.nettogewinn / 12)} / Monat)
                       </div>

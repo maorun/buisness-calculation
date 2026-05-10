@@ -167,10 +167,10 @@ export function berechneEndeErgebnisse(
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer;
     const gesamtNetto = nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto;
-    const firmenAuszahlungBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer;
+    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer;
 
     restvermoegen += gesamtNetto;
-    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenAuszahlungBrutto);
+    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenGesamtabfluss);
     restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
     const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen;
 
@@ -192,7 +192,7 @@ export function berechneEndeErgebnisse(
         darlehenGesamtauszahlungBrutto,
         darlehenGesamtauszahlungNetto,
         restdarlehen,
-        firmenAuszahlungBrutto,
+        firmenGesamtabfluss,
         firmenEtfVermoegen,
         firmenDarlehensverbindlichkeit: restdarlehen,
         firmenNettovermoegen,
