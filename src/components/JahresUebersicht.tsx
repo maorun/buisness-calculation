@@ -40,7 +40,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
 
   if (ergebnisse.length === 0) {
     return (
-      <div className="text-gray-400 text-sm text-center py-8">
+      <div className="text-slate-500 text-sm text-center py-8">
         Keine Daten vorhanden
       </div>
     );
@@ -52,7 +52,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b-2 border-gray-200 text-left text-gray-500">
+            <tr className="border-b-2 border-gray-200 text-left text-slate-600">
               <th className="pb-2 font-medium">Jahr</th>
               <th className="pb-2 font-medium text-right">Gewinn (vor St.)</th>
               <th className="pb-2 font-medium text-right">Steuern</th>
@@ -73,8 +73,17 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                   <td className="py-2 text-right text-red-600">{formatEuro(e.steuer)}</td>
                   <td className="py-2 text-right text-green-700 font-medium">{formatEuro(e.nettogewinn)}</td>
                   <td className="py-2 text-right font-bold text-blue-700">{formatEuro(e.gesamtvermoegen)}</td>
-                  <td className="py-2 text-center text-gray-400 text-xs">
-                    {expandedJahr === e.jahr ? "▲" : "▼"}
+                  <td className="py-2 text-center">
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-slate-600 hover:text-slate-800"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setExpandedJahr(expandedJahr === e.jahr ? null : e.jahr);
+                      }}
+                    >
+                      {expandedJahr === e.jahr ? "Schließen" : "Details"}
+                    </button>
                   </td>
                 </tr>
                 {expandedJahr === e.jahr && (

@@ -46,7 +46,7 @@ export function KostenListe({ kosten, onAdd, onUpdate, onRemove, showPeriode = f
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-gray-200 text-left text-slate-600">
               <th className="pb-2 font-medium">Bezeichnung</th>
               <th className="pb-2 font-medium">Kategorie</th>
               {showPeriode && <th className="pb-2 font-medium">Periode</th>}
@@ -95,25 +95,22 @@ export function KostenListe({ kosten, onAdd, onUpdate, onRemove, showPeriode = f
                       />
                     </td>
                     {showPeriode && (
-                      <td className="py-1 text-right text-gray-500 text-xs">
+                      <td className="py-1 text-right text-slate-600 text-xs">
                         {jahresBetrag(k).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                       </td>
                     )}
                     <td className="py-1">
-                      <button
-                        onClick={() => setEditId(null)}
-                        className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                      >
-                        ✓
+                      <button onClick={() => setEditId(null)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                        Speichern
                       </button>
                     </td>
                   </>
                 ) : (
                   <>
                     <td className="py-2 pr-2 text-gray-800">{k.bezeichnung}</td>
-                    <td className="py-2 pr-2 text-gray-500 text-xs">{k.kategorie ?? "—"}</td>
+                    <td className="py-2 pr-2 text-slate-600 text-xs">{k.kategorie ?? "—"}</td>
                     {showPeriode && (
-                      <td className="py-2 pr-2 text-gray-500 text-xs">
+                      <td className="py-2 pr-2 text-slate-600 text-xs">
                         {k.periode === 'monatlich' ? 'mtl.' : 'jährl.'}
                       </td>
                     )}
@@ -121,25 +118,25 @@ export function KostenListe({ kosten, onAdd, onUpdate, onRemove, showPeriode = f
                       {k.betrag.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                     </td>
                     {showPeriode && (
-                      <td className="py-2 text-right text-gray-500 text-xs">
+                      <td className="py-2 text-right text-slate-600 text-xs">
                         {jahresBetrag(k).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                       </td>
                     )}
                     <td className="py-2 pl-2">
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-2">
                         <button
                           onClick={() => setEditId(k.id)}
-                          className="text-gray-400 hover:text-blue-600 text-xs"
+                          className="text-slate-600 hover:text-blue-600 text-xs font-medium"
                           title="Bearbeiten"
                         >
-                          ✏️
+                          Bearbeiten
                         </button>
                         <button
                           onClick={() => onRemove(k.id)}
-                          className="text-gray-400 hover:text-red-600 text-xs"
+                          className="text-slate-600 hover:text-red-600 text-xs font-medium"
                           title="Löschen"
                         >
-                          🗑️
+                          Löschen
                         </button>
                       </div>
                     </td>

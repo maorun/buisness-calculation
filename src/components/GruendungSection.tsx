@@ -15,7 +15,7 @@ export function GruendungSection() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Gründung</h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-slate-600">
           Alle einmaligen Kosten für die GmbH-Gründung
         </p>
       </div>
@@ -45,7 +45,7 @@ export function GruendungSection() {
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-        <p className="text-sm font-medium text-amber-800 mb-1">💡 Hinweis</p>
+        <p className="text-sm font-medium text-amber-800 mb-1">Hinweis</p>
         <p className="text-xs text-amber-700">
           Das Stammkapital von mind. 25.000 € (davon 12.500 € bei Gründung einzuzahlen) verbleibt als
           Vermögen der GmbH und kann investiert werden. Die restlichen Kosten sind einmalige
