@@ -19,7 +19,6 @@ const defaultGruendungskosten: KostenPosition[] = [
 ];
 
 const defaultBetriebskosten: KostenPosition[] = [
-  { id: generateId(), bezeichnung: "Steuerberatung (jährlich)", betrag: 3000, kategorie: "Beratung", periode: 'jaehrlich' },
   { id: generateId(), bezeichnung: "Buchhaltungssoftware", betrag: 50, kategorie: "Software", periode: 'monatlich' },
   { id: generateId(), bezeichnung: "IHK-Beitrag", betrag: 250, kategorie: "Pflichtbeiträge", periode: 'jaehrlich' },
   { id: generateId(), bezeichnung: "Bankgebühren", betrag: 20, kategorie: "Bank", periode: 'monatlich' },

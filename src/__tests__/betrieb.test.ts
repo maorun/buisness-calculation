@@ -1,6 +1,7 @@
 import {
   berechneVorabpauschale,
   berechneVorabpauschalesteuer,
+  berechneEtfVerkaufssteuer,
   berechneEtfWachstum,
   berechneDarlehenszinsen,
   berechneBetriebskosten,
@@ -84,6 +85,19 @@ describe("berechneVorabpauschalesteuer", () => {
     const taxableAmount = vp * (1 - 0.5); // 50% Teilfreistellung
     const expectedTax = taxableAmount * ABGELTUNGSSTEUER_GESAMT;
     expect(berechneVorabpauschalesteuer(vp, 0.5)).toBeCloseTo(expectedTax);
+  });
+});
+
+describe("berechneEtfVerkaufssteuer", () => {
+  it("taxes only the taxable part after Teilfreistellung", () => {
+    const realisierterGewinn = 1000;
+    const expected = realisierterGewinn * (1 - TEILFREISTELLUNG_AKTIEN) * ABGELTUNGSSTEUER_GESAMT;
+    expect(berechneEtfVerkaufssteuer(realisierterGewinn)).toBeCloseTo(expected);
+  });
+
+  it("returns 0 for non-positive realized gain", () => {
+    expect(berechneEtfVerkaufssteuer(0)).toBe(0);
+    expect(berechneEtfVerkaufssteuer(-100)).toBe(0);
   });
 });
 
@@ -232,23 +246,35 @@ describe("berechneBetriebsErgebnisse", () => {
       r.details.handyNettoKosten +
       r.details.jaehrlicheZinsen +
       r.details.gmbhSteuer +
-      r.details.vorabpauschalesteuer;
+      r.details.vorabpauschalesteuer +
+      r.details.etfVerkaufssteuer;
     expect(r.details.etfVerkauf).toBeCloseTo(expectedVerkauf);
   });
 
-  it("ETF value equals growth minus etfVerkauf each year", () => {
+  it("etfVerkauf is split into sold cost basis plus realized ETF gain", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
-    // We can't easily know the pre-deduction value per year, but we can check
-    // that gesamtvermoegen equals etfWert (which now reflects real cash-flow value)
+    const r = results[0];
+    expect(r.details.etfVerkauf).toBeCloseTo(r.details.etfEinstandswertVerkauft + r.details.etfGewinn);
+  });
+
+  it("deckungssaldo after operating outflows and taxes is approximately zero", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    const r = results[0];
+    // ETF sales are iteratively sized to cover operating outflows and taxes in the same year.
+    expect(r.details.deckungssaldoNachAusgabenUndSteuern).toBeCloseTo(0, 2);
+  });
+
+  it("gesamtvermoegen equals ETF + cash reserve each year", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
     for (const r of results) {
-      expect(r.gesamtvermoegen).toBeCloseTo(r.details.etfWert);
+      expect(r.gesamtvermoegen).toBeCloseTo(r.details.etfWert + r.details.cashReserve);
     }
   });
 
-  it("nettovermoegen in details = etfWert - offenesDarlehen", () => {
+  it("nettovermoegen in details = gesamtvermoegen - offenesDarlehen", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     for (const r of results) {
-      expect(r.details.nettovermoegen).toBeCloseTo(r.details.etfWert - r.details.offenesDarlehen);
+      expect(r.details.nettovermoegen).toBeCloseTo(r.gesamtvermoegen - r.details.offenesDarlehen);
     }
   });
 
@@ -265,6 +291,23 @@ describe("berechneBetriebsErgebnisse", () => {
     const state = { ...defaultState, kosten: [] };
     const results = berechneBetriebsErgebnisse(state);
     expect(results[0].details.jaehrlicheKosten).toBe(0);
+  });
+
+  it("adapts required ETF sale when operating expenses change", () => {
+    const lowCostState: BetriebState = {
+      ...defaultState,
+      kosten: [{ id: "1", bezeichnung: "Niedrige Kosten", betrag: 1000, periode: "jaehrlich", kategorie: "Test" }],
+    };
+    const highCostState: BetriebState = {
+      ...defaultState,
+      kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 10000, periode: "jaehrlich", kategorie: "Test" }],
+    };
+
+    const low = berechneBetriebsErgebnisse(lowCostState)[0];
+    const high = berechneBetriebsErgebnisse(highCostState)[0];
+
+    expect(high.details.jaehrlicheKosten).toBeGreaterThan(low.details.jaehrlicheKosten);
+    expect(high.details.etfVerkauf).toBeGreaterThan(low.details.etfVerkauf);
   });
 
   it("handles 0 loan (no interest)", () => {
@@ -292,10 +335,37 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[0].details.gmbhSteuer).toBe(0);
   });
 
-  it("steuer includes both GmbH tax and Vorabpauschale tax", () => {
+  it("steuer includes GmbH tax, Vorabpauschale tax and ETF sale tax", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     const r = results[0];
-    expect(r.steuer).toBeCloseTo(r.details.gmbhSteuer + r.details.vorabpauschalesteuer);
+    expect(r.steuer).toBeCloseTo(
+      r.details.gmbhSteuer + r.details.vorabpauschalesteuer + r.details.etfVerkaufssteuer
+    );
+  });
+
+  it("tracks theoretischer ETF-Ertrag separately from realized sale gain", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    const r = results[0];
+    expect(r.details.theoretischerEtfErtrag).toBeCloseTo(7000);
+    expect(r.details.etfGewinn).toBeLessThan(r.details.theoretischerEtfErtrag);
+  });
+
+  it("cash reserve accumulates only positive annual net profit", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 100000,
+      etfRendite: 12,
+      laufzeitJahre: 3,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, endfaellig: false },
+    };
+    const results = berechneBetriebsErgebnisse(state);
+    let expectedReserve = 0;
+    for (const r of results) {
+      expectedReserve += Math.max(0, r.nettogewinn);
+      expect(r.details.cashReserve).toBeCloseTo(expectedReserve);
+    }
   });
 
   it("does not deduct interest annually for endfällig loans", () => {

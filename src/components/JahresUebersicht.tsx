@@ -50,30 +50,41 @@ function SectionHeader({ label }: { label: string }) {
 /** Structured annual balance sheet (Jahresbilanz) for Betrieb years */
 function BetriebBilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
+  const gesamtSteuer = d.gmbhSteuer + d.vorabpauschalesteuer + d.etfVerkaufssteuer;
   return (
     <div className="space-y-0.5 text-xs">
       {/* ── GuV ──────────────────────────────────────── */}
       <SectionHeader label="Gewinn- und Verlustrechnung" />
-      <BilanzRow label="ETF-Ertrag (brutto)" value={d.etfGewinn} prefix="+" colorClass="text-gray-700" indent />
-      <BilanzRow label="− Betriebskosten" value={d.jaehrlicheKosten} prefix="−" colorClass="text-gray-600" indent />
-      {d.handyNettoKosten > 0 && (
-        <BilanzRow label="− Firmenhandy (Betriebsausgabe)" value={d.handyNettoKosten} prefix="−" colorClass="text-gray-600" indent />
-      )}
+      <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
+      <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       {d.jaehrlicheZinsen > 0 && (
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
+      <BilanzRow
+        label={`− Steuer auf Vorabpauschale (Basis: ${formatEuro(d.vorabpauschale)})`}
+        value={d.vorabpauschalesteuer}
+        prefix="−"
+        colorClass="text-red-600"
+        indent
+      />
+      {d.gmbhSteuer > 0 && (
+        <BilanzRow label="− Gewinnsteuer (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      <BilanzRow label="− Steuer auf ETF-Verkauf" value={d.etfVerkaufssteuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
       <BilanzRow
-        label="= Gewinn (Steuerbemessungsgrundlage)"
-        value={d.gewinnNachBetriebsausgaben}
-        prefix={d.gewinnNachBetriebsausgaben >= 0 ? "+" : "−"}
+        label="= Saldo nach Ausgaben & Steuern"
+        value={d.deckungssaldoNachAusgabenUndSteuern}
+        prefix={d.deckungssaldoNachAusgabenUndSteuern >= 0 ? "+" : "−"}
         bold
         colorClass="text-gray-800"
       />
+      {d.cashReserveZugang > 0 && (
+        <BilanzRow label="→ als Cash-Reserve in Aktiva" value={d.cashReserveZugang} prefix="+" colorClass="text-blue-700" indent />
+      )}
 
       <SectionHeader label="Steuern (Finanzamt)" />
-      <BilanzRow label="− GmbH-Steuern (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
-      <BilanzRow label="− Vorabpauschalesteuer" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
+      <BilanzRow label="− Gesamtsteuer (KSt + GewSt + Vorabpauschale + ETF-Verkauf)" value={gesamtSteuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
       <BilanzRow
         label="= Nettogewinn (Buchgewinn)"
@@ -90,7 +101,10 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       {/* ── Bilanz ───────────────────────────────────── */}
       <SectionHeader label="Bilanz (Jahresende)" />
       <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
-      <BilanzRow label="ETF-Gesamtvermögen" value={d.etfWert} prefix="+" colorClass="text-blue-700" bold indent />
+      <BilanzRow label="ETF-Wert" value={d.etfWert} prefix="+" colorClass="text-blue-700" bold indent />
+      {d.cashReserve > 0 && (
+        <BilanzRow label="Cash-Reserve" value={d.cashReserve} prefix="+" colorClass="text-blue-700" bold indent />
+      )}
 
       {d.offenesDarlehen > 0 && (
         <>
@@ -108,9 +122,12 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       />
 
       {/* ── Weitere Infos ─────────────────────────────── */}
-      {(d.vorabpauschale > 0 || d.benefitSteuerersparnis > 0 || d.aufgelaufeneZinsen > 0) && (
+      {(d.vorabpauschale > 0 || d.benefitSteuerersparnis > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0) && (
         <>
           <SectionHeader label="Weitere Infos" />
+          {d.theoretischerEtfErtrag > 0 && (
+            <BilanzRow label="ETF-Ertrag (theoretisch, Vorabpauschale-Basis)" value={d.theoretischerEtfErtrag} colorClass="text-gray-500" indent />
+          )}
           {d.vorabpauschale > 0 && (
             <BilanzRow label="Vorabpauschale (Bemessungsgrundlage)" value={d.vorabpauschale} colorClass="text-gray-500" indent />
           )}
@@ -203,7 +220,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
               <th className="pb-2 font-medium text-right">Gewinn nach Kosten (vor St.)</th>
               <th className="pb-2 font-medium text-right">Steuern (Finanzamt)</th>
               <th className="pb-2 font-medium text-right">Netto-Gewinn</th>
-              <th className="pb-2 font-medium text-right">ETF-Gesamtvermögen</th>
+                <th className="pb-2 font-medium text-right">Gesamtvermögen</th>
               <th className="pb-2 w-8"></th>
             </tr>
           </thead>

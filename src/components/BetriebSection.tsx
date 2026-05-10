@@ -206,9 +206,9 @@ export function BetriebSection() {
           <div><span className="font-medium">Teilfreistellung:</span> 30%</div>
         </div>
         <p className="text-xs text-gray-400 mt-2">
-          Der GmbH-Gewinn ergibt sich aus ETF-Ertrag abzüglich Betriebskosten und Darlehenszinsen.
+          Der GmbH-Gewinn ergibt sich aus realisiertem ETF-Ertrag (durch Verkäufe) abzüglich Betriebskosten und Darlehenszinsen.
           Auf diesen Gewinn werden KSt + GewSt ans Finanzamt abgeführt.
-          Zusätzlich fällt Abgeltungssteuer auf die Vorabpauschale an.
+          Zusätzlich fallen Abgeltungssteuer auf die Vorabpauschale und auf realisierte ETF-Verkaufsgewinne an.
         </p>
       </div>
 
