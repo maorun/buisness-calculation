@@ -5,6 +5,10 @@ import { useCalculatorStore } from "@/store/calculatorStore";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
 
+const BENEFIT_MAX_VALUES = {
+  tankgutschein: 50,
+} as const;
+
 function InputField({
   label,
   value,
@@ -55,12 +59,13 @@ export function BetriebSection() {
     });
   };
 
-  const updateBenefits = (field: string, value: string) => {
+  const updateBenefits = (field: keyof typeof betrieb.benefits, value: string) => {
     const parsed = parseFloat(value) || 0;
     const normalized = Math.max(0, parsed);
-    const normalizedValue = field === "tankgutschein"
-      ? Math.min(normalized, 50)
-      : normalized;
+    const maxValue = field in BENEFIT_MAX_VALUES
+      ? BENEFIT_MAX_VALUES[field as keyof typeof BENEFIT_MAX_VALUES]
+      : undefined;
+    const normalizedValue = typeof maxValue === "number" ? Math.min(normalized, maxValue) : normalized;
 
     setBetrieb({
       benefits: { ...betrieb.benefits, [field]: normalizedValue },

@@ -96,7 +96,8 @@ export function berechneBenefitsSteuerersparnis(
   benefits: BenefitConfig,
   steuerRate: number = GMBH_STEUER_GESAMT
 ): number {
-  const tankJahr = Math.min(Math.max(benefits.tankgutschein, 0), 50) * 12;
+  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), 50);
+  const tankJahr = clampedTankMonthly * 12;
   const strategieessen = benefits.strategieessen;
   const totalAbzug = tankJahr + strategieessen;
   return totalAbzug * steuerRate;
