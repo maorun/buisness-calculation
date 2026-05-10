@@ -143,7 +143,6 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   let etfWert = state.startkapital;
   let etfEinstandswert = state.startkapital;
   let cashReserve = 0;
-  const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
   // For regular loans, interest is paid (and deductible) each year.
   const darlehenszinsJaehrlich = berechneDarlehenszinsen(state.darlehen);
@@ -159,6 +158,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Vorabpauschale tax
     const vorabpauschale = berechneVorabpauschale(etfWert, etfWertNachWachstum);
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale);
+    const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
     // Phone costs are operating expenses (Betriebsausgabe), deducted from taxable profit.
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr);

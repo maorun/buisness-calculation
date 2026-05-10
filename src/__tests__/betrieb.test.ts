@@ -280,6 +280,23 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[0].details.jaehrlicheKosten).toBe(0);
   });
 
+  it("adapts required ETF sale when operating expenses change", () => {
+    const lowCostState: BetriebState = {
+      ...defaultState,
+      kosten: [{ id: "1", bezeichnung: "Niedrige Kosten", betrag: 1000 }],
+    };
+    const highCostState: BetriebState = {
+      ...defaultState,
+      kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 10000 }],
+    };
+
+    const low = berechneBetriebsErgebnisse(lowCostState)[0];
+    const high = berechneBetriebsErgebnisse(highCostState)[0];
+
+    expect(high.details.jaehrlicheKosten).toBeGreaterThan(low.details.jaehrlicheKosten);
+    expect(high.details.etfVerkauf).toBeGreaterThan(low.details.etfVerkauf);
+  });
+
   it("handles 0 loan (no interest)", () => {
     const state = {
       ...defaultState,
