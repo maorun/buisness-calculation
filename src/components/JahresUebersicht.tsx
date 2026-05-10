@@ -153,7 +153,10 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Brutto-Gehalt" value={d.bruttoGehalt} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.darlehenZinsen !== undefined && d.darlehenZinsen > 0 && (
-        <BilanzRow label="Zinserträge aus Darlehen (brutto)" value={d.darlehenZinsen} prefix="+" colorClass="text-gray-700" indent />
+        <BilanzRow label="Zinsanteil Darlehen (brutto)" value={d.darlehenZinsen} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.darlehenTilgung !== undefined && d.darlehenTilgung > 0 && (
+        <BilanzRow label="Darlehensrückzahlung (Tilgung)" value={d.darlehenTilgung} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.gewinnausschuettung !== undefined && d.gewinnausschuettung > 0 && (
         <BilanzRow label="Gewinnausschüttung (brutto)" value={d.gewinnausschuettung} prefix="+" colorClass="text-gray-700" indent />
@@ -167,7 +170,7 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="− Solidaritätszuschlag" value={d.soli} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.darlehenZinsenSteuer !== undefined && d.darlehenZinsenSteuer > 0 && (
-        <BilanzRow label="− Abgeltungssteuer auf Zinsen" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
+        <BilanzRow label="− Abgeltungssteuer auf Zinsanteil" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.kstSteuer !== undefined && d.kstSteuer > 0 && (
         <BilanzRow label="− Körperschaftsteuer (Finanzamt)" value={d.kstSteuer} prefix="−" colorClass="text-red-600" indent />
@@ -181,7 +184,10 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Netto-Gehalt" value={d.nettoGehalt} prefix="+" colorClass="text-green-700" indent />
       )}
       {d.darlehenZinsenNetto !== undefined && d.darlehenZinsenNetto > 0 && (
-        <BilanzRow label="Zinserträge (netto)" value={d.darlehenZinsenNetto} prefix="+" colorClass="text-green-700" indent />
+        <BilanzRow label="Zinsanteil (netto)" value={d.darlehenZinsenNetto} prefix="+" colorClass="text-green-700" indent />
+      )}
+      {d.darlehenTilgung !== undefined && d.darlehenTilgung > 0 && (
+        <BilanzRow label="Tilgung (steuerfrei)" value={d.darlehenTilgung} prefix="+" colorClass="text-green-700" indent />
       )}
       {d.nettoAusschuettung !== undefined && d.nettoAusschuettung > 0 && (
         <BilanzRow label="Netto-Ausschüttung" value={d.nettoAusschuettung} prefix="+" colorClass="text-green-700" indent />

@@ -88,22 +88,51 @@ export function berechneNettoAusschuettung(
   return { nettoAusschuettung, kstSteuer, ausschuettungsteuer };
 }
 
+const ABGELTUNGSSTEUER_GESAMT = 0.25 * (1 + 0.055);
+
+export function berechneDarlehensAuszahlung(
+  restschuld: number,
+  zinssatzPercent: number,
+  verbleibendeJahre: number
+): { zinsertragBrutto: number; tilgungsanteil: number; gesamtauszahlungBrutto: number } {
+  const normalizedRestschuld = Math.max(0, restschuld);
+  const normalizedZinssatz = Math.max(0, zinssatzPercent);
+  const normalizedVerbleibendeJahre = Math.max(1, verbleibendeJahre);
+
+  if (normalizedRestschuld === 0) {
+    return { zinsertragBrutto: 0, tilgungsanteil: 0, gesamtauszahlungBrutto: 0 };
+  }
+
+  const zinsertragBrutto = normalizedRestschuld * (normalizedZinssatz / 100);
+  const tilgungsanteil = normalizedRestschuld / normalizedVerbleibendeJahre;
+  return {
+    zinsertragBrutto,
+    tilgungsanteil,
+    gesamtauszahlungBrutto: zinsertragBrutto + tilgungsanteil,
+  };
+}
+
 /**
  * Calculate yearly Ende results.
  * The Ende phase represents the wind-down / distribution phase.
  *
  * Income sources:
  * - Geschäftsführergehalt (salary) – taxed at progressive Einkommensteuer
- * - Darlehenszinsen (shareholder loan interest) – taxed at 26.375% Abgeltungssteuer
+ * - Darlehensauszahlung (shareholder loan servicing):
+ *   - Zinsanteil taxed at 26.375% Abgeltungssteuer
+ *   - Tilgungsanteil tax-free principal repayment
  * - Gewinnausschüttung (profit distribution) – taxed at best-of Abgeltungssteuer / Teileinkünfte
  * - Benefits (ongoing non-cash perks from GmbH)
  */
 export function berechneEndeErgebnisse(
   state: EndeState,
-  etfWertAnfang: number = 0
+  etfWertAnfang: number = 0,
+  darlehenRestschuldAnfang: number = 0,
+  darlehenZinssatzPercent: number = 0
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   let restvermoegen = etfWertAnfang;
+  let restdarlehen = Math.max(0, darlehenRestschuldAnfang);
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const bruttoGehalt = state.geschaeftsfuehrergehalt;
@@ -111,19 +140,25 @@ export function berechneEndeErgebnisse(
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
 
-    // Loan interest income: taxed as Kapitalertrag at 26.375%
-    const darlehenZinsen = state.darlehenZinsen ?? 0;
-    const darlehenZinsenSteuer = darlehenZinsen * 0.25 * (1 + 0.055);
+    const verbleibendeJahre = state.laufzeitJahre - jahr + 1;
+    const {
+      zinsertragBrutto: darlehenZinsen,
+      tilgungsanteil: darlehenTilgung,
+      gesamtauszahlungBrutto: darlehenGesamtauszahlungBrutto,
+    } = berechneDarlehensAuszahlung(restdarlehen, darlehenZinssatzPercent, verbleibendeJahre);
+    const darlehenZinsenSteuer = darlehenZinsen * ABGELTUNGSSTEUER_GESAMT;
     const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
+    const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
 
-    const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenZinsen;
+    const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer;
-    const gesamtNetto = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto;
+    const gesamtNetto = nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto;
 
     restvermoegen += gesamtNetto;
+    restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
 
     ergebnisse.push({
       jahr,
@@ -139,6 +174,10 @@ export function berechneEndeErgebnisse(
         darlehenZinsen,
         darlehenZinsenSteuer,
         darlehenZinsenNetto,
+        darlehenTilgung,
+        darlehenGesamtauszahlungBrutto,
+        darlehenGesamtauszahlungNetto,
+        restdarlehen,
         gewinnausschuettung: state.gewinnausschuettung,
         nettoAusschuettung,
         kstSteuer,

@@ -17,12 +17,16 @@ function InputField({
   onChange,
   suffix,
   hint,
+  min,
+  max,
 }: {
   label: string;
   value: number;
   onChange: (v: string) => void;
   suffix?: string;
   hint?: string;
+  min?: number;
+  max?: number;
 }) {
   return (
     <div>
@@ -32,6 +36,8 @@ function InputField({
           type="number"
           className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={value}
+          min={min}
+          max={max}
           onChange={(e) => onChange(e.target.value)}
         />
         {suffix && <span className="text-sm text-slate-600 whitespace-nowrap">{suffix}</span>}
@@ -41,24 +47,44 @@ function InputField({
   );
 }
 
+const MIDIJOB_MONAT_MIN = 556;
+const MIDIJOB_MONAT_MAX = 2000;
+const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
+const MIDIJOB_JAHR_MAX = MIDIJOB_MONAT_MAX * 12;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 export function EndeSection() {
-  const { ende, setEnde, betrieb, getEndeErgebnisse } = useCalculatorStore();
+  const { ende, setEnde, betrieb, getEndeErgebnisse, getBetriebsErgebnisse } = useCalculatorStore();
   const ergebnisse = getEndeErgebnisse();
+  const betriebsErgebnisse = getBetriebsErgebnisse();
+  const letzterBetriebsstand = betriebsErgebnisse.length > 0
+    ? betriebsErgebnisse[betriebsErgebnisse.length - 1]
+    : undefined;
+  const offeneDarlehensschuld = letzterBetriebsstand?.details.offenesDarlehen
+    ?? Math.max(0, betrieb.darlehen.betrag);
+  const zinssatz = Math.max(0, betrieb.darlehen.zinssatz);
+  const tilgungProJahr = ende.laufzeitJahre > 0
+    ? offeneDarlehensschuld / ende.laufzeitJahre
+    : 0;
+  const zinsertragProJahr = offeneDarlehensschuld * (zinssatz / 100);
+  const zinsensteuerProJahr = zinsertragProJahr * 0.25 * 1.055;
+  const nettoDarlehensauszahlungProJahr = tilgungProJahr + (zinsertragProJahr - zinsensteuerProJahr);
   const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
   const handyZyklus = HANDY_ERSATZZYKLUS_JAHRE;
   const handyVerkaufsquote = (HANDY_VERKAUFSQUOTE * 100).toLocaleString("de-DE");
 
   const nettoGehalt = berechneNettoGehalt(ende.geschaeftsfuehrergehalt);
   const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung);
-  const darlehenZinsen = ende.darlehenZinsen ?? 0;
-  const darlehenZinsenSteuer = darlehenZinsen * 0.25 * 1.055;
   const benefitsSteuerersparnis = berechneBenefitsSteuerersparnis(betrieb.benefits);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Ende / Auszahlungsphase</h2>
-        <p className="text-sm text-slate-600">Gehalt, Zinsen, Ausschüttungen und Gesamtergebnis</p>
+        <p className="text-sm text-slate-600">Gehalt im Midijob-Bereich, Darlehensauszahlung, Ausschüttungen und Gesamtergebnis</p>
       </div>
 
       {/* GF Salary */}
@@ -68,9 +94,15 @@ export function EndeSection() {
           <InputField
             label="Brutto-Jahresgehalt (€)"
             value={ende.geschaeftsfuehrergehalt}
-            onChange={(v) => setEnde({ geschaeftsfuehrergehalt: parseFloat(v) || 0 })}
+            onChange={(v) => {
+              const parsed = parseFloat(v);
+              const normalized = Number.isFinite(parsed) ? parsed : MIDIJOB_JAHR_MIN;
+              setEnde({ geschaeftsfuehrergehalt: clamp(normalized, MIDIJOB_JAHR_MIN, MIDIJOB_JAHR_MAX) });
+            }}
             suffix="€/Jahr"
-            hint="Angemessenes GF-Gehalt (Fremdvergleich)"
+            hint={`Midijob-Bereich: ${MIDIJOB_JAHR_MIN.toLocaleString("de-DE")} € bis ${MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} € pro Jahr`}
+            min={MIDIJOB_JAHR_MIN}
+            max={MIDIJOB_JAHR_MAX}
           />
           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
             <p className="text-xs text-green-600 font-medium">Netto-Gehalt (geschätzt)</p>
@@ -84,27 +116,34 @@ export function EndeSection() {
         </div>
       </div>
 
-      {/* Darlehen Zinsen */}
+      {/* Darlehensauszahlung */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-        <h3 className="font-semibold text-gray-700 mb-2">Darlehen-Zinserträge</h3>
+        <h3 className="font-semibold text-gray-700 mb-2">Darlehensauszahlung (aus GmbH an Gesellschafter)</h3>
         <p className="text-xs text-slate-500 mb-4">
-          Zinsen, die die GmbH auf das Gesellschafter-Darlehen zahlt (Kapitalertrag, 26,375% Abgeltungssteuer)
+          Die jährliche Auszahlung wird in Zinsertrag und Darlehensrückzahlung aufgeteilt.
+          Nur der Zinsanteil ist steuerpflichtig (Abgeltungssteuer 26,375%).
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField
-            label="Jährliche Zinserträge (€)"
-            value={darlehenZinsen}
-            onChange={(v) => setEnde({ darlehenZinsen: parseFloat(v) || 0 })}
-            suffix="€/Jahr"
-            hint={`Entspricht dem Betrag aus Betrieb: ${betrieb.darlehen.betrag.toLocaleString("de-DE")} € × ${betrieb.darlehen.zinssatz}%`}
-          />
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-xs text-amber-700 font-medium">Netto-Zinsertrag</p>
+            <p className="text-xs text-amber-700 font-medium">Ausgangswerte Jahr 1</p>
             <p className="text-lg font-bold text-amber-900">
-              {(darlehenZinsen - darlehenZinsenSteuer).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr
+              {nettoDarlehensauszahlungProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr netto
             </p>
             <p className="text-xs text-amber-600 mt-1">
-              Abgeltungssteuer: {darlehenZinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              Restschuld: {offeneDarlehensschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € · Zinssatz: {zinssatz.toLocaleString("de-DE", { minimumFractionDigits: 2 })}%
+            </p>
+            <p className="text-xs text-amber-600 mt-1">
+              Zinsanteil: {zinsertragProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € · Tilgung: {tilgungProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p className="text-xs text-amber-600 mt-1">
+              Steuer auf Zinsanteil: {zinsensteuerProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <p className="text-xs text-slate-700 font-medium">Logik</p>
+            <p className="text-xs text-slate-600 mt-1">
+              Pro Jahr wird die Restschuld linear über die verbleibenden Jahre getilgt.
+              Auf die jeweilige Restschuld fällt zusätzlich der Zinsanteil an.
             </p>
           </div>
         </div>
@@ -180,7 +219,7 @@ export function EndeSection() {
         <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
         <div className="text-xs text-gray-600 space-y-1">
           <p><span className="font-medium">GF-Gehalt:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
-          <p><span className="font-medium">Darlehenszinsen:</span> 26,375% Abgeltungssteuer (Kapitalertrag)</p>
+          <p><span className="font-medium">Darlehen:</span> Zinsanteil mit 26,375% Abgeltungssteuer, Tilgung steuerfrei</p>
           <p><span className="font-medium">Abgeltungsteuer:</span> 25% + 5,5% SolZ = 26,375% (flat)</p>
           <p><span className="font-medium">Teileinkünfteverfahren:</span> 60% des Betrags × persönlicher Steuersatz</p>
           <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt.</p>

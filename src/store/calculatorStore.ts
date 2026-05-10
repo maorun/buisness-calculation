@@ -45,9 +45,8 @@ const initialState: CalculatorState = {
     },
   },
   ende: {
-    geschaeftsfuehrergehalt: 60000,
-    gewinnausschuettung: 40000,
-    darlehenZinsen: 875, // default annual interest income assumption
+    geschaeftsfuehrergehalt: 24000,
+    gewinnausschuettung: 0,
     laufzeitJahre: 5,
   },
 };
@@ -143,10 +142,17 @@ export const useCalculatorStore = create<CalculatorStore>((set, get) => ({
 
   getEndeErgebnisse: () => {
     const betriebErgebnisse = berechneBetriebsErgebnisse(get().betrieb);
-    const letzterEtfWert =
-      betriebErgebnisse.length > 0
-        ? betriebErgebnisse[betriebErgebnisse.length - 1].details.etfWert ?? 0
-        : 0;
-    return berechneEndeErgebnisse(get().ende, letzterEtfWert);
+    const letztesBetriebsergebnis = betriebErgebnisse.length > 0
+      ? betriebErgebnisse[betriebErgebnisse.length - 1]
+      : undefined;
+    const letzterEtfWert = letztesBetriebsergebnis?.details.etfWert ?? 0;
+    const offenesDarlehen = letztesBetriebsergebnis?.details.offenesDarlehen
+      ?? Math.max(0, get().betrieb.darlehen.betrag);
+    return berechneEndeErgebnisse(
+      get().ende,
+      letzterEtfWert,
+      offenesDarlehen,
+      get().betrieb.darlehen.zinssatz
+    );
   },
 }));

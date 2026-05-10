@@ -37,7 +37,6 @@ export interface BetriebState {
 export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary
   gewinnausschuettung: number; // annual profit distribution
-  darlehenZinsen: number; // annual interest income from shareholder loan to GmbH
   laufzeitJahre: number;
 }
 
