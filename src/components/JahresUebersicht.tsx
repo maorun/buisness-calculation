@@ -84,9 +84,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       )}
 
       <SectionHeader label="Steuern (Finanzamt)" />
-      <BilanzRow label="− GmbH-Steuern (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
-      <BilanzRow label="− Vorabpauschalesteuer" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
-      <BilanzRow label="− Steuer auf ETF-Verkauf" value={d.etfVerkaufssteuer} prefix="−" colorClass="text-red-600" indent />
+      <BilanzRow label="− Gesamtsteuer (KSt + GewSt + Vorabpauschale + ETF-Verkauf)" value={e.steuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
       <BilanzRow
         label="= Nettogewinn (Buchgewinn)"
