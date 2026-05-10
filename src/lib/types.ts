@@ -20,7 +20,6 @@ export interface DarlehenConfig {
 }
 
 export interface BenefitConfig {
-  handy: number; // monthly phone benefit (tax-free up to 50€/month)
   tankgutschein: number; // monthly fuel voucher (tax-free up to 50€/month)
   strategieessen: number; // annual strategy dinner (deductible)
 }

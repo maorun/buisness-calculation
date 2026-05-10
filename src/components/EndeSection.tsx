@@ -127,14 +127,15 @@ export function EndeSection() {
 
       {/* Benefits overview */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-        <h3 className="font-semibold text-gray-700 mb-2">Benefits (Sachbezüge)</h3>
+        <h3 className="font-semibold text-gray-700 mb-2">Benefits & Firmenhandy</h3>
         <p className="text-xs text-gray-400 mb-4">
           Konfiguriert im Betrieb-Bereich – reduzieren auch in der Auszahlungsphase die Steuerlast
         </p>
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">📱 Handy</p>
-            <p className="font-bold text-gray-800">{betrieb.benefits.handy} €/Monat</p>
+            <p className="text-xs text-gray-500 mb-1">📱 Firmenhandy</p>
+            <p className="font-bold text-gray-800">1.000 € alle 3 Jahre</p>
+            <p className="text-xs text-gray-500 mt-1">10% Verkaufserlös</p>
           </div>
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
             <p className="text-xs text-gray-500 mb-1">⛽ Tankgutschein</p>
