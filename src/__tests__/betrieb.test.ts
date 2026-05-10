@@ -270,7 +270,45 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.steuer).toBeCloseTo(r.details.gmbhSteuer + r.details.vorabpauschalesteuer);
   });
 
-  it("includes phone net cost tax saving only in replacement years", () => {
+  it("does not deduct interest annually for endfällig loans", () => {
+    const endfaelligState: BetriebState = {
+      ...defaultState,
+      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: true },
+    };
+    const normalState: BetriebState = {
+      ...defaultState,
+      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: false },
+    };
+    const endfaelligResults = berechneBetriebsErgebnisse(endfaelligState);
+    const normalResults = berechneBetriebsErgebnisse(normalState);
+    // Endfällig: no annual interest deduction
+    expect(endfaelligResults[0].details.jaehrlicheZinsen).toBe(0);
+    // Regular: annual interest is deducted
+    expect(normalResults[0].details.jaehrlicheZinsen).toBeCloseTo(875);
+    // Endfällig profit should be higher (no interest deducted)
+    expect(endfaelligResults[0].gewinn).toBeGreaterThan(normalResults[0].gewinn);
+  });
+
+  it("accumulates deferred interest for endfällig loans", () => {
+    const endfaelligState: BetriebState = {
+      ...defaultState,
+      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: true },
+    };
+    const results = berechneBetriebsErgebnisse(endfaelligState);
+    const annualInterest = 25000 * 0.035; // 875
+    expect(results[0].details.aufgelaufeneZinsen).toBeCloseTo(annualInterest);
+    expect(results[1].details.aufgelaufeneZinsen).toBeCloseTo(annualInterest * 2);
+    expect(results[2].details.aufgelaufeneZinsen).toBeCloseTo(annualInterest * 3);
+  });
+
+  it("aufgelaufeneZinsen is 0 for non-endfällig loans", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    for (const r of results) {
+      expect(r.details.aufgelaufeneZinsen).toBe(0);
+    }
+  });
+
+  it("includes phone net cost as operating expense only in replacement years", () => {
     const state: BetriebState = {
       ...defaultState,
       etfRendite: 0,
@@ -280,10 +318,14 @@ describe("berechneBetriebsErgebnisse", () => {
       benefits: { tankgutschein: 0, strategieessen: 0 },
     };
     const results = berechneBetriebsErgebnisse(state);
-    const expectedSteuerersparnis = (HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE)) * GMBH_STEUER_GESAMT;
-    expect(results[0].details.benefitSteuerersparnis).toBeCloseTo(expectedSteuerersparnis);
-    expect(results[1].details.benefitSteuerersparnis).toBeCloseTo(0);
-    expect(results[2].details.benefitSteuerersparnis).toBeCloseTo(0);
-    expect(results[3].details.benefitSteuerersparnis).toBeCloseTo(expectedSteuerersparnis);
+    const expectedHandyKosten = HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE);
+    // Phone cost appears in details as handyNettoKosten and reduces profit directly
+    expect(results[0].details.handyNettoKosten).toBeCloseTo(expectedHandyKosten);
+    expect(results[1].details.handyNettoKosten).toBeCloseTo(0);
+    expect(results[2].details.handyNettoKosten).toBeCloseTo(0);
+    expect(results[3].details.handyNettoKosten).toBeCloseTo(expectedHandyKosten);
+    // Benefits savings do not include phone costs (phone reduces profit directly)
+    expect(results[0].details.benefitSteuerersparnis).toBeCloseTo(0);
+    expect(results[3].details.benefitSteuerersparnis).toBeCloseTo(0);
   });
 });

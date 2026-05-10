@@ -175,22 +175,14 @@ export function BetriebSection() {
         </div>
       </div>
 
-      {/* Firmenhandy */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-        <h3 className="font-semibold text-gray-700 mb-2">Firmenhandy (Betrieb)</h3>
-        <p className="text-xs text-gray-400 mb-4">
-          Berechnung als Betriebsausgabe im Betriebsbereich, nicht als Sachbezug.
-        </p>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <p className="text-sm text-gray-700">
-            {handyAnschaffung} € Anschaffungskosten alle {handyZyklus} Jahre, abzüglich {handyVerkaufsquote}% Verkaufserlös beim Austausch.
-          </p>
-        </div>
-      </div>
-
       {/* Operating costs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-        <h3 className="font-semibold text-gray-700 mb-4">Laufende Betriebskosten (jährlich)</h3>
+        <h3 className="font-semibold text-gray-700 mb-1">Laufende Betriebskosten (jährlich)</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Alle Positionen reduzieren den steuerpflichtigen Gewinn direkt. Das Firmenhandy
+          ({handyAnschaffung} € alle {handyZyklus} Jahre, abzüglich {handyVerkaufsquote}% Verkaufserlös)
+          wird automatisch als Betriebsausgabe berücksichtigt.
+        </p>
         <KostenListe
           kosten={betrieb.kosten}
           onAdd={addBetriebskosten}
@@ -202,17 +194,22 @@ export function BetriebSection() {
 
       {/* Tax info box */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-        <p className="text-xs font-semibold text-gray-600 mb-2">📊 Steuerparameter (GmbH)</p>
+        <p className="text-xs font-semibold text-gray-600 mb-2">📊 Steuerparameter (GmbH) – Steuern ans Finanzamt</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
           <div><span className="font-medium">KSt:</span> 15,00%</div>
           <div><span className="font-medium">KSt + SolZ:</span> 15,825%</div>
           <div><span className="font-medium">GewSt:</span> ~14,00%</div>
-          <div><span className="font-medium">Gesamt:</span> ~29,825%</div>
+          <div><span className="font-medium">Gesamt GmbH:</span> ~29,825%</div>
           <div><span className="font-medium">Abgeltungsteuer:</span> 25%</div>
           <div><span className="font-medium">Abg. + SolZ:</span> 26,375%</div>
           <div><span className="font-medium">Basiszins 2024:</span> 2,29%</div>
           <div><span className="font-medium">Teilfreistellung:</span> 30%</div>
         </div>
+        <p className="text-xs text-gray-400 mt-2">
+          Der GmbH-Gewinn ergibt sich aus ETF-Ertrag abzüglich Betriebskosten und Darlehenszinsen.
+          Auf diesen Gewinn werden KSt + GewSt ans Finanzamt abgeführt.
+          Zusätzlich fällt Abgeltungssteuer auf die Vorabpauschale an.
+        </p>
       </div>
 
       {/* Results */}

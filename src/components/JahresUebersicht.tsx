@@ -16,23 +16,25 @@ const DETAIL_LABELS: Record<string, string> = {
   etfWert: "ETF-Wert",
   etfGewinn: "ETF-Gewinn",
   vorabpauschale: "Vorabpauschale",
-  vorabpauschalesteuer: "Steuer auf Vorabpauschale",
-  jaehrlicheKosten: "Betriebskosten",
-  jaehrlicheZinsen: "Darlehenszinsen (GmbH-Ausgabe)",
-  gmbhSteuer: "GmbH-Steuern (KSt+GewSt)",
+  vorabpauschalesteuer: "Steuer auf Vorabpauschale (Finanzamt)",
+  jaehrlicheKosten: "Betriebskosten (laufend)",
+  handyNettoKosten: "Firmenhandy Nettokosten (Betriebsausgabe)",
+  jaehrlicheZinsen: "Darlehenszinsen (jährlich, GmbH-Ausgabe)",
+  aufgelaufeneZinsen: "Aufgelaufene Darlehenszinsen (endfällig, kumuliert)",
+  gmbhSteuer: "GmbH-Steuern ans Finanzamt (KSt+GewSt)",
   benefitSteuerersparnis: "Steuerersparnis Benefits",
   offenesDarlehen: "Offenes Darlehen",
   bruttoGehalt: "Brutto-Gehalt",
   nettoGehalt: "Netto-Gehalt",
-  einkommensteuer: "Einkommensteuer",
-  soli: "Solidaritätszuschlag",
+  einkommensteuer: "Einkommensteuer (Finanzamt)",
+  soli: "Solidaritätszuschlag (Finanzamt)",
   darlehenZinsen: "Zinserträge aus Darlehen (brutto)",
-  darlehenZinsenSteuer: "Abgeltungssteuer auf Zinsen",
+  darlehenZinsenSteuer: "Abgeltungssteuer auf Zinsen (Finanzamt)",
   darlehenZinsenNetto: "Zinserträge (netto)",
   gewinnausschuettung: "Gewinnausschüttung (brutto)",
   nettoAusschuettung: "Netto-Ausschüttung",
-  kstSteuer: "Körperschaftsteuer",
-  ausschuettungsteuer: "Steuer auf Ausschüttung",
+  kstSteuer: "Körperschaftsteuer (Finanzamt)",
+  ausschuettungsteuer: "Steuer auf Ausschüttung (Finanzamt)",
 };
 
 export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
@@ -54,8 +56,8 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
           <thead>
             <tr className="border-b-2 border-gray-200 text-left text-gray-500">
               <th className="pb-2 font-medium">Jahr</th>
-              <th className="pb-2 font-medium text-right">Gewinn (vor St.)</th>
-              <th className="pb-2 font-medium text-right">Steuern</th>
+              <th className="pb-2 font-medium text-right">Gewinn nach Kosten (vor St.)</th>
+              <th className="pb-2 font-medium text-right">Steuern (Finanzamt)</th>
               <th className="pb-2 font-medium text-right">Netto-Gewinn</th>
               <th className="pb-2 font-medium text-right">Gesamtvermögen</th>
               <th className="pb-2 w-8"></th>
