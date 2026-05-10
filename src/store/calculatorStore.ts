@@ -33,6 +33,7 @@ const initialState: CalculatorState = {
     darlehen: {
       betrag: 25000,
       zinssatz: 3.5,
+      monatlicherZuschuss: 100,
       endfaellig: false,
     },
     etfRendite: 7,
@@ -46,7 +47,7 @@ const initialState: CalculatorState = {
   ende: {
     geschaeftsfuehrergehalt: 60000,
     gewinnausschuettung: 40000,
-    darlehenZinsen: 875, // 3.5% on 25.000€ shareholder loan
+    darlehenZinsen: 875, // default annual interest income assumption
     laufzeitJahre: 5,
   },
 };

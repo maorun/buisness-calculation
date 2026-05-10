@@ -15,6 +15,7 @@ export interface GruendungState {
 export interface DarlehenConfig {
   betrag: number;
   zinssatz: number; // in percent, e.g. 3.5 means 3.5%
+  monatlicherZuschuss: number; // monthly additional shareholder loan amount
   endfaellig: boolean; // if true, interest deferred to end
   tilgungsdatum?: string; // ISO date for early repayment
 }

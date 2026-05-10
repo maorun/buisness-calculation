@@ -127,6 +127,13 @@ export function BetriebSection() {
             suffix="% p.a."
             hint="Fremdvergleichszins (arm's length)"
           />
+          <InputField
+            label="Monatlicher Darlehenszuschuss (€)"
+            value={betrieb.darlehen.monatlicherZuschuss}
+            onChange={(v) => updateDarlehen("monatlicherZuschuss", v)}
+            suffix="€/Monat"
+            hint="Erhöht das offene Darlehen monatlich (Standard: 100 €)"
+          />
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -154,6 +161,7 @@ export function BetriebSection() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Steuervorteile (Benefits)</h3>
         <p className="text-xs text-slate-500 mb-4">
+          Benefits werden als Betriebsausgaben behandelt und reduzieren damit den steuerpflichtigen Gewinn.
           Sachbezüge sind auf 50 €/Monat begrenzt (§ 8 Abs. 2 EStG). Das Firmenhandy wird separat als Betriebsausgabe berücksichtigt.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
