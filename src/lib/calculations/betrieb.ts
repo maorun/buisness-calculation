@@ -244,6 +244,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       details: {
         etfWert,
         etfGewinn: realisierterEtfErtrag,
+        etfEinstandswertVerkauft: einstandswertVerkauft,
         theoretischerEtfErtrag,
         etfVerkauf,
         jaehrlicheKosten,

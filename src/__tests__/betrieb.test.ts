@@ -251,6 +251,12 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.details.etfVerkauf).toBeCloseTo(expectedVerkauf);
   });
 
+  it("etfVerkauf is split into sold cost basis plus realized ETF gain", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    const r = results[0];
+    expect(r.details.etfVerkauf).toBeCloseTo(r.details.etfEinstandswertVerkauft + r.details.etfGewinn);
+  });
+
   it("gesamtvermoegen equals ETF + cash reserve each year", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     for (const r of results) {

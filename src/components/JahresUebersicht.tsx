@@ -54,7 +54,10 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
     <div className="space-y-0.5 text-xs">
       {/* ── GuV ──────────────────────────────────────── */}
       <SectionHeader label="Gewinn- und Verlustrechnung" />
-      <BilanzRow label="ETF-Ertrag (realisiert durch Verkauf)" value={d.etfGewinn} prefix="+" colorClass="text-gray-700" indent />
+      <BilanzRow label="ETF-Verkaufserlös (Liquidität)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
+      <BilanzRow label="− ETF-Einstandswert (verkaufter Anteil)" value={d.etfEinstandswertVerkauft} prefix="−" colorClass="text-gray-600" indent />
+      <Divider />
+      <BilanzRow label="= ETF-Ertrag (realisiert, steuerrelevant)" value={d.etfGewinn} prefix="+" colorClass="text-gray-700" indent />
       <BilanzRow label="− Betriebskosten" value={d.jaehrlicheKosten} prefix="−" colorClass="text-gray-600" indent />
       {d.handyNettoKosten > 0 && (
         <BilanzRow label="− Firmenhandy (Betriebsausgabe)" value={d.handyNettoKosten} prefix="−" colorClass="text-gray-600" indent />
