@@ -50,13 +50,13 @@ function SectionHeader({ label }: { label: string }) {
 /** Structured annual balance sheet (Jahresbilanz) for Betrieb years */
 function BetriebBilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
-  const betriebsausgaben = d.jaehrlicheKosten + d.handyNettoKosten;
+  const gesamtSteuer = d.gmbhSteuer + d.vorabpauschalesteuer + d.etfVerkaufssteuer;
   return (
     <div className="space-y-0.5 text-xs">
       {/* ── GuV ──────────────────────────────────────── */}
       <SectionHeader label="Gewinn- und Verlustrechnung" />
       <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
-      <BilanzRow label="− Betriebsausgaben" value={betriebsausgaben} prefix="−" colorClass="text-gray-600" indent />
+      <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       {d.jaehrlicheZinsen > 0 && (
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
@@ -84,7 +84,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       )}
 
       <SectionHeader label="Steuern (Finanzamt)" />
-      <BilanzRow label="− Gesamtsteuer (KSt + GewSt + Vorabpauschale + ETF-Verkauf)" value={e.steuer} prefix="−" colorClass="text-red-600" indent />
+      <BilanzRow label="− Gesamtsteuer (KSt + GewSt + Vorabpauschale + ETF-Verkauf)" value={gesamtSteuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
       <BilanzRow
         label="= Nettogewinn (Buchgewinn)"

@@ -260,6 +260,7 @@ describe("berechneBetriebsErgebnisse", () => {
   it("deckungssaldo after operating outflows and taxes is approximately zero", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     const r = results[0];
+    // ETF sales are iteratively sized to cover operating outflows and taxes in the same year.
     expect(r.details.deckungssaldoNachAusgabenUndSteuern).toBeCloseTo(0, 2);
   });
 

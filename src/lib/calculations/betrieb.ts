@@ -163,6 +163,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
 
     // Phone costs are operating expenses (Betriebsausgabe), deducted from taxable profit.
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr);
+    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten;
 
     // Benefits savings do not include phone costs (those reduce profit directly).
     const benefitSteuerersparnis = benefitSteuerersparnisBasis;
@@ -176,7 +177,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const etfBasisQuote = etfWertNachWachstum > 0
       ? Math.min(1, Math.max(0, etfEinstandswert / etfWertNachWachstum))
       : 0;
-    const fixeAuszahlungen = jaehrlicheKosten + handyNettoKosten + jaehrlicheZinsen + vorabpauschalesteuer;
+    const fixeAuszahlungen = betriebsausgabenGesamt + jaehrlicheZinsen + vorabpauschalesteuer;
 
     // Solve sale amount iteratively because taxes depend on realized sale gain.
     let etfVerkauf = Math.min(etfWertNachWachstum, fixeAuszahlungen);
@@ -185,7 +186,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const realisierterEtfErtragIter = Math.max(0, etfVerkauf - einstandswertVerkauftIter);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
       const gewinnNachBetriebsausgabenIter =
-        realisierterEtfErtragIter - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
+        realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
       const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
         ? gewinnNachBetriebsausgabenIter * GMBH_STEUER_GESAMT
         : 0;
@@ -204,7 +205,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const realisierterEtfErtrag = Math.max(0, etfVerkauf - einstandswertVerkauft);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
-      realisierterEtfErtrag - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen;
+      realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
 
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
@@ -221,7 +222,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer + benefitSteuerersparnis;
     const deckungssaldoNachAusgabenUndSteuern =
-      etfVerkauf - jaehrlicheKosten - handyNettoKosten - jaehrlicheZinsen - vorabpauschalesteuer - gmbhSteuer - etfVerkaufssteuer;
+      etfVerkauf - betriebsausgabenGesamt - jaehrlicheZinsen - vorabpauschalesteuer - gmbhSteuer - etfVerkaufssteuer;
 
     // Positive retained result is held as cash reserve (Aktiva).
     const cashReserveZugang = Math.max(0, nettogewinn);
@@ -251,6 +252,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         etfVerkauf,
         jaehrlicheKosten,
         handyNettoKosten,
+        betriebsausgabenGesamt,
         jaehrlicheZinsen,
         aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
         gewinnNachBetriebsausgaben,
