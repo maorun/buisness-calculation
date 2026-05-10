@@ -208,16 +208,16 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         colorClass="text-green-700"
       />
 
-      {(d.firmenEtfVermoegen !== undefined || d.firmenDarlehensverbindlichkeit !== undefined) && (
+      {(d.firmenEtfVermoegen !== undefined && d.firmenDarlehensverbindlichkeit !== undefined) && (
         <>
           <SectionHeader label="Bilanz der Firma (Jahresende)" />
-          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
           {d.firmenEtfVermoegen !== undefined && (
             <BilanzRow label="ETF-/Liquiditätsbestand Firma" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
           )}
           {d.firmenDarlehensverbindlichkeit !== undefined && d.firmenDarlehensverbindlichkeit > 0 && (
             <>
-              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
               <BilanzRow label="Restdarlehen gegenüber Gesellschafter" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
             </>
           )}
