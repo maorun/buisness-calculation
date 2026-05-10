@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useCalculatorStore } from "@/store/calculatorStore";
+import { HANDY_ANSCHAFFUNGSKOSTEN, HANDY_ERSATZZYKLUS_JAHRE, HANDY_VERKAUFSQUOTE } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
 
@@ -47,6 +48,9 @@ function InputField({
 export function BetriebSection() {
   const { betrieb, setBetrieb, addBetriebskosten, updateBetriebskosten, removeBetriebskosten, getBetriebsErgebnisse } =
     useCalculatorStore();
+  const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
+  const handyZyklus = HANDY_ERSATZZYKLUS_JAHRE;
+  const handyVerkaufsquote = (HANDY_VERKAUFSQUOTE * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
 
@@ -179,7 +183,7 @@ export function BetriebSection() {
         </p>
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
           <p className="text-sm text-gray-700">
-            1.000 € Anschaffungskosten alle 3 Jahre, abzüglich 10% Verkaufserlös beim Austausch.
+            {handyAnschaffung} € Anschaffungskosten alle {handyZyklus} Jahre, abzüglich {handyVerkaufsquote}% Verkaufserlös beim Austausch.
           </p>
         </div>
       </div>

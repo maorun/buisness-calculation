@@ -4,7 +4,12 @@ import React from "react";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import { JahresUebersicht } from "./JahresUebersicht";
 import { berechneNettoGehalt, berechneGewinnausschuettungsteuer } from "@/lib/calculations/ende";
-import { berechneBenefitsSteuerersparnis } from "@/lib/calculations/betrieb";
+import {
+  berechneBenefitsSteuerersparnis,
+  HANDY_ANSCHAFFUNGSKOSTEN,
+  HANDY_ERSATZZYKLUS_JAHRE,
+  HANDY_VERKAUFSQUOTE,
+} from "@/lib/calculations/betrieb";
 
 function InputField({
   label,
@@ -39,6 +44,9 @@ function InputField({
 export function EndeSection() {
   const { ende, setEnde, betrieb, getEndeErgebnisse } = useCalculatorStore();
   const ergebnisse = getEndeErgebnisse();
+  const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
+  const handyZyklus = HANDY_ERSATZZYKLUS_JAHRE;
+  const handyVerkaufsquote = (HANDY_VERKAUFSQUOTE * 100).toLocaleString("de-DE");
 
   const nettoGehalt = berechneNettoGehalt(ende.geschaeftsfuehrergehalt);
   const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung);
@@ -127,11 +135,16 @@ export function EndeSection() {
 
       {/* Benefits overview */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-        <h3 className="font-semibold text-gray-700 mb-2">Benefits</h3>
+        <h3 className="font-semibold text-gray-700 mb-2">Benefits & Firmenhandy</h3>
         <p className="text-xs text-gray-400 mb-4">
           Konfiguriert im Betrieb-Bereich – reduzieren auch in der Auszahlungsphase die Steuerlast
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <p className="text-xs text-gray-500 mb-1">📱 Firmenhandy</p>
+            <p className="font-bold text-gray-800">{handyAnschaffung} € alle {handyZyklus} Jahre</p>
+            <p className="text-xs text-gray-500 mt-1">{handyVerkaufsquote}% Verkaufserlös</p>
+          </div>
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
             <p className="text-xs text-gray-500 mb-1">⛽ Tankgutschein</p>
             <p className="font-bold text-gray-800">{betrieb.benefits.tankgutschein} €/Monat</p>
