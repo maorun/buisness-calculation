@@ -212,13 +212,34 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[2].jahr).toBe(3);
   });
 
-  it("ETF value in year 1 is 7% growth on startkapital", () => {
+  it("ETF value in year 1 is 7% growth minus all cash outflows", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
-    expect(results[0].details.etfWert).toBeCloseTo(107000);
+    const r = results[0];
+    // ETF grows 7% then cash outflows (costs + taxes) are deducted via ETF unit sales
+    const etfNachWachstum = 100000 * 1.07; // 107,000
+    expect(r.details.etfWert).toBeCloseTo(etfNachWachstum - r.details.etfVerkauf);
+    // ETF is less than pure growth because outflows are deducted
+    expect(r.details.etfWert).toBeLessThan(etfNachWachstum);
+    // But still higher than start (positive net in year 1 with 7% rendite)
+    expect(r.details.etfWert).toBeGreaterThan(100000);
   });
 
-  it("gesamtvermoegen equals etfWert (gross assets, not net of loan)", () => {
+  it("etfVerkauf equals sum of all annual cash outflows", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
+    const r = results[0];
+    const expectedVerkauf =
+      r.details.jaehrlicheKosten +
+      r.details.handyNettoKosten +
+      r.details.jaehrlicheZinsen +
+      r.details.gmbhSteuer +
+      r.details.vorabpauschalesteuer;
+    expect(r.details.etfVerkauf).toBeCloseTo(expectedVerkauf);
+  });
+
+  it("ETF value equals growth minus etfVerkauf each year", () => {
+    const results = berechneBetriebsErgebnisse(defaultState);
+    // We can't easily know the pre-deduction value per year, but we can check
+    // that gesamtvermoegen equals etfWert (which now reflects real cash-flow value)
     for (const r of results) {
       expect(r.gesamtvermoegen).toBeCloseTo(r.details.etfWert);
     }

@@ -12,12 +12,6 @@ function formatEuro(value: number): string {
   return value.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
-function formatSigned(value: number): string {
-  const abs = Math.abs(value);
-  const str = abs.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-  return value < 0 ? "− " + str : "+ " + str;
-}
-
 /** A single row inside the Bilanz detail block */
 function BilanzRow({
   label,
@@ -82,12 +76,16 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       <BilanzRow label="− Vorabpauschalesteuer" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
       <BilanzRow
-        label="= Nettogewinn"
+        label="= Nettogewinn (Buchgewinn)"
         value={e.nettogewinn}
         prefix={e.nettogewinn >= 0 ? "+" : "−"}
         bold
         colorClass="text-green-700"
       />
+
+      {/* ── Cashflow ─────────────────────────────────── */}
+      <SectionHeader label="Cashflow (ETF-Verkauf zur Kostendeckung)" />
+      <BilanzRow label="Betriebskosten + Steuern (aus dem ETF finanziert)" value={d.etfVerkauf} prefix="−" colorClass="text-orange-600" bold indent />
 
       {/* ── Bilanz ───────────────────────────────────── */}
       <SectionHeader label="Bilanz (Jahresende)" />

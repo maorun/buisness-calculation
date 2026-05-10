@@ -167,8 +167,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Net gain after all taxes and benefit savings
     const nettogewinn = gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer + benefitSteuerersparnis;
 
-    // Update ETF value (Vorabpauschale tax reduces cash, not ETF directly)
-    etfWert = etfWertNachWachstum;
+    // Cash outflows: all expenses and taxes must be funded by selling ETF units.
+    // This is the total amount of ETF sold each year to cover costs and taxes.
+    const etfVerkauf = jaehrlicheKosten + handyNettoKosten + jaehrlicheZinsen + gmbhSteuer + vorabpauschalesteuer;
+
+    // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
+    etfWert = Math.max(0, etfWertNachWachstum - etfVerkauf);
 
     // Gesamtvermögen = total gross assets (ETF value).
     // The outstanding loan is a liability shown separately; net worth = etfWert - offenesDarlehen.
@@ -185,6 +189,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       details: {
         etfWert,
         etfGewinn,
+        etfVerkauf,
         jaehrlicheKosten,
         handyNettoKosten,
         jaehrlicheZinsen,
