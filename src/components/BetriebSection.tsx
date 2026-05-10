@@ -169,9 +169,19 @@ export function BetriebSection() {
             hint="Voll abzugsfähige Betriebsausgabe"
           />
         </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Firmenhandy: alle 3 Jahre 1.000 € Betriebsausgabe, mit 10% Verkaufserlös beim Austausch.
+      </div>
+
+      {/* Firmenhandy */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Firmenhandy (Betrieb)</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Berechnung als Betriebsausgabe im Betriebsbereich, nicht als Sachbezug.
         </p>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+          <p className="text-sm text-gray-700">
+            1.000 € Anschaffungskosten alle 3 Jahre, abzüglich 10% Verkaufserlös beim Austausch.
+          </p>
+        </div>
       </div>
 
       {/* Operating costs */}
