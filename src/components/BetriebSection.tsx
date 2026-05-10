@@ -128,7 +128,7 @@ export function BetriebSection() {
             hint="Fremdvergleichszins (arm's length)"
           />
           <InputField
-            label="Monatlicher Darlehens-Zuschuss (€)"
+            label="Monatlicher Darlehenszuschuss (€)"
             value={betrieb.darlehen.monatlicherZuschuss}
             onChange={(v) => updateDarlehen("monatlicherZuschuss", v)}
             suffix="€/Monat"

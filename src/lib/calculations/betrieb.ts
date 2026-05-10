@@ -101,14 +101,13 @@ export function berechneDarlehensjahr(
   zinssatzPercent: number,
   monatlicherZuschuss: number
 ): { zinsenJaehrlich: number; darlehenBetragEnde: number } {
-  const monthlyRate = zinssatzPercent / 100 / DARLEHEN_MONATE_PRO_JAHR;
-  const monatlicherBetrag = Math.max(0, monatlicherZuschuss);
+  const zinssatzMonatlich = zinssatzPercent / 100 / DARLEHEN_MONATE_PRO_JAHR;
   let darlehenBetrag = Math.max(0, darlehenBetragStart);
   let zinsenJaehrlich = 0;
 
   for (let monat = 0; monat < DARLEHEN_MONATE_PRO_JAHR; monat++) {
-    zinsenJaehrlich += darlehenBetrag * monthlyRate;
-    darlehenBetrag += monatlicherBetrag;
+    zinsenJaehrlich += darlehenBetrag * zinssatzMonatlich;
+    darlehenBetrag += Math.max(0, monatlicherZuschuss);
   }
 
   return { zinsenJaehrlich, darlehenBetragEnde: darlehenBetrag };
