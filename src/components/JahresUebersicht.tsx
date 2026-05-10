@@ -122,7 +122,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       />
 
       {/* ── Weitere Infos ─────────────────────────────── */}
-      {(d.vorabpauschale > 0 || d.benefitSteuerersparnis > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0) && (
+      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0 || d.benefitsKosten > 0) && (
         <>
           <SectionHeader label="Weitere Infos" />
           {d.theoretischerEtfErtrag > 0 && (
@@ -131,8 +131,8 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           {d.vorabpauschale > 0 && (
             <BilanzRow label="Vorabpauschale (Bemessungsgrundlage)" value={d.vorabpauschale} colorClass="text-gray-500" indent />
           )}
-          {d.benefitSteuerersparnis > 0 && (
-            <BilanzRow label="Steuerersparnis Benefits" value={d.benefitSteuerersparnis} prefix="+" colorClass="text-gray-500" indent />
+          {d.benefitsKosten > 0 && (
+            <BilanzRow label="Benefits (in Betriebsausgaben enthalten)" value={d.benefitsKosten} colorClass="text-gray-500" indent />
           )}
           {d.aufgelaufeneZinsen > 0 && (
             <BilanzRow label="Aufgelaufene Zinsen (endfällig, kumuliert)" value={d.aufgelaufeneZinsen} colorClass="text-amber-600" indent />

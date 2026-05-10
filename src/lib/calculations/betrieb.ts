@@ -26,6 +26,7 @@ export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
+export const DARLEHEN_MONATE_PRO_JAHR = 12;
 
 /**
  * Vorabpauschale: German annual pre-tax for accumulating ETFs.
@@ -92,6 +93,28 @@ export function berechneDarlehenszinsen(darlehen: DarlehenConfig): number {
 }
 
 /**
+ * Yearly loan interest with monthly shareholder top-ups.
+ * Top-ups increase principal month by month; interest is calculated monthly on current principal.
+ */
+export function berechneDarlehensjahr(
+  darlehenBetragStart: number,
+  zinssatzPercent: number,
+  monatlicherZuschuss: number
+): { zinsenJaehrlich: number; darlehenBetragEnde: number } {
+  const monthlyRate = zinssatzPercent / 100 / DARLEHEN_MONATE_PRO_JAHR;
+  const monatlicherBetrag = Math.max(0, monatlicherZuschuss);
+  let darlehenBetrag = Math.max(0, darlehenBetragStart);
+  let zinsenJaehrlich = 0;
+
+  for (let monat = 0; monat < DARLEHEN_MONATE_PRO_JAHR; monat++) {
+    darlehenBetrag += monatlicherBetrag;
+    zinsenJaehrlich += darlehenBetrag * monthlyRate;
+  }
+
+  return { zinsenJaehrlich, darlehenBetragEnde: darlehenBetrag };
+}
+
+/**
  * Sum all operating cost positions (monthly × 12 + annual).
  * Supports KostenPositions with periode: 'monatlich' (multiplied by 12) or 'jaehrlich' (as-is).
  */
@@ -113,11 +136,18 @@ export function berechneBenefitsSteuerersparnis(
   benefits: BenefitConfig,
   steuerRate: number = GMBH_STEUER_GESAMT
 ): number {
+  const totalAbzug = berechneBenefitsKosten(benefits);
+  return totalAbzug * steuerRate;
+}
+
+/**
+ * Benefits are deductible operating expenses and therefore part of annual Betriebsausgaben.
+ */
+export function berechneBenefitsKosten(benefits: BenefitConfig): number {
   const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), 50);
   const tankJahr = clampedTankMonthly * 12;
   const strategieessen = benefits.strategieessen;
-  const totalAbzug = tankJahr + strategieessen;
-  return totalAbzug * steuerRate;
+  return tankJahr + strategieessen;
 }
 
 /**
@@ -143,11 +173,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   let etfWert = state.startkapital;
   let etfEinstandswert = state.startkapital;
   let cashReserve = 0;
+  let offenesDarlehen = Math.max(0, state.darlehen.betrag);
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
   // For regular loans, interest is paid (and deductible) each year.
-  const darlehenszinsJaehrlich = berechneDarlehenszinsen(state.darlehen);
-  const jaehrlicheZinsen = state.darlehen.endfaellig ? 0 : darlehenszinsJaehrlich;
-  const benefitSteuerersparnisBasis = berechneBenefitsSteuerersparnis(state.benefits);
   let aufgelaufeneZinsen = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
@@ -163,10 +191,15 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
 
     // Phone costs are operating expenses (Betriebsausgabe), deducted from taxable profit.
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr);
-    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten;
+    const benefitsKosten = berechneBenefitsKosten(state.benefits);
+    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
 
-    // Benefits savings do not include phone costs (those reduce profit directly).
-    const benefitSteuerersparnis = benefitSteuerersparnisBasis;
+    const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
+      offenesDarlehen,
+      state.darlehen.zinssatz,
+      state.darlehen.monatlicherZuschuss
+    );
+    const jaehrlicheZinsen = state.darlehen.endfaellig ? 0 : darlehenszinsJaehrlich;
 
     // Accumulate deferred interest for endfällig loans (informational).
     if (state.darlehen.endfaellig) {
@@ -218,9 +251,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Additional taxes
     const gesamtSteuer = gmbhSteuer + vorabpauschalesteuer + etfVerkaufssteuer;
 
-    // Net gain after all taxes and benefit savings
+    // Net gain after all taxes
     const nettogewinn =
-      gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer + benefitSteuerersparnis;
+      gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer;
     const deckungssaldoNachAusgabenUndSteuern =
       etfVerkauf - betriebsausgabenGesamt - jaehrlicheZinsen - vorabpauschalesteuer - gmbhSteuer - etfVerkaufssteuer;
 
@@ -232,9 +265,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     etfWert = Math.max(0, etfWertNachWachstum - etfVerkauf);
     etfEinstandswert = Math.max(0, etfEinstandswert - einstandswertVerkauft);
 
+    offenesDarlehen = darlehenBetragEnde;
+
     // Gesamtvermögen = total gross assets (ETF + cash reserve).
-    // The outstanding loan is a liability shown separately; net worth = etfWert - offenesDarlehen.
-    const offenesDarlehen = state.darlehen.betrag;
+    // The outstanding loan is a liability shown separately; net worth = assets - offenesDarlehen.
     const gesamtvermoegen = etfWert + cashReserve;
     const nettovermoegen = gesamtvermoegen - offenesDarlehen;
 
@@ -252,6 +286,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         etfVerkauf,
         jaehrlicheKosten,
         handyNettoKosten,
+        benefitsKosten,
         betriebsausgabenGesamt,
         jaehrlicheZinsen,
         aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
@@ -261,7 +296,6 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         etfVerkaufssteuer,
         gmbhSteuer,
         deckungssaldoNachAusgabenUndSteuern,
-        benefitSteuerersparnis,
         cashReserve,
         cashReserveZugang,
         offenesDarlehen,

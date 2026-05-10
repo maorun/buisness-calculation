@@ -4,7 +4,9 @@ import {
   berechneEtfVerkaufssteuer,
   berechneEtfWachstum,
   berechneDarlehenszinsen,
+  berechneDarlehensjahr,
   berechneBetriebskosten,
+  berechneBenefitsKosten,
   berechneBenefitsSteuerersparnis,
   berechneHandyNettoKostenProJahr,
   berechneBetriebsErgebnisse,
@@ -105,6 +107,7 @@ describe("berechneDarlehenszinsen", () => {
   const darlehen: DarlehenConfig = {
     betrag: 25000,
     zinssatz: 3.5,
+    monatlicherZuschuss: 0,
     endfaellig: false,
   };
 
@@ -124,6 +127,20 @@ describe("berechneDarlehenszinsen", () => {
     const endfaellig = berechneDarlehenszinsen({ ...darlehen, endfaellig: true });
     const normal = berechneDarlehenszinsen({ ...darlehen, endfaellig: false });
     expect(endfaellig).toBe(normal);
+  });
+});
+
+describe("berechneDarlehensjahr", () => {
+  it("keeps principal stable without monthly top-ups", () => {
+    const result = berechneDarlehensjahr(25000, 3.5, 0);
+    expect(result.darlehenBetragEnde).toBeCloseTo(25000);
+    expect(result.zinsenJaehrlich).toBeCloseTo(875, 6);
+  });
+
+  it("increases principal and annual interest with monthly top-ups", () => {
+    const result = berechneDarlehensjahr(25000, 3.5, 100);
+    expect(result.darlehenBetragEnde).toBeCloseTo(26200);
+    expect(result.zinsenJaehrlich).toBeGreaterThan(875);
   });
 });
 
@@ -188,6 +205,13 @@ describe("berechneBenefitsSteuerersparnis", () => {
   });
 });
 
+describe("berechneBenefitsKosten", () => {
+  it("treats benefits as annual deductible operating costs", () => {
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 1500 };
+    expect(berechneBenefitsKosten(benefits)).toBe(2100);
+  });
+});
+
 describe("berechneHandyNettoKostenProJahr", () => {
   it("applies net phone costs every 3 years", () => {
     const expected = HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE);
@@ -201,7 +225,7 @@ describe("berechneHandyNettoKostenProJahr", () => {
 describe("berechneBetriebsErgebnisse", () => {
   const defaultState: BetriebState = {
     startkapital: 100000,
-    darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: false },
+    darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
     etfRendite: 7,
     laufzeitJahre: 3,
     kosten: [{ id: "1", bezeichnung: "Steuerberater", betrag: 3000 }],
@@ -234,8 +258,8 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.details.etfWert).toBeCloseTo(etfNachWachstum - r.details.etfVerkauf);
     // ETF is less than pure growth because outflows are deducted
     expect(r.details.etfWert).toBeLessThan(etfNachWachstum);
-    // But still higher than start (positive net in year 1 with 7% rendite)
-    expect(r.details.etfWert).toBeGreaterThan(100000);
+    // Can be below start value if annual outflows exceed realized return in year 1.
+    expect(r.details.etfWert).toBeGreaterThan(0);
   });
 
   it("etfVerkauf equals sum of all annual cash outflows", () => {
@@ -244,6 +268,7 @@ describe("berechneBetriebsErgebnisse", () => {
     const expectedVerkauf =
       r.details.jaehrlicheKosten +
       r.details.handyNettoKosten +
+      r.details.benefitsKosten +
       r.details.jaehrlicheZinsen +
       r.details.gmbhSteuer +
       r.details.vorabpauschalesteuer +
@@ -313,7 +338,7 @@ describe("berechneBetriebsErgebnisse", () => {
   it("handles 0 loan (no interest)", () => {
     const state = {
       ...defaultState,
-      darlehen: { betrag: 0, zinssatz: 3.5, endfaellig: false },
+      darlehen: { betrag: 0, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
     };
     const results = berechneBetriebsErgebnisse(state);
     expect(results[0].details.jaehrlicheZinsen).toBe(0);
@@ -358,7 +383,7 @@ describe("berechneBetriebsErgebnisse", () => {
       laufzeitJahre: 3,
       kosten: [],
       benefits: { tankgutschein: 0, strategieessen: 0 },
-      darlehen: { betrag: 0, zinssatz: 0, endfaellig: false },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
     };
     const results = berechneBetriebsErgebnisse(state);
     let expectedReserve = 0;
@@ -371,11 +396,11 @@ describe("berechneBetriebsErgebnisse", () => {
   it("does not deduct interest annually for endfällig loans", () => {
     const endfaelligState: BetriebState = {
       ...defaultState,
-      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: true },
+      darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: true },
     };
     const normalState: BetriebState = {
       ...defaultState,
-      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: false },
+      darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
     };
     const endfaelligResults = berechneBetriebsErgebnisse(endfaelligState);
     const normalResults = berechneBetriebsErgebnisse(normalState);
@@ -390,7 +415,7 @@ describe("berechneBetriebsErgebnisse", () => {
   it("accumulates deferred interest for endfällig loans", () => {
     const endfaelligState: BetriebState = {
       ...defaultState,
-      darlehen: { betrag: 25000, zinssatz: 3.5, endfaellig: true },
+      darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: true },
     };
     const results = berechneBetriebsErgebnisse(endfaelligState);
     const annualInterest = 25000 * 0.035; // 875
@@ -412,7 +437,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 0,
       laufzeitJahre: 4,
       kosten: [],
-      darlehen: { betrag: 0, zinssatz: 0, endfaellig: false },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
       benefits: { tankgutschein: 0, strategieessen: 0 },
     };
     const results = berechneBetriebsErgebnisse(state);
@@ -422,8 +447,31 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[1].details.handyNettoKosten).toBeCloseTo(0);
     expect(results[2].details.handyNettoKosten).toBeCloseTo(0);
     expect(results[3].details.handyNettoKosten).toBeCloseTo(expectedHandyKosten);
-    // Benefits savings do not include phone costs (phone reduces profit directly)
-    expect(results[0].details.benefitSteuerersparnis).toBeCloseTo(0);
-    expect(results[3].details.benefitSteuerersparnis).toBeCloseTo(0);
+  });
+
+  it("counts benefits inside operating expenses", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      kosten: [],
+      benefits: { tankgutschein: 50, strategieessen: 1500 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+    };
+    const result = berechneBetriebsErgebnisse(state)[0];
+    expect(result.details.benefitsKosten).toBe(2100);
+    expect(result.details.betriebsausgabenGesamt).toBeCloseTo(
+      result.details.handyNettoKosten + 2100
+    );
+  });
+
+  it("increases outstanding loan balance each year for monthly top-ups", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      laufzeitJahre: 2,
+      darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 100, endfaellig: false },
+    };
+    const results = berechneBetriebsErgebnisse(state);
+    expect(results[0].details.offenesDarlehen).toBeCloseTo(26200);
+    expect(results[1].details.offenesDarlehen).toBeCloseTo(27400);
+    expect(results[0].details.jaehrlicheZinsen).toBeGreaterThan(875);
   });
 });
