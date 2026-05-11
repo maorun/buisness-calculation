@@ -27,6 +27,7 @@ export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
 export const DARLEHEN_MONATE_PRO_JAHR = 12;
+export const MIN_ETF_LOT_WERT = 0.000001;
 
 type EtfLotTyp = "startkapital" | "darlehen" | "zuzahlung";
 
@@ -198,7 +199,7 @@ function fuegeEtfLotHinzu(lots: EtfLot[], typ: EtfLotTyp, betrag: number): EtfLo
   return [...lots, { typ, wert: betrag, einstandswert: betrag }];
 }
 
-function berechneSteuerlastProEuro(lot: EtfLot): number {
+function berechneWertsteigerungsanteil(lot: EtfLot): number {
   if (lot.wert <= 0) {
     return Number.POSITIVE_INFINITY;
   }
@@ -223,7 +224,7 @@ function verkaufeEtfLotsSteueroptimal(
   const sortierteLots = [...lots]
     .map((lot, index) => ({ lot, index }))
     .sort((a, b) => {
-      const steuerlastDifferenz = berechneSteuerlastProEuro(a.lot) - berechneSteuerlastProEuro(b.lot);
+      const steuerlastDifferenz = berechneWertsteigerungsanteil(a.lot) - berechneWertsteigerungsanteil(b.lot);
       if (Math.abs(steuerlastDifferenz) > Number.EPSILON) {
         return steuerlastDifferenz;
       }
@@ -267,7 +268,7 @@ function verkaufeEtfLotsSteueroptimal(
 
   const aktualisierteLots = lots
     .map((lot) => lotMap.get(lot) ?? lot)
-    .filter((lot) => lot.wert > 0.000001);
+    .filter((lot) => lot.wert > MIN_ETF_LOT_WERT);
 
   return {
     lots: aktualisierteLots,

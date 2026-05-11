@@ -428,6 +428,7 @@ describe("berechneBetriebsErgebnisse", () => {
     };
 
     const [erstesJahr] = berechneBetriebsErgebnisse(state);
+    const wachstumsfaktor = 1 + state.etfRendite / 100;
     expect(erstesJahr.details.zuzahlungenEtfWert).toBeCloseTo(1200);
 
     const zweitesJahr = berechneBetriebsErgebnisse(state)[1];
@@ -436,10 +437,10 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(zweitesJahr.details.ungedeckteBetriebsausgaben).toBeCloseTo(0);
     expect(zweitesJahr.details.etfGewinn).toBeGreaterThan(0);
     expect(zweitesJahr.details.etfGewinn).toBeLessThan(20);
-    expect(zweitesJahr.details.startkapitalEtfWert).toBeCloseTo(erstesJahr.details.startkapitalEtfWert * 1.1, 4);
-    expect(zweitesJahr.details.darlehenEtfWert).toBeCloseTo(erstesJahr.details.darlehenEtfWert * 1.1, 4);
+    expect(zweitesJahr.details.startkapitalEtfWert).toBeCloseTo(erstesJahr.details.startkapitalEtfWert * wachstumsfaktor, 4);
+    expect(zweitesJahr.details.darlehenEtfWert).toBeCloseTo(erstesJahr.details.darlehenEtfWert * wachstumsfaktor, 4);
     expect(zweitesJahr.details.zuzahlungenEtfWert)
-      .toBeLessThan(erstesJahr.details.zuzahlungenEtfWert * 1.1 + (175 * 12));
+      .toBeLessThan(erstesJahr.details.zuzahlungenEtfWert * wachstumsfaktor + (175 * 12));
   });
 
   it("cash reserve accumulates only positive annual net profit", () => {
