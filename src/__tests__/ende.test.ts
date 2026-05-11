@@ -5,7 +5,12 @@ import {
   berechneGewinnausschuettungsteuer,
   berechneNettoAusschuettung,
   berechneDarlehensAuszahlung,
+  berechneDarlehensZinsenSteuer,
+  berechneRestlichesMidijobGehalt,
+  berechneFlexibleTilgung,
   berechneEndeErgebnisse,
+  MIDIJOB_JAHR_MAX,
+  REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
 import { EndeState } from "@/lib/types";
 
@@ -135,20 +140,77 @@ describe("berechneDarlehensAuszahlung", () => {
   });
 });
 
+describe("berechneDarlehensZinsenSteuer", () => {
+  it("returns 0 for zero interest", () => {
+    expect(berechneDarlehensZinsenSteuer(0, 24000)).toBe(0);
+    expect(berechneDarlehensZinsenSteuer(-100, 24000)).toBe(0);
+  });
+
+  it("returns positive tax for positive interest", () => {
+    expect(berechneDarlehensZinsenSteuer(1000, 24000)).toBeGreaterThan(0);
+  });
+
+  it("equals combined income tax minus salary-only tax (marginal rate)", () => {
+    const zinsen = 1000;
+    const gehalt = 24000;
+    const estGehalt = berechneEinkommensteuer(gehalt);
+    const soliGehalt = berechneSoli(estGehalt);
+    const estKombiniert = berechneEinkommensteuer(gehalt + zinsen);
+    const soliKombiniert = berechneSoli(estKombiniert);
+    const expected = (estKombiniert + soliKombiniert) - (estGehalt + soliGehalt);
+    expect(berechneDarlehensZinsenSteuer(zinsen, gehalt)).toBeCloseTo(expected);
+  });
+
+  it("higher interest leads to higher tax (progressive)", () => {
+    const lowTax = berechneDarlehensZinsenSteuer(500, 24000);
+    const highTax = berechneDarlehensZinsenSteuer(5000, 24000);
+    expect(highTax).toBeGreaterThan(lowTax);
+  });
+
+  it("handles 0 salary (interest alone determines tax)", () => {
+    const tax = berechneDarlehensZinsenSteuer(10000, 0);
+    const expectedTax = berechneEinkommensteuer(10000) + berechneSoli(berechneEinkommensteuer(10000));
+    expect(tax).toBeCloseTo(expectedTax);
+  });
+});
+
+describe("berechneRestlichesMidijobGehalt", () => {
+  it("returns the remaining salary room below the Midijob limit", () => {
+    expect(berechneRestlichesMidijobGehalt(1000)).toBe(MIDIJOB_JAHR_MAX - 1000);
+  });
+
+  it("returns 0 when interest already reaches the Midijob limit", () => {
+    expect(berechneRestlichesMidijobGehalt(MIDIJOB_JAHR_MAX + 1)).toBe(0);
+  });
+});
+
+describe("berechneFlexibleTilgung", () => {
+  it("covers only the remaining gap to the target", () => {
+    expect(berechneFlexibleTilgung(17000, 14000, 10000)).toBe(3000);
+  });
+
+  it("caps tilgung at the remaining debt", () => {
+    expect(berechneFlexibleTilgung(17000, 1000, 2000)).toBe(2000);
+  });
+});
+
 describe("berechneEndeErgebnisse", () => {
   const defaultState: EndeState = {
     geschaeftsfuehrergehalt: 24000,
+    gehaltBereich1: 24000,
     gewinnausschuettung: 0,
     tilgungsrate: 0,
     laufzeitJahre: 3,
+    zielnettoBereich1: 17000,
+    zielnettoBereich2: 0,
   };
 
-  it("returns one entry per year", () => {
+  it("returns one entry per year (non-endfaellig)", () => {
     const results = berechneEndeErgebnisse(defaultState);
     expect(results).toHaveLength(3);
   });
 
-  it("Jahr numbers are sequential", () => {
+  it("Jahr numbers are sequential (non-endfaellig)", () => {
     const results = berechneEndeErgebnisse(defaultState);
     expect(results[0].jahr).toBe(1);
     expect(results[2].jahr).toBe(3);
@@ -167,12 +229,14 @@ describe("berechneEndeErgebnisse", () => {
     }
   });
 
-  it("includes calculated loan interest and repayment", () => {
+  it("includes calculated loan interest and repayment (progressive Einkommensteuer on interest)", () => {
     const results = berechneEndeErgebnisse(defaultState, 0, 12000, 6);
+    const zinsen = 720; // 12000 * 6% / 3 years = first year: 12000 * 0.06 = 720
+    const expectedZinsenSteuer = berechneDarlehensZinsenSteuer(zinsen, defaultState.geschaeftsfuehrergehalt);
     expect(results[0].details.darlehenZinsen).toBeCloseTo(720);
     expect(results[0].details.darlehenTilgung).toBeCloseTo(4000);
-    expect(results[0].details.darlehenZinsenSteuer).toBeCloseTo(720 * 0.25 * 1.055);
-    expect(results[0].details.darlehenZinsenNetto).toBeCloseTo(720 - 720 * 0.25 * 1.055);
+    expect(results[0].details.darlehenZinsenSteuer).toBeCloseTo(expectedZinsenSteuer);
+    expect(results[0].details.darlehenZinsenNetto).toBeCloseTo(zinsen - expectedZinsenSteuer);
   });
 
   it("handles 0 restdarlehen", () => {
@@ -244,5 +308,146 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[0].details.firmenNettovermoegen).toBeCloseTo(
       results[0].details.firmenEtfVermoegen - results[0].details.firmenDarlehensverbindlichkeit
     );
+  });
+
+  // ---- Bereich 1 / endfällig tests ----
+
+  describe("endfaellig = true (Bereich 1 + Bereich 2)", () => {
+    const endfaelligState: EndeState = {
+      geschaeftsfuehrergehalt: 24000,
+      gehaltBereich1: 24000,
+      gewinnausschuettung: 0,
+      tilgungsrate: 0,
+      laufzeitJahre: 3,
+      zielnettoBereich1: 17000,
+      zielnettoBereich2: 0,
+    };
+
+    it("returns laufzeitJahre + 1 entries when endfaellig (1 Bereich-1 + N Bereich-2)", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results).toHaveLength(4); // 1 (Bereich 1) + 3 (Bereich 2)
+    });
+
+    it("first entry is Bereich 1, rest are Bereich 2", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].details.bereich).toBe(1);
+      for (let i = 1; i < results.length; i++) {
+        expect(results[i].details.bereich).toBe(2);
+      }
+    });
+
+    it("Bereich 1: restdarlehen equals the new shareholder loan after settlement", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].details.restdarlehen).toBeCloseTo(results[0].details.neuesDarlehenStart);
+    });
+
+    it("Bereich 2: restdarlehen is carried forward and declines over time", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[1].details.restdarlehen).toBeGreaterThan(0);
+      expect(results[results.length - 1].details.restdarlehen).toBeLessThanOrEqual(results[1].details.restdarlehen);
+    });
+
+    it("Bereich 1: taxes deferred interest at progressive Einkommensteuer (not Abgeltungssteuer)", () => {
+      const aufgelaufeneZinsen = 2000;
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, aufgelaufeneZinsen, true);
+      const expectedGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
+      const expectedZinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, expectedGehalt);
+      expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
+      expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
+    });
+
+    it("Bereich 1: total asset inflow still includes the new shareholder loan plus salary net", () => {
+      const aufgelaufeneZinsen = 2000;
+      const principal = 10000;
+      const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
+      const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, autoGehalt);
+      const zinsenNetto = aufgelaufeneZinsen - zinsSteuer;
+      const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(autoGehalt);
+      expect(results[0].nettogewinn).toBeCloseTo(expectedNetto);
+      expect(results[0].details.bruttoGehalt).toBe(autoGehalt);
+    });
+
+    it("Bereich 1: zielnetto-relevant net excludes the reinvested loan amount", () => {
+      const aufgelaufeneZinsen = 2000;
+      const principal = 10000;
+      const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
+      expect(results[0].details.konsumierbaresNettoBereich1).toBeCloseTo(berechneNettoGehalt(autoGehalt));
+      expect(results[0].details.konsumierbaresNettoBereich1).toBeLessThan(results[0].nettogewinn);
+    });
+
+    it("Bereich 1: turns repayment plus after-tax interest into a new shareholder loan", () => {
+      const principal = 10000;
+      const aufgelaufeneZinsen = 2000;
+      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
+      const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, autoGehalt);
+      const expectedNeuesDarlehen = principal + (aufgelaufeneZinsen - zinsSteuer);
+      const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      expect(results[0].details.neuesDarlehenStart).toBeCloseTo(expectedNeuesDarlehen);
+      expect(results[0].details.restdarlehen).toBeCloseTo(expectedNeuesDarlehen);
+      expect(results[0].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
+    });
+
+    it("Bereich 1: includes GmbH GuV and Bilanz details for the settlement year", () => {
+      const etfStart = 50000;
+      const principal = 10000;
+      const aufgelaufeneZinsen = 1500;
+      const results = berechneEndeErgebnisse(endfaelligState, etfStart, principal, 3.5, aufgelaufeneZinsen, true);
+      const bereich1 = results[0];
+      expect(bereich1.details.firmenEtfVermoegenVorBereich1).toBe(etfStart);
+      expect(bereich1.details.firmenDarlehensverbindlichkeitAlt).toBe(principal);
+      expect(bereich1.details.firmenGuVGehaltAufwand).toBe(bereich1.details.bruttoGehalt);
+      expect(bereich1.details.firmenGuVZinsaufwand).toBe(aufgelaufeneZinsen);
+      expect(bereich1.details.firmenGuVSaldo).toBeCloseTo(
+        -(bereich1.details.firmenGuVGehaltAufwand + bereich1.details.firmenGuVZinsaufwand)
+      );
+    });
+
+    it("Bereich 2: uses the new 3%-loan instead of dropping restdarlehen to 0", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 2000, true);
+      expect(results[1].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
+      expect(results[1].details.darlehenZinsen).toBeGreaterThan(0);
+      expect(results[1].details.firmenDarlehensverbindlichkeit).toBeGreaterThan(0);
+    });
+
+    it("Bereich 1: zielnetto stored in details", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].details.zielnetto).toBe(17000);
+    });
+
+    it("Bereich 2: auto salary fills up to the Midijob limit together with yearly interest", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 2000, true);
+      const jahr1Bereich2 = results[1];
+      expect(jahr1Bereich2.details.bruttoGehalt + jahr1Bereich2.details.darlehenZinsen)
+        .toBeCloseTo(MIDIJOB_JAHR_MAX);
+    });
+
+    it("Bereich 2: tilgung is withdrawn flexibly when target net would otherwise be missed", () => {
+      const state = { ...endfaelligState, zielnettoBereich2: 25000 };
+      const results = berechneEndeErgebnisse(state, 0, 10000, 3.5, 2000, true);
+      const jahr1Bereich2 = results[1];
+      const expectedTilgung = berechneFlexibleTilgung(
+        state.zielnettoBereich2,
+        jahr1Bereich2.details.konsumVorTilgung,
+        results[0].details.neuesDarlehenStart
+      );
+      expect(jahr1Bereich2.details.darlehenTilgung).toBeCloseTo(expectedTilgung);
+      expect(jahr1Bereich2.nettogewinn).toBeCloseTo(
+        jahr1Bereich2.details.konsumVorTilgung + jahr1Bereich2.details.darlehenTilgung
+      );
+    });
+
+    it("Jahr numbers: Bereich 1 = 1, Bereich 2 starts at 2", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].jahr).toBe(1);
+      expect(results[1].jahr).toBe(2);
+      expect(results[3].jahr).toBe(4);
+    });
+
+    it("endfaellig=false with 0 aufgelaufeneZinsen returns same count as laufzeitJahre", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 0, false);
+      expect(results).toHaveLength(3);
+    });
   });
 });
