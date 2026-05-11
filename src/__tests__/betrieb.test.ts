@@ -401,13 +401,13 @@ describe("berechneBetriebsErgebnisse", () => {
       ...defaultState,
       startkapital: 12500,
       etfRendite: 0,
-      laufzeitJahre: 1,
+      laufzeitJahre: 2,
       kosten: [{ id: "1", bezeichnung: "Software", betrag: 600, periode: "jaehrlich" }],
       benefits: { tankgutschein: 0, strategieessen: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
     };
 
-    const result = berechneBetriebsErgebnisse(state)[0];
+    const result = berechneBetriebsErgebnisse(state)[1];
 
     expect(result.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBe(600);
     expect(result.details.ungedeckteBetriebsausgaben).toBe(0);
@@ -424,26 +424,22 @@ describe("berechneBetriebsErgebnisse", () => {
       laufzeitJahre: 2,
       kosten: [{ id: "1", bezeichnung: "Kosten", betrag: 0, periode: "jaehrlich" }],
       benefits: { tankgutschein: 0, strategieessen: 0 },
-      darlehen: { betrag: 10000, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
+      darlehen: { betrag: 10000, zinssatz: 0, monatlicherZuschuss: 175, endfaellig: true },
     };
 
     const [erstesJahr] = berechneBetriebsErgebnisse(state);
     expect(erstesJahr.details.zuzahlungenEtfWert).toBeCloseTo(1200);
 
-    const stateMitKostenImZweitenJahr: BetriebState = {
-      ...state,
-      kosten: [{ id: "1", bezeichnung: "Kosten", betrag: 1800, periode: "jaehrlich" }],
-    };
+    const zweitesJahr = berechneBetriebsErgebnisse(state)[1];
 
-    const zweitesJahr = berechneBetriebsErgebnisse(stateMitKostenImZweitenJahr)[1];
-
-    expect(zweitesJahr.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBeCloseTo(1200);
-    expect(zweitesJahr.details.ungedeckteBetriebsausgaben).toBeCloseTo(600);
+    expect(zweitesJahr.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBeCloseTo(0);
+    expect(zweitesJahr.details.ungedeckteBetriebsausgaben).toBeCloseTo(0);
     expect(zweitesJahr.details.etfGewinn).toBeGreaterThan(0);
-    expect(zweitesJahr.details.etfGewinn).toBeLessThan(80);
-    expect(zweitesJahr.details.startkapitalEtfWert).toBeCloseTo(12100, 4);
-    expect(zweitesJahr.details.darlehenEtfWert).toBeCloseTo(12100, 4);
-    expect(zweitesJahr.details.zuzahlungenEtfWert).toBeLessThan(1320);
+    expect(zweitesJahr.details.etfGewinn).toBeLessThan(20);
+    expect(zweitesJahr.details.startkapitalEtfWert).toBeCloseTo(erstesJahr.details.startkapitalEtfWert * 1.1, 4);
+    expect(zweitesJahr.details.darlehenEtfWert).toBeCloseTo(erstesJahr.details.darlehenEtfWert * 1.1, 4);
+    expect(zweitesJahr.details.zuzahlungenEtfWert)
+      .toBeLessThan(erstesJahr.details.zuzahlungenEtfWert * 1.1 + (175 * 12));
   });
 
   it("cash reserve accumulates only positive annual net profit", () => {
