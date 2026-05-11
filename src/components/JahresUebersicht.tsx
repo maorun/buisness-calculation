@@ -183,30 +183,28 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
       {d.nettoGehalt !== undefined && (
         <BilanzRow label="Netto-Gehalt" value={d.nettoGehalt} prefix="+" colorClass="text-green-700" indent />
       )}
-      {d.darlehenZinsenNetto !== undefined && d.darlehenZinsenNetto > 0 && (
-        <BilanzRow label="Zinsanteil (netto)" value={d.darlehenZinsenNetto} prefix="+" colorClass="text-green-700" indent />
-      )}
-      {d.darlehenTilgung !== undefined && d.darlehenTilgung > 0 && (
-        <BilanzRow label="Tilgung (steuerfrei)" value={d.darlehenTilgung} prefix="+" colorClass="text-green-700" indent />
-      )}
-      {d.nettoAusschuettung !== undefined && d.nettoAusschuettung > 0 && (
-        <BilanzRow label="Netto-Ausschüttung" value={d.nettoAusschuettung} prefix="+" colorClass="text-green-700" indent />
-      )}
       <Divider />
       <BilanzRow
-        label="= Gesamt Netto"
-        value={e.nettogewinn}
-        prefix={e.nettogewinn >= 0 ? "+" : "−"}
+        label="= Frei verfügbares Netto"
+        value={d.konsumierbaresNettoBereich1}
+        prefix={d.konsumierbaresNettoBereich1 >= 0 ? "+" : "−"}
         bold
         colorClass="text-green-700"
       />
       <BilanzRow
-        label="= Gesamt Netto pro Monat"
-        value={e.nettogewinn / 12}
-        prefix={e.nettogewinn >= 0 ? "+" : "−"}
+        label="= Frei verfügbares Netto pro Monat"
+        value={d.konsumierbaresNettoBereich1 / 12}
+        prefix={d.konsumierbaresNettoBereich1 >= 0 ? "+" : "−"}
         bold
         colorClass="text-green-700"
       />
+
+      <SectionHeader label="Reinvestition in Bereich 2" />
+      <BilanzRow label="Neues Gesellschafterdarlehen" value={d.neuesDarlehenStart} prefix="+" colorClass="text-blue-700" indent />
+      <BilanzRow label="Davon Tilgung Alt-Darlehen" value={d.darlehenTilgung} prefix="+" colorClass="text-blue-600" indent />
+      {d.darlehenZinsenNetto !== undefined && d.darlehenZinsenNetto > 0 && (
+        <BilanzRow label="Davon Zinsen nach Steuern" value={d.darlehenZinsenNetto} prefix="+" colorClass="text-blue-600" indent />
+      )}
 
       <SectionHeader label="Bereich 1 – Gewinn- und Verlustrechnung der GmbH" />
       <BilanzRow label="− GF-Gehalt Aufwand" value={d.firmenGuVGehaltAufwand} prefix="−" colorClass="text-gray-600" indent />
@@ -374,7 +372,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                   <td className="py-2 text-right text-red-600">{formatEuro(e.steuer)}</td>
                   <td className="py-2 text-right text-green-700 font-medium">
                     {formatEuro(e.nettogewinn)}
-                    {"firmenNettovermoegen" in e.details && (
+                    {"firmenNettovermoegen" in e.details && (e.details as Record<string, number>).bereich === 2 && (
                       <div className="text-[11px] font-normal text-green-600">
                         ({formatEuro(e.nettogewinn / 12)} / Monat)
                       </div>

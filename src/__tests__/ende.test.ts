@@ -356,7 +356,7 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
     });
 
-    it("Bereich 1: net Konsum = principal + after-tax interest + auto-midijob salary", () => {
+    it("Bereich 1: total asset inflow still includes the new shareholder loan plus salary net", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
@@ -366,6 +366,15 @@ describe("berechneEndeErgebnisse", () => {
       const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(autoGehalt);
       expect(results[0].nettogewinn).toBeCloseTo(expectedNetto);
       expect(results[0].details.bruttoGehalt).toBe(autoGehalt);
+    });
+
+    it("Bereich 1: zielnetto-relevant net excludes the reinvested loan amount", () => {
+      const aufgelaufeneZinsen = 2000;
+      const principal = 10000;
+      const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
+      expect(results[0].details.konsumierbaresNettoBereich1).toBeCloseTo(berechneNettoGehalt(autoGehalt));
+      expect(results[0].details.konsumierbaresNettoBereich1).toBeLessThan(results[0].nettogewinn);
     });
 
     it("Bereich 1: turns repayment plus after-tax interest into a new shareholder loan", () => {

@@ -108,7 +108,7 @@ export function EndeSection() {
     ?? (offeneDarlehensschuld + zinsenNettoBereich1);
   const einkommensteuerBereich1 = bereich1Details?.einkommensteuer ?? 0;
   const soliBereich1 = bereich1Details?.soli ?? 0;
-  const konsumierbaresBereich1 = bereich1Ergebnisse[0]?.nettogewinn ?? (darlehenNettoAuszahlungBereich1 + nettoGehaltBereich1);
+  const konsumierbaresBereich1 = bereich1Details?.konsumierbaresNettoBereich1 ?? nettoGehaltBereich1;
   const gesamtSteuerBereich1 = bereich1Ergebnisse[0]?.steuer ?? (zinsSteuerBereich1 + einkommensteuerBereich1 + soliBereich1);
   const neuesDarlehenBereich1 = bereich1Details?.neuesDarlehenStart ?? darlehenNettoAuszahlungBereich1;
 
@@ -184,7 +184,7 @@ export function EndeSection() {
                 value={ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1}
                 onChange={(v) => setEnde({ zielnettoBereich1: Math.max(0, parseFloat(v) || 0) })}
                 suffix="€/Jahr"
-                hint={`Angestrebtes Netto-Einkommen des Gesellschafters für das Abrechnungsjahr (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
+                hint={`Angestrebtes frei verfügbares Netto des Gesellschafters für das Abrechnungsjahr – ohne das in Bereich 2 reinvestierte Darlehen (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
                 min={0}
               />
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -200,20 +200,23 @@ export function EndeSection() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
               <p className="text-xs text-amber-700 font-medium">Gesellschafter Bereich-1 Übersicht</p>
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium">Einnahmen</p>
-              <p className="text-xs text-amber-700">Darlehensrückzahlung (steuerfrei): <span className="font-semibold text-green-700">+ {offeneDarlehensschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Zinsen brutto: <span className="font-semibold">+ {aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Darlehensrückzahlung (wird reinvestiert): <span className="font-semibold text-blue-700">+ {offeneDarlehensschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Zinsen brutto (später reinvestiert): <span className="font-semibold">+ {aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Auto-GF-Gehalt brutto: <span className="font-semibold">+ {gehaltBereich1Auto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
               <p className="text-xs text-amber-700">Einkommensteuer auf Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Neues Gesellschafterdarlehen für Bereich 2: <span className="font-semibold text-blue-700">+ {neuesDarlehenBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Neues Gesellschafterdarlehen für Bereich 2 (bleibt in der GmbH): <span className="font-semibold text-blue-700">+ {neuesDarlehenBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-sm font-bold text-amber-900 border-t border-amber-300 pt-1 mt-1">
-                Netto-Konsum Gesellschafter: {konsumierbaresBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                Frei verfügbares Netto Gesellschafter: {konsumierbaresBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 {" "}
                 <span className={konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "text-green-700" : "text-red-700"}>
                   ({konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "≥" : "<"} Zielnetto {(ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1).toLocaleString("de-DE")} €)
                 </span>
+              </p>
+              <p className="text-xs text-amber-600">
+                Für das Zielnetto zählt nur das frei verfügbare Netto. Das neue Gesellschafterdarlehen bleibt als Vermögenswert in der GmbH gebunden.
               </p>
             </div>
           </div>

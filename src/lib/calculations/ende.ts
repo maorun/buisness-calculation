@@ -242,7 +242,11 @@ export function berechneEndeErgebnisse(
     const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
     reinvestiertesDarlehen = darlehenNettoAuszahlung;
 
-    // Total net Konsum available in Bereich 1
+    // Bereich 1 target net only counts freely consumable shareholder cash.
+    // The repaid principal plus the after-tax interest is immediately recycled
+    // into the new shareholder loan for Bereich 2 and therefore is not part of
+    // the Bereich-1 zielnetto comparison.
+    const konsumierbaresNettoBereich1 = nettoGehalt;
     const gesamtNetto = darlehenNettoAuszahlung + nettoGehalt;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
     const gesamtSteuer = zinsSteuer + einkommensteuer + soli;
@@ -283,6 +287,7 @@ export function berechneEndeErgebnisse(
         darlehenTilgung: darlehensrueckzahlung,
         darlehenGesamtauszahlungBrutto: gesamtBrutto - bruttoGehalt,
         darlehenGesamtauszahlungNetto: darlehenNettoAuszahlung,
+        konsumierbaresNettoBereich1,
         restdarlehen: reinvestiertesDarlehen,
         neuesDarlehenStart: reinvestiertesDarlehen,
         neuesDarlehenZinssatz: REINVESTIERTES_DARLEHEN_ZINSSATZ,
