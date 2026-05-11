@@ -143,11 +143,11 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
   );
 }
 
-/** Structured annual summary for Ende years */
-function EndeBilanz({ e }: { e: JahresErgebnis }) {
+function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
   return (
     <div className="space-y-0.5 text-xs">
+      <SectionHeader label="Bereich 1 – Gesellschafter" />
       <SectionHeader label="Einnahmen (brutto)" />
       {d.bruttoGehalt !== undefined && (
         <BilanzRow label="Brutto-Gehalt" value={d.bruttoGehalt} prefix="+" colorClass="text-gray-700" indent />
@@ -162,7 +162,7 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Gewinnausschüttung (brutto)" value={d.gewinnausschuettung} prefix="+" colorClass="text-gray-700" indent />
       )}
 
-      <SectionHeader label="Steuern (Finanzamt)" />
+      <SectionHeader label="Steuern (Privat)" />
       {d.einkommensteuer !== undefined && (
         <BilanzRow label="− Einkommensteuer" value={d.einkommensteuer} prefix="−" colorClass="text-red-600" indent />
       )}
@@ -170,7 +170,7 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="− Solidaritätszuschlag" value={d.soli} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.darlehenZinsenSteuer !== undefined && d.darlehenZinsenSteuer > 0 && (
-        <BilanzRow label="− Abgeltungssteuer auf Zinsanteil" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
+        <BilanzRow label="− Einkommensteuer auf Zinsanteil" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.kstSteuer !== undefined && d.kstSteuer > 0 && (
         <BilanzRow label="− Körperschaftsteuer (Finanzamt)" value={d.kstSteuer} prefix="−" colorClass="text-red-600" indent />
@@ -179,7 +179,105 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="− Steuer auf Ausschüttung" value={d.ausschuettungsteuer} prefix="−" colorClass="text-red-600" indent />
       )}
 
-      <SectionHeader label="Netto" />
+      <SectionHeader label="Netto beim Gesellschafter" />
+      {d.nettoGehalt !== undefined && (
+        <BilanzRow label="Netto-Gehalt" value={d.nettoGehalt} prefix="+" colorClass="text-green-700" indent />
+      )}
+      <Divider />
+      <BilanzRow
+        label="= Frei verfügbares Netto"
+        value={d.konsumierbaresNettoBereich1}
+        prefix={d.konsumierbaresNettoBereich1 >= 0 ? "+" : "−"}
+        bold
+        colorClass="text-green-700"
+      />
+      <BilanzRow
+        label="= Frei verfügbares Netto pro Monat"
+        value={d.konsumierbaresNettoBereich1 / 12}
+        prefix={d.konsumierbaresNettoBereich1 >= 0 ? "+" : "−"}
+        bold
+        colorClass="text-green-700"
+      />
+
+      <SectionHeader label="Reinvestition in Bereich 2" />
+      <BilanzRow label="Neues Gesellschafterdarlehen" value={d.neuesDarlehenStart} prefix="+" colorClass="text-blue-700" indent />
+      <BilanzRow label="Davon Tilgung Alt-Darlehen" value={d.darlehenTilgung} prefix="+" colorClass="text-blue-600" indent />
+      {d.darlehenZinsenNetto !== undefined && d.darlehenZinsenNetto > 0 && (
+        <BilanzRow label="Davon Zinsen nach Steuern" value={d.darlehenZinsenNetto} prefix="+" colorClass="text-blue-600" indent />
+      )}
+
+      <SectionHeader label="Bereich 1 – Gewinn- und Verlustrechnung der GmbH" />
+      <BilanzRow label="− GF-Gehalt Aufwand" value={d.firmenGuVGehaltAufwand} prefix="−" colorClass="text-gray-600" indent />
+      <BilanzRow label="− Zinsaufwand auf Alt-Darlehen" value={d.firmenGuVZinsaufwand} prefix="−" colorClass="text-gray-600" indent />
+      <Divider />
+      <BilanzRow
+        label="= GuV-Saldo der GmbH"
+        value={d.firmenGuVSaldo}
+        prefix={d.firmenGuVSaldo >= 0 ? "+" : "−"}
+        bold
+        colorClass="text-gray-800"
+      />
+
+      {(d.firmenEtfVermoegen !== undefined && d.firmenDarlehensverbindlichkeit !== undefined) && (
+        <>
+          <SectionHeader label="Bereich 1 – Bilanz der GmbH" />
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
+          <BilanzRow label="ETF-/Liquiditätsbestand vor Bereich 1" value={d.firmenEtfVermoegenVorBereich1} prefix="+" colorClass="text-blue-600" indent />
+          <BilanzRow label="ETF-/Liquiditätsbestand nach Bereich 1" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
+          <BilanzRow label="Altes Gesellschafterdarlehen vor Rückzahlung" value={d.firmenDarlehensverbindlichkeitAlt} prefix="−" colorClass="text-gray-500" indent />
+          <BilanzRow label="Neues Gesellschafterdarlehen nach Neustart" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
+          <Divider />
+          <BilanzRow
+            label="= GmbH-Nettovermögen nach Bereich 1"
+            value={d.firmenNettovermoegen}
+            prefix={d.firmenNettovermoegen >= 0 ? "+" : "−"}
+            bold
+            colorClass="text-blue-800"
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
+  const d = e.details as Record<string, number>;
+  return (
+    <div className="space-y-0.5 text-xs">
+      <SectionHeader label="Bereich 2 – Gesellschafter" />
+      <SectionHeader label="Einnahmen (brutto)" />
+      {d.bruttoGehalt !== undefined && (
+        <BilanzRow label="Brutto-Gehalt" value={d.bruttoGehalt} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.darlehenZinsen !== undefined && d.darlehenZinsen > 0 && (
+        <BilanzRow label="Zinsanteil Darlehen (brutto)" value={d.darlehenZinsen} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.darlehenTilgung !== undefined && d.darlehenTilgung > 0 && (
+        <BilanzRow label="Darlehensrückzahlung (Tilgung)" value={d.darlehenTilgung} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.gewinnausschuettung !== undefined && d.gewinnausschuettung > 0 && (
+        <BilanzRow label="Gewinnausschüttung (brutto)" value={d.gewinnausschuettung} prefix="+" colorClass="text-gray-700" indent />
+      )}
+
+      <SectionHeader label="Steuern (Privat)" />
+      {d.einkommensteuer !== undefined && (
+        <BilanzRow label="− Einkommensteuer" value={d.einkommensteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.soli !== undefined && d.soli > 0 && (
+        <BilanzRow label="− Solidaritätszuschlag" value={d.soli} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.darlehenZinsenSteuer !== undefined && d.darlehenZinsenSteuer > 0 && (
+        <BilanzRow label="− Einkommensteuer auf Zinsanteil" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.kstSteuer !== undefined && d.kstSteuer > 0 && (
+        <BilanzRow label="− Körperschaftsteuer (Finanzamt)" value={d.kstSteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.ausschuettungsteuer !== undefined && d.ausschuettungsteuer > 0 && (
+        <BilanzRow label="− Steuer auf Ausschüttung" value={d.ausschuettungsteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+
+      <SectionHeader label="Netto beim Gesellschafter" />
       {d.nettoGehalt !== undefined && (
         <BilanzRow label="Netto-Gehalt" value={d.nettoGehalt} prefix="+" colorClass="text-green-700" indent />
       )}
@@ -210,7 +308,7 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
 
       {(d.firmenEtfVermoegen !== undefined && d.firmenDarlehensverbindlichkeit !== undefined) && (
         <>
-          <SectionHeader label="Bilanz der Firma (Jahresende)" />
+          <SectionHeader label="Bereich 2 – Bilanz der GmbH (Jahresende)" />
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
           <BilanzRow label="ETF-/Liquiditätsbestand Firma" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
           {d.firmenDarlehensverbindlichkeit > 0 && (
@@ -231,6 +329,12 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
       )}
     </div>
   );
+}
+
+/** Structured annual summary for Ende years */
+function EndeBilanz({ e }: { e: JahresErgebnis }) {
+  const d = e.details as Record<string, number>;
+  return d.bereich === 1 ? <EndeBereich1Bilanz e={e} /> : <EndeBereich2Bilanz e={e} />;
 }
 
 export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
@@ -268,7 +372,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                   <td className="py-2 text-right text-red-600">{formatEuro(e.steuer)}</td>
                   <td className="py-2 text-right text-green-700 font-medium">
                     {formatEuro(e.nettogewinn)}
-                    {"firmenNettovermoegen" in e.details && (
+                    {"firmenNettovermoegen" in e.details && typeof e.details.bereich === "number" && e.details.bereich === 2 && (
                       <div className="text-[11px] font-normal text-green-600">
                         ({formatEuro(e.nettogewinn / 12)} / Monat)
                       </div>
