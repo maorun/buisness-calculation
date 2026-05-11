@@ -140,9 +140,35 @@ export function EndeSection() {
         </div>
       )}
 
+      {endfaellig && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-600 text-xs font-bold text-white">1</span>
+              <p className="text-sm font-semibold text-amber-900">Ebene 1 / Bereich 1</p>
+            </div>
+            <p className="text-xs text-amber-800">
+              Rückzahlung des alten Gesellschafterdarlehens, Versteuerung der aufgelaufenen Zinsen
+              und Aufbau des neuen 3%-Darlehens in der GmbH.
+            </p>
+          </div>
+          <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">2</span>
+              <p className="text-sm font-semibold text-blue-900">Ebene 2 / Bereich 2</p>
+            </div>
+            <p className="text-xs text-blue-800">
+              Laufende Zinsphase des neuen Gesellschafterdarlehens mit Midijob-Auffüllung und
+              flexibler Tilgung nur bei Zielnetto-Lücke.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Bereich 1 – only shown when endfaellig */}
       {endfaellig && (
-        <div className="bg-white rounded-xl shadow-sm border border-amber-300 p-4 md:p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-amber-300 p-4 md:p-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-600 mb-2">Ebene 1</p>
           <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Rückzahlung & Neustart Gesellschafterdarlehen</h3>
           <p className="text-xs text-slate-500 mb-4">
             Die GmbH zahlt das bisherige Gesellschafterdarlehen steuerfrei zurück. Die aufgelaufenen Zinsen
@@ -192,13 +218,16 @@ export function EndeSection() {
             </div>
           </div>
           {bereich1Ergebnisse.length > 0 && (
-            <JahresUebersicht ergebnisse={bereich1Ergebnisse} title="Jahresergebnis Bereich 1" />
+            <JahresUebersicht ergebnisse={bereich1Ergebnisse} title="Bereich 1 – Gesellschafterzufluss, GmbH-GuV und GmbH-Bilanz" />
           )}
         </div>
       )}
 
       {/* Bereich 2 – regular payout */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+      <div className={`bg-white rounded-xl shadow-sm p-4 md:p-6 ${endfaellig ? "border-2 border-blue-300" : "border border-gray-200"}`}>
+        {endfaellig && (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-600 mb-2">Ebene 2</p>
+        )}
         <h3 className="font-semibold text-gray-700 mb-1">{endfaellig ? "Bereich 2 – Laufende Auszahlungsphase" : "Auszahlungsphase"}</h3>
         {endfaellig && (
           <p className="text-xs text-slate-500 mb-4">
@@ -368,7 +397,7 @@ export function EndeSection() {
 
         {/* Results Bereich 2 */}
         {bereich2Ergebnisse.length > 0 && (
-          <JahresUebersicht ergebnisse={bereich2Ergebnisse} title={endfaellig ? "Jahresergebnisse Bereich 2" : "Jahresergebnisse Auszahlungsphase"} />
+          <JahresUebersicht ergebnisse={bereich2Ergebnisse} title={endfaellig ? "Bereich 2 – Laufende Zins- und Tilgungsphase" : "Jahresergebnisse Auszahlungsphase"} />
         )}
       </div>
 

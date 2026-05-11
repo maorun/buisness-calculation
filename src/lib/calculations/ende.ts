@@ -223,6 +223,8 @@ export function berechneEndeErgebnisse(
   if (endfaellig) {
     const aufgelaufeneZinsenNorm = Math.max(0, aufgelaufeneZinsen);
     const darlehensrueckzahlung = Math.max(0, darlehenRestschuldAnfang); // principal, tax-free
+    const firmenEtfVermoegenVorBereich1 = firmenEtfVermoegen;
+    const firmenDarlehensverbindlichkeitAlt = darlehensrueckzahlung;
 
     // Salary in Bereich 1 is only high enough to fill up to the Midijob limit together
     // with the deferred interest that becomes taxable in this year.
@@ -248,6 +250,10 @@ export function berechneEndeErgebnisse(
     // The GmbH ETF must fund the full gross repayment + salary
     const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
     firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenGesamtabfluss);
+    const firmenGuVGehaltAufwand = bruttoGehalt;
+    const firmenGuVZinsaufwand = aufgelaufeneZinsenNorm;
+    const firmenGuVSummeAufwand = firmenGuVGehaltAufwand + firmenGuVZinsaufwand;
+    const firmenGuVSaldo = -firmenGuVSummeAufwand;
 
     restvermoegen += gesamtNetto;
 
@@ -280,6 +286,12 @@ export function berechneEndeErgebnisse(
         restdarlehen: reinvestiertesDarlehen,
         neuesDarlehenStart: reinvestiertesDarlehen,
         neuesDarlehenZinssatz: REINVESTIERTES_DARLEHEN_ZINSSATZ,
+        firmenEtfVermoegenVorBereich1,
+        firmenDarlehensverbindlichkeitAlt,
+        firmenGuVGehaltAufwand,
+        firmenGuVZinsaufwand,
+        firmenGuVSummeAufwand,
+        firmenGuVSaldo,
         firmenGesamtabfluss,
         firmenEtfVermoegen,
         firmenDarlehensverbindlichkeit: reinvestiertesDarlehen,

@@ -380,6 +380,21 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
     });
 
+    it("Bereich 1: includes GmbH GuV and Bilanz details for the settlement year", () => {
+      const etfStart = 50000;
+      const principal = 10000;
+      const aufgelaufeneZinsen = 1500;
+      const results = berechneEndeErgebnisse(endfaelligState, etfStart, principal, 3.5, aufgelaufeneZinsen, true);
+      const bereich1 = results[0];
+      expect(bereich1.details.firmenEtfVermoegenVorBereich1).toBe(etfStart);
+      expect(bereich1.details.firmenDarlehensverbindlichkeitAlt).toBe(principal);
+      expect(bereich1.details.firmenGuVGehaltAufwand).toBe(bereich1.details.bruttoGehalt);
+      expect(bereich1.details.firmenGuVZinsaufwand).toBe(aufgelaufeneZinsen);
+      expect(bereich1.details.firmenGuVSaldo).toBeCloseTo(
+        -(bereich1.details.firmenGuVGehaltAufwand + bereich1.details.firmenGuVZinsaufwand)
+      );
+    });
+
     it("Bereich 2: uses the new 3%-loan instead of dropping restdarlehen to 0", () => {
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 2000, true);
       expect(results[1].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
