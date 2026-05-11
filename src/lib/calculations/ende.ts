@@ -1,7 +1,7 @@
 import { EndeState, JahresErgebnis } from "../types";
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
-// Midijob lower bound based on the 556 € monthly threshold used in the UI/state defaults.
+// Annualized lower bound of the 556 € monthly Übergangsbereich threshold (§ 20 Abs. 2 SGB IV).
 export const MIDIJOB_MONAT_MIN = 556;
 export const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
 export const MIDIJOB_JAHR_MAX = 24000;

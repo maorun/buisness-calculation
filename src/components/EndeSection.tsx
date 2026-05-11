@@ -11,7 +11,7 @@ import {
   DEFAULT_ZIELNETTO_BEREICH1,
   MIDIJOB_JAHR_MIN,
   MIDIJOB_JAHR_MAX,
-  REINVESTIERTES_DARLEHEN_ZINSSATZ
+  REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
 import {
   berechneBenefitsSteuerersparnis,
