@@ -9,6 +9,7 @@ import {
   berechneRestlichesMidijobGehalt,
   berechneFlexibleTilgung,
   berechneEndeErgebnisse,
+  MIDIJOB_JAHR_MIN,
   MIDIJOB_JAHR_MAX,
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
@@ -356,6 +357,28 @@ describe("berechneEndeErgebnisse", () => {
       const expectedZinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, expectedGehalt);
       expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
       expect(results[0].details.bruttoGehalt).toBe(expectedGehalt);
+    });
+
+    it("Bereich 1: clamps configured salary to the Midijob corridor", () => {
+      const resultsMin = berechneEndeErgebnisse(
+        { ...endfaelligState, gehaltBereich1: 0 },
+        0,
+        10000,
+        3.5,
+        1500,
+        true
+      );
+      const resultsMax = berechneEndeErgebnisse(
+        { ...endfaelligState, gehaltBereich1: 50000 },
+        0,
+        10000,
+        3.5,
+        1500,
+        true
+      );
+
+      expect(resultsMin[0].details.bruttoGehalt).toBe(MIDIJOB_JAHR_MIN);
+      expect(resultsMax[0].details.bruttoGehalt).toBe(MIDIJOB_JAHR_MAX);
     });
 
     it("Bereich 1: total asset inflow still includes the new shareholder loan plus salary net", () => {

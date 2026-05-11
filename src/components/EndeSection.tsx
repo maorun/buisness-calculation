@@ -247,7 +247,7 @@ export function EndeSection() {
                   label="Teil-Tilgung Bereich 1"
                   value={teiltilgungBereich1}
                   min={0}
-                  max={Math.max(offeneDarlehensschuld, 0)}
+                  max={offeneDarlehensschuld}
                   onChange={(value) => setEnde({ teiltilgungBereich1: clamp(value, 0, offeneDarlehensschuld) })}
                   hint="Steuerfreie Darlehensrückzahlung, die direkt privat verfügbar sein soll."
                 />
