@@ -1,6 +1,8 @@
 import { EndeState, JahresErgebnis } from "../types";
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
+export const MIDIJOB_MONAT_MIN = 556;
+export const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
 export const MIDIJOB_JAHR_MAX = 24000;
 export const REINVESTIERTES_DARLEHEN_ZINSSATZ = 3;
 
@@ -228,7 +230,7 @@ export function berechneEndeErgebnisse(
     const firmenDarlehensverbindlichkeitAlt = darlehensrueckzahlung;
     const bruttoGehalt = Math.min(
       MIDIJOB_JAHR_MAX,
-      Math.max(0, state.gehaltBereich1)
+      Math.max(MIDIJOB_JAHR_MIN, state.gehaltBereich1)
     );
     const teiltilgungBereich1 = Math.min(
       darlehensrueckzahlung,

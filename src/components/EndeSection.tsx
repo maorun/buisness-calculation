@@ -9,8 +9,9 @@ import {
   berechneDarlehensAuszahlung,
   berechneDarlehensZinsenSteuer,
   DEFAULT_ZIELNETTO_BEREICH1,
+  MIDIJOB_JAHR_MIN,
   MIDIJOB_JAHR_MAX,
-  REINVESTIERTES_DARLEHEN_ZINSSATZ,
+  REINVESTIERTES_DARLEHEN_ZINSSATZ
 } from "@/lib/calculations/ende";
 import {
   berechneBenefitsSteuerersparnis,
@@ -98,8 +99,6 @@ function SliderField({
   );
 }
 
-const MIDIJOB_MONAT_MIN = 556;
-const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
 const MIDIJOB_HINT = `Midijob-Bereich: ${MIDIJOB_JAHR_MIN.toLocaleString("de-DE")} € bis ${MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} € pro Jahr`;
 
 function clamp(value: number, min: number, max: number): number {
@@ -249,7 +248,7 @@ export function EndeSection() {
                   value={teiltilgungBereich1}
                   min={0}
                   max={Math.max(offeneDarlehensschuld, 0)}
-                  onChange={(value) => setEnde({ teiltilgungBereich1: Math.min(Math.max(0, value), offeneDarlehensschuld) })}
+                  onChange={(value) => setEnde({ teiltilgungBereich1: clamp(value, 0, offeneDarlehensschuld) })}
                   hint="Steuerfreie Darlehensrückzahlung, die direkt privat verfügbar sein soll."
                 />
                 <div className="rounded-lg border border-slate-200 bg-white p-3">
