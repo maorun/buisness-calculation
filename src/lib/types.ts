@@ -36,8 +36,10 @@ export interface BetriebState {
 
 export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary for Bereich 2 (regular payout phase)
-  /** Annual gross salary for Bereich 1 settlement year. Can be Midijob or lower to minimize combined tax. */
+  /** Annual gross salary for Bereich 1 settlement year within the configured Midijob corridor. */
   gehaltBereich1: number;
+  /** Tax-free principal payout consumed in Bereich 1 before the remaining principal becomes the new shareholder loan. */
+  teiltilgungBereich1: number;
   gewinnausschuettung: number; // annual profit distribution
   tilgungsrate: number; // annual principal repayment in payout phase (0 = linear by remaining years)
   laufzeitJahre: number;

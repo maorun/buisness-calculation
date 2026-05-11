@@ -9,6 +9,7 @@ import {
   berechneDarlehensAuszahlung,
   berechneDarlehensZinsenSteuer,
   DEFAULT_ZIELNETTO_BEREICH1,
+  MIDIJOB_JAHR_MIN,
   MIDIJOB_JAHR_MAX,
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
@@ -55,8 +56,49 @@ function InputField({
   );
 }
 
-const MIDIJOB_MONAT_MIN = 556;
-const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
+function SliderField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  hint,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step?: number;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <span className="text-sm font-semibold text-slate-800">
+          {value.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+        </span>
+      </div>
+      <input
+        type="range"
+        className="w-full accent-blue-600"
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+      />
+      <div className="flex items-center justify-between text-[11px] text-slate-500">
+        <span>{min.toLocaleString("de-DE")} €</span>
+        <span>{max.toLocaleString("de-DE")} €</span>
+      </div>
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
 const MIDIJOB_HINT = `Midijob-Bereich: ${MIDIJOB_JAHR_MIN.toLocaleString("de-DE")} € bis ${MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} € pro Jahr`;
 
 function clamp(value: number, min: number, max: number): number {
@@ -99,18 +141,23 @@ export function EndeSection() {
   const bereich1Details = bereich1Ergebnisse[0]?.details;
   const bereich2Details = bereich2Ergebnisse[0]?.details;
 
-  const gehaltBereich1Auto = bereich1Details?.bruttoGehalt ?? Math.max(0, MIDIJOB_JAHR_MAX - aufgelaufeneZinsen);
-  const nettoGehaltBereich1 = bereich1Details?.nettoGehalt ?? berechneNettoGehalt(gehaltBereich1Auto);
+  const gehaltBereich1 = bereich1Details?.bruttoGehalt
+    ?? clamp(ende.gehaltBereich1, MIDIJOB_JAHR_MIN, MIDIJOB_JAHR_MAX);
+  const nettoGehaltBereich1 = bereich1Details?.nettoGehalt ?? berechneNettoGehalt(gehaltBereich1);
   const zinsSteuerBereich1 = bereich1Details?.zinsSteuerBereich1
-    ?? berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1Auto);
+    ?? berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1);
   const zinsenNettoBereich1 = bereich1Details?.zinsenNettoBereich1 ?? (aufgelaufeneZinsen - zinsSteuerBereich1);
-  const darlehenNettoAuszahlungBereich1 = bereich1Details?.darlehenNettoAuszahlung
-    ?? (offeneDarlehensschuld + zinsenNettoBereich1);
+  const teiltilgungBereich1 = bereich1Details?.teiltilgungBereich1
+    ?? Math.min(offeneDarlehensschuld, Math.max(0, ende.teiltilgungBereich1));
   const einkommensteuerBereich1 = bereich1Details?.einkommensteuer ?? 0;
   const soliBereich1 = bereich1Details?.soli ?? 0;
-  const konsumierbaresBereich1 = bereich1Details?.konsumierbaresNettoBereich1 ?? nettoGehaltBereich1;
+  const konsumierbaresBereich1 = bereich1Details?.konsumierbaresNettoBereich1
+    ?? (nettoGehaltBereich1 + zinsenNettoBereich1 + teiltilgungBereich1);
   const gesamtSteuerBereich1 = bereich1Ergebnisse[0]?.steuer ?? (zinsSteuerBereich1 + einkommensteuerBereich1 + soliBereich1);
-  const neuesDarlehenBereich1 = bereich1Details?.neuesDarlehenStart ?? darlehenNettoAuszahlungBereich1;
+  const neuesDarlehenBereich1 = bereich1Details?.neuesDarlehenStart
+    ?? Math.max(0, offeneDarlehensschuld - teiltilgungBereich1);
+  const zielnettoBereich1 = ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
+  const bereich1ZielDiff = konsumierbaresBereich1 - zielnettoBereich1;
 
   const bereich2DarlehenZinsen = bereich2Details?.darlehenZinsen ?? 0;
   const bereich2DarlehenZinsenSteuer = bereich2Details?.darlehenZinsenSteuer ?? 0;
@@ -172,51 +219,72 @@ export function EndeSection() {
           <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Rückzahlung & Neustart Gesellschafterdarlehen</h3>
           <p className="text-xs text-slate-500 mb-4">
             Die GmbH zahlt das bisherige Gesellschafterdarlehen steuerfrei zurück. Die aufgelaufenen Zinsen
-            werden mit Einkommensteuer belastet und das Gehalt wird automatisch nur so weit ergänzt,
-            dass aufgelaufene Zinsen plus Gehalt zusammen die Midijob-Grenze nicht überschreiten. Aus
-            Darlehensrückzahlung plus Zinsen nach Steuern entsteht anschließend das neue
-            Gesellschafterdarlehen für Bereich 2.
+            werden mit Einkommensteuer belastet. GF-Gehalt und Teil-Tilgung werden per Schieberegler
+            gesteuert; zusammen mit den netto verbleibenden Darlehenszinsen sollen sie das Zielnetto
+            treffen. Die restliche Darlehenssumme wird anschließend als neues Gesellschafterdarlehen für
+            Bereich 2 weitergeführt.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div className="space-y-4">
               <InputField
                 label="Zielnetto Bereich 1 (€/Jahr)"
-                value={ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1}
+                value={zielnettoBereich1}
                 onChange={(v) => setEnde({ zielnettoBereich1: Math.max(0, parseFloat(v) || 0) })}
                 suffix="€/Jahr"
                 hint={`Angestrebtes Netto des Gesellschafters zur freien Verfügung für das Abrechnungsjahr - ohne das in Bereich 2 reinvestierte Darlehen (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
                 min={0}
               />
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                <p className="text-xs text-slate-600 font-medium">Automatisches GF-Gehalt Bereich 1</p>
-                <p className="text-lg font-bold text-slate-800">
-                  {gehaltBereich1Auto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Aufgelaufene Zinsen + Gehalt werden auf maximal {MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} € begrenzt.
-                </p>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-4">
+                <SliderField
+                  label="GF-Gehalt Bereich 1"
+                  value={gehaltBereich1}
+                  min={MIDIJOB_JAHR_MIN}
+                  max={MIDIJOB_JAHR_MAX}
+                  onChange={(value) => setEnde({ gehaltBereich1: clamp(value, MIDIJOB_JAHR_MIN, MIDIJOB_JAHR_MAX) })}
+                  hint={MIDIJOB_HINT}
+                />
+                <SliderField
+                  label="Teil-Tilgung Bereich 1"
+                  value={teiltilgungBereich1}
+                  min={0}
+                  max={offeneDarlehensschuld}
+                  onChange={(value) => setEnde({ teiltilgungBereich1: clamp(value, 0, offeneDarlehensschuld) })}
+                  hint="Steuerfreie Darlehensrückzahlung, die direkt privat verfügbar sein soll."
+                />
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-medium text-slate-600">Bereich-1 Zielabgleich</p>
+                  <p className="mt-1 text-lg font-bold text-slate-800">
+                    {konsumierbaresBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
+                  </p>
+                  <p className={`text-xs mt-1 ${bereich1ZielDiff >= 0 ? "text-green-700" : "text-red-700"}`}>
+                    {bereich1ZielDiff >= 0 ? "Überschuss" : "Fehlbetrag"}: {Math.abs(bereich1ZielDiff).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  </p>
+                </div>
               </div>
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
               <p className="text-xs text-amber-700 font-medium">Gesellschafter Bereich-1 Übersicht</p>
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium">Einnahmen</p>
-              <p className="text-xs text-amber-700">Darlehensrückzahlung (wird reinvestiert): <span className="font-semibold text-blue-700">+ {offeneDarlehensschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Zinsen brutto (später reinvestiert): <span className="font-semibold">+ {aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Auto-GF-Gehalt brutto: <span className="font-semibold">+ {gehaltBereich1Auto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Gesamte Darlehensrückzahlung alt: <span className="font-semibold text-blue-700">+ {offeneDarlehensschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Davon Teil-Tilgung privat verfügbar: <span className="font-semibold text-blue-700">+ {teiltilgungBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Zinsen brutto Darlehen: <span className="font-semibold">+ {aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">GF-Gehalt brutto: <span className="font-semibold">+ {gehaltBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
               <p className="text-xs text-amber-700">Einkommensteuer auf Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Neues Gesellschafterdarlehen für Bereich 2 (bleibt in der GmbH): <span className="font-semibold text-blue-700">+ {neuesDarlehenBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Netto-Zinsen für Zielnetto: <span className="font-semibold text-green-700">+ {zinsenNettoBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Neues Gesellschafterdarlehen für Bereich 2: <span className="font-semibold text-blue-700">+ {neuesDarlehenBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-sm font-bold text-amber-900 border-t border-amber-300 pt-1 mt-1">
                 Frei verfügbares Netto Gesellschafter: {konsumierbaresBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 {" "}
-                <span className={konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "text-green-700" : "text-red-700"}>
-                  ({konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "≥" : "<"} Zielnetto {(ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1).toLocaleString("de-DE")} €)
+                <span className={konsumierbaresBereich1 >= zielnettoBereich1 ? "text-green-700" : "text-red-700"}>
+                  ({konsumierbaresBereich1 >= zielnettoBereich1 ? "≥" : "<"} Zielnetto {zielnettoBereich1.toLocaleString("de-DE")} €)
                 </span>
               </p>
               <p className="text-xs text-amber-600">
-                Für das Zielnetto zählt nur das frei verfügbare Netto. Das neue Gesellschafterdarlehen bleibt als Vermögenswert in der GmbH gebunden.
+                Für das Zielnetto zählen das Netto-GF-Gehalt, die Netto-Darlehenszinsen und die steuerfreie Teil-Tilgung.
+                Der Rest des Darlehens bleibt als Vermögenswert in der GmbH gebunden.
               </p>
             </div>
           </div>
@@ -438,7 +506,7 @@ export function EndeSection() {
         <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
         <div className="text-xs text-gray-600 space-y-1">
           {endfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Progressive Einkommensteuer auf Zinsen + Gehalt (kombiniert, § 32d Abs. 2 Nr. 1b EStG)</p>}
-          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Automatisch nur bis zur Midijob-Grenze aufgefüllt, damit die Zinsen die Steuerprogression nicht unnötig erhöhen.</p>}
+          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Per Slider im Midijob-Korridor steuerbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
           {endfaellig && <p><span className="font-medium">Bereich 2 – Darlehen:</span> Neues Gesellschafterdarlehen mit 3 % Zins; Tilgung wird flexibel nur bei Zielnetto-Lücke ausgezahlt.</p>}
           <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ{endfaellig ? ", automatisch bis zur Midijob-Grenze ergänzt" : ""}</p>
           <p><span className="font-medium">Darlehen (Zinsen):</span> Progressive Einkommensteuer (Marginalsteuersatz), Tilgungsanteil steuerfrei (§ 32d Abs. 2 Nr. 1b EStG)</p>

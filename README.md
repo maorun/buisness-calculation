@@ -27,6 +27,7 @@ Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft 
   - **Bereich 1**: Abwicklungsjahr mit gestundeten Darlehenszinsen, optimiert auf ein Zielnettoeinkommen
   - **Bereich 2**: Reguläre Auszahljahre mit Geschäftsführergehalt und Gewinnausschüttung
 - Konfiguration von **Geschäftsführergehalt**, **Gewinnausschüttung** und **Tilgungsrate**
+- **Bereich 1** mit Schiebereglern für GF-Gehalt im Midijob-Korridor und **Teil-Tilgung**, damit Zielnetto gemeinsam mit den Darlehenszinsen getroffen werden kann
 - Berechnung der persönlichen Steuerbelastung (Einkommensteuer, Solidaritätszuschlag, Abgeltungsteuer)
 - **Jahresergebnisse** der Entnahmephase
 
