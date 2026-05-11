@@ -10,6 +10,7 @@ import {
   berechneEinkommensteuer,
   berechneSoli,
   KAPITALERTRAGSTEUER_MIT_SOLI_RATE,
+  DEFAULT_ZIELNETTO_BEREICH1,
 } from "@/lib/calculations/ende";
 import {
   berechneBenefitsSteuerersparnis,
@@ -135,10 +136,10 @@ export function EndeSection() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <InputField
               label="Zielnetto Bereich 1 (€/Jahr)"
-              value={ende.zielnettoBereich1 ?? 17000}
+              value={ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1}
               onChange={(v) => setEnde({ zielnettoBereich1: Math.max(0, parseFloat(v) || 0) })}
               suffix="€/Jahr"
-              hint="Angestrebtes Netto-Einkommen für das Abrechnungsjahr (default 17 000 €)"
+              hint={`Angestrebtes Netto-Einkommen für das Abrechnungsjahr (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
               min={0}
             />
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
@@ -152,8 +153,8 @@ export function EndeSection() {
               <p className="text-sm font-bold text-amber-900 border-t border-amber-300 pt-1 mt-1">
                 Gesamt Konsum: {konsumierbaresBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 {" "}
-                <span className={konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? 17000) ? "text-green-700" : "text-red-700"}>
-                  ({konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? 17000) ? "≥" : "<"} Zielnetto {(ende.zielnettoBereich1 ?? 17000).toLocaleString("de-DE")} €)
+                <span className={konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "text-green-700" : "text-red-700"}>
+                  ({konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "≥" : "<"} Zielnetto {(ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1).toLocaleString("de-DE")} €)
                 </span>
               </p>
             </div>

@@ -1,5 +1,7 @@
 import { EndeState, JahresErgebnis } from "../types";
 
+export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
+
 // Progressive German income tax brackets 2024 (approximation)
 // https://www.bundesfinanzministerium.de
 export function berechneEinkommensteuer(zvE: number): number {
@@ -190,7 +192,7 @@ export function berechneEndeErgebnisse(
       nettogewinn: gesamtNetto,
       details: {
         bereich: 1,
-        zielnetto: state.zielnettoBereich1 ?? 17000,
+        zielnetto: state.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1,
         bruttoGehalt,
         nettoGehalt,
         einkommensteuer,
