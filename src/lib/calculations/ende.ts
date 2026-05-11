@@ -183,10 +183,11 @@ export function berechneDarlehensAuszahlung(
  * **Bereich 1** (single settlement year, only when endfaellig = true):
  *   - The GmbH repays the full loan principal (tax-free for the shareholder) and all
  *     accumulated deferred interest (taxed at progressive Einkommensteuer) to the shareholder.
- *   - The shareholder salary is automatically reduced so that salary + deferred interest
- *     only fills up to the Midijob upper limit.
- *   - The net principal plus after-tax deferred interest becomes a new shareholder loan
- *     to the GmbH at 3% p.a. for the following payout years.
+ *   - The shareholder salary is configured inside the Midijob corridor.
+ *   - A configurable Teil-Tilgung can be consumed directly in Bereich 1.
+ *   - Interest payments count towards the Bereich-1 Zielnetto as well.
+ *   - The remaining principal becomes a new shareholder loan to the GmbH at 3% p.a.
+ *     for the following payout years.
  *   - The zielnetto target for this settlement year is state.zielnettoBereich1
  *     (default 17 000 €/a).
  *
@@ -225,10 +226,15 @@ export function berechneEndeErgebnisse(
     const darlehensrueckzahlung = Math.max(0, darlehenRestschuldAnfang); // principal, tax-free
     const firmenEtfVermoegenVorBereich1 = firmenEtfVermoegen;
     const firmenDarlehensverbindlichkeitAlt = darlehensrueckzahlung;
+    const bruttoGehalt = Math.min(
+      MIDIJOB_JAHR_MAX,
+      Math.max(0, state.gehaltBereich1)
+    );
+    const teiltilgungBereich1 = Math.min(
+      darlehensrueckzahlung,
+      Math.max(0, state.teiltilgungBereich1)
+    );
 
-    // Salary in Bereich 1 is only high enough to fill up to the Midijob limit together
-    // with the deferred interest that becomes taxable in this year.
-    const bruttoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsenNorm);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
@@ -240,13 +246,11 @@ export function berechneEndeErgebnisse(
 
     // Net loan return (principal + after-tax interest)
     const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
-    reinvestiertesDarlehen = darlehenNettoAuszahlung;
+    reinvestiertesDarlehen = Math.max(0, darlehensrueckzahlung - teiltilgungBereich1);
 
-    // Bereich 1 target net only counts freely consumable shareholder cash.
-    // The repaid principal plus the after-tax interest is immediately recycled
-    // into the new shareholder loan for Bereich 2 and therefore is not part of
-    // the Bereich-1 zielnetto comparison.
-    const konsumierbaresNettoBereich1 = nettoGehalt;
+    // Bereich 1 target net counts salary, after-tax interest and the configurable
+    // partial principal repayment that is not rolled into the new shareholder loan.
+    const konsumierbaresNettoBereich1 = nettoGehalt + zinsenNetto + teiltilgungBereich1;
     // gesamtNetto still tracks the full wealth effect of the year, including
     // the new shareholder-loan asset that remains invested in the GmbH.
     const gesamtNetto = darlehenNettoAuszahlung + nettoGehalt;
@@ -282,6 +286,7 @@ export function berechneEndeErgebnisse(
         zinsenNettoBereich1: zinsenNetto,
         darlehensrueckzahlung,
         darlehenNettoAuszahlung,
+        teiltilgungBereich1,
         // No ongoing tilgung in Bereich 1 (full repayment in one shot)
         darlehenZinsen: aufgelaufeneZinsenNorm,
         darlehenZinsenSteuer: zinsSteuer,

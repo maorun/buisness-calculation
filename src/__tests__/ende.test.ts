@@ -198,6 +198,7 @@ describe("berechneEndeErgebnisse", () => {
   const defaultState: EndeState = {
     geschaeftsfuehrergehalt: 24000,
     gehaltBereich1: 24000,
+    teiltilgungBereich1: 0,
     gewinnausschuettung: 0,
     tilgungsrate: 0,
     laufzeitJahre: 3,
@@ -316,6 +317,7 @@ describe("berechneEndeErgebnisse", () => {
     const endfaelligState: EndeState = {
       geschaeftsfuehrergehalt: 24000,
       gehaltBereich1: 24000,
+      teiltilgungBereich1: 0,
       gewinnausschuettung: 0,
       tilgungsrate: 0,
       laufzeitJahre: 3,
@@ -347,46 +349,58 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[results.length - 1].details.restdarlehen).toBeLessThanOrEqual(results[1].details.restdarlehen);
     });
 
-    it("Bereich 1: taxes deferred interest at progressive Einkommensteuer (not Abgeltungssteuer)", () => {
+    it("Bereich 1: taxes deferred interest at progressive Einkommensteuer using configured salary", () => {
       const aufgelaufeneZinsen = 2000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, aufgelaufeneZinsen, true);
-      const expectedGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
+      const expectedGehalt = endfaelligState.gehaltBereich1;
       const expectedZinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, expectedGehalt);
       expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
-      expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
+      expect(results[0].details.bruttoGehalt).toBe(expectedGehalt);
     });
 
     it("Bereich 1: total asset inflow still includes the new shareholder loan plus salary net", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
-      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
-      const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, autoGehalt);
+      const gehaltBereich1 = endfaelligState.gehaltBereich1;
+      const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1);
       const zinsenNetto = aufgelaufeneZinsen - zinsSteuer;
-      const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(autoGehalt);
+      const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(gehaltBereich1);
       expect(results[0].nettogewinn).toBeCloseTo(expectedNetto);
-      expect(results[0].details.bruttoGehalt).toBe(autoGehalt);
+      expect(results[0].details.bruttoGehalt).toBe(gehaltBereich1);
     });
 
-    it("Bereich 1: zielnetto-relevant net excludes the reinvested loan amount", () => {
+    it("Bereich 1: zielnetto-relevant net includes salary, interest and teiltilgung", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
-      const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
-      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
-      expect(results[0].details.konsumierbaresNettoBereich1).toBeCloseTo(berechneNettoGehalt(autoGehalt));
+      const state = { ...endfaelligState, teiltilgungBereich1: 3000 };
+      const results = berechneEndeErgebnisse(state, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, state.gehaltBereich1);
+      const expectedKonsumierbar =
+        berechneNettoGehalt(state.gehaltBereich1) +
+        (aufgelaufeneZinsen - zinsSteuer) +
+        state.teiltilgungBereich1;
+      expect(results[0].details.konsumierbaresNettoBereich1).toBeCloseTo(expectedKonsumierbar);
       expect(results[0].details.konsumierbaresNettoBereich1).toBeLessThan(results[0].nettogewinn);
     });
 
-    it("Bereich 1: turns repayment plus after-tax interest into a new shareholder loan", () => {
+    it("Bereich 1: keeps only the unrepaid principal as the new shareholder loan", () => {
       const principal = 10000;
       const aufgelaufeneZinsen = 2000;
-      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
-      const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, autoGehalt);
-      const expectedNeuesDarlehen = principal + (aufgelaufeneZinsen - zinsSteuer);
-      const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      const state = { ...endfaelligState, teiltilgungBereich1: 2500 };
+      const expectedNeuesDarlehen = principal - state.teiltilgungBereich1;
+      const results = berechneEndeErgebnisse(state, 0, principal, 3.5, aufgelaufeneZinsen, true);
       expect(results[0].details.neuesDarlehenStart).toBeCloseTo(expectedNeuesDarlehen);
       expect(results[0].details.restdarlehen).toBeCloseTo(expectedNeuesDarlehen);
       expect(results[0].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
+    });
+
+    it("Bereich 1: caps teiltilgung at the repaid principal", () => {
+      const principal = 10000;
+      const state = { ...endfaelligState, teiltilgungBereich1: 15000 };
+      const results = berechneEndeErgebnisse(state, 0, principal, 3.5, 1000, true);
+      expect(results[0].details.teiltilgungBereich1).toBe(principal);
+      expect(results[0].details.neuesDarlehenStart).toBe(0);
     });
 
     it("Bereich 1: includes GmbH GuV and Bilanz details for the settlement year", () => {

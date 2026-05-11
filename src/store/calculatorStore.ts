@@ -47,6 +47,7 @@ const initialState: CalculatorState = {
   ende: {
     geschaeftsfuehrergehalt: 24000,
     gehaltBereich1: 24000,
+    teiltilgungBereich1: 0,
     gewinnausschuettung: 0,
     tilgungsrate: 0,
     laufzeitJahre: 5,
