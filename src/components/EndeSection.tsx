@@ -184,7 +184,7 @@ export function EndeSection() {
                 value={ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1}
                 onChange={(v) => setEnde({ zielnettoBereich1: Math.max(0, parseFloat(v) || 0) })}
                 suffix="€/Jahr"
-                hint={`Angestrebtes frei verfügbares Netto des Gesellschafters für das Abrechnungsjahr – ohne das in Bereich 2 reinvestierte Darlehen (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
+                hint={`Angestrebtes frei verfügbares Netto des Gesellschafters für das Abrechnungsjahr - ohne das in Bereich 2 reinvestierte Darlehen (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
                 min={0}
               />
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
