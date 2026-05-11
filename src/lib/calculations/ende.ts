@@ -1,6 +1,8 @@
 import { EndeState, JahresErgebnis } from "../types";
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
+export const MIDIJOB_JAHR_MAX = 24000;
+export const REINVESTIERTES_DARLEHEN_ZINSSATZ = 3;
 
 // Progressive German income tax brackets 2024 (approximation)
 // https://www.bundesfinanzministerium.de
@@ -115,6 +117,22 @@ export function berechneDarlehensZinsenSteuer(
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
 
+export function berechneMidijobAuffuellGehalt(
+  zinsen: number,
+  jahreslimit: number = MIDIJOB_JAHR_MAX
+): number {
+  return Math.max(0, jahreslimit - Math.max(0, zinsen));
+}
+
+export function berechneFlexibleTilgung(
+  zielnetto: number,
+  konsumVorTilgung: number,
+  restdarlehen: number
+): number {
+  if (zielnetto <= 0 || restdarlehen <= 0) return 0;
+  return Math.min(Math.max(0, restdarlehen), Math.max(0, zielnetto - konsumVorTilgung));
+}
+
 export function berechneDarlehensAuszahlung(
   restschuld: number,
   zinssatzPercent: number,
@@ -155,22 +173,27 @@ export function berechneDarlehensAuszahlung(
  *
  * **Bereich 1** (single settlement year, only when endfaellig = true):
  *   - The GmbH repays the full loan principal (tax-free for the shareholder) and all
- *     accumulated deferred interest (taxed at Abgeltungssteuer 26.375%) to the shareholder.
- *   - The shareholder also receives their Midijob salary (state.gehaltBereich1 – can be
- *     lower than Midijob to keep the combined tax burden low).
- *   - Shareholder's net Konsum = principal + after-tax interest + net salary.
- *   - The zielnetto target for this year is state.zielnettoBereich1 (default 17 000 €/a).
+ *     accumulated deferred interest (taxed at progressive Einkommensteuer) to the shareholder.
+ *   - The shareholder salary is automatically reduced so that salary + deferred interest
+ *     only fills up to the Midijob upper limit.
+ *   - The net principal plus after-tax deferred interest becomes a new shareholder loan
+ *     to the GmbH at 3% p.a. for the following payout years.
+ *   - The zielnetto target for this settlement year is state.zielnettoBereich1
+ *     (default 17 000 €/a).
  *
  * **Bereich 2** (remaining laufzeitJahre years):
- *   - Darlehen starts at 0 (fully settled in Bereich 1, or was never endfällig).
- *   - Regular salary (state.geschaeftsfuehrergehalt), Gewinnausschüttung, and existing
- *     tilgung logic apply.
+ *   - For endfällig loans, the new 3%-loan from Bereich 1 is carried forward.
+ *   - The salary is automatically topped up so that salary + annual interest reaches at most
+ *     the Midijob upper limit.
+ *   - If the annual netto from salary + interest + Ausschüttung is still below the target,
+ *     principal is withdrawn flexibly from the new shareholder loan.
+ *   - For non-endfällig loans, the previous salary and tilgung logic stays unchanged.
  *   - The zielnetto target is state.zielnettoBereich2.
  *
  * Income sources (per year):
  * - Geschäftsführergehalt (salary) – taxed at progressive Einkommensteuer
  * - Darlehensauszahlung (shareholder loan servicing):
- *   - Zinsanteil taxed at 26.375% Abgeltungssteuer
+ *   - Zinsanteil taxed at progressive Einkommensteuer
  *   - Tilgungsanteil tax-free principal repayment
  * - Gewinnausschüttung (profit distribution) – taxed at best-of Abgeltungssteuer / Teileinkünfte
  */
@@ -185,14 +208,16 @@ export function berechneEndeErgebnisse(
   const ergebnisse: JahresErgebnis[] = [];
   let restvermoegen = etfWertAnfang;
   let firmenEtfVermoegen = Math.max(0, etfWertAnfang);
+  let reinvestiertesDarlehen = 0;
 
   // --- Bereich 1: settlement year for endfällig deferred interest ---
   if (endfaellig) {
     const aufgelaufeneZinsenNorm = Math.max(0, aufgelaufeneZinsen);
     const darlehensrueckzahlung = Math.max(0, darlehenRestschuldAnfang); // principal, tax-free
 
-    // Salary in Bereich 1 – can be Midijob or lower to minimise combined tax
-    const bruttoGehalt = Math.max(0, state.gehaltBereich1);
+    // Salary in Bereich 1 is only high enough to fill up to the Midijob limit together
+    // with the deferred interest that becomes taxable in this year.
+    const bruttoGehalt = berechneMidijobAuffuellGehalt(aufgelaufeneZinsenNorm);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
@@ -204,6 +229,7 @@ export function berechneEndeErgebnisse(
 
     // Net loan return (principal + after-tax interest)
     const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
+    reinvestiertesDarlehen = darlehenNettoAuszahlung;
 
     // Total net Konsum available in Bereich 1
     const gesamtNetto = darlehenNettoAuszahlung + nettoGehalt;
@@ -242,11 +268,13 @@ export function berechneEndeErgebnisse(
         darlehenTilgung: darlehensrueckzahlung,
         darlehenGesamtauszahlungBrutto: gesamtBrutto - bruttoGehalt,
         darlehenGesamtauszahlungNetto: darlehenNettoAuszahlung,
-        restdarlehen: 0,
+        restdarlehen: reinvestiertesDarlehen,
+        neuesDarlehenStart: reinvestiertesDarlehen,
+        neuesDarlehenZinssatz: REINVESTIERTES_DARLEHEN_ZINSSATZ,
         firmenGesamtabfluss,
         firmenEtfVermoegen,
-        firmenDarlehensverbindlichkeit: 0,
-        firmenNettovermoegen: firmenEtfVermoegen,
+        firmenDarlehensverbindlichkeit: reinvestiertesDarlehen,
+        firmenNettovermoegen: firmenEtfVermoegen - reinvestiertesDarlehen,
         gewinnausschuettung: 0,
         nettoAusschuettung: 0,
         kstSteuer: 0,
@@ -256,35 +284,43 @@ export function berechneEndeErgebnisse(
   }
 
   // --- Bereich 2: regular payout years (darlehen = 0 after Bereich 1, or normal flow) ---
-  // When endfaellig the loan is fully settled in Bereich 1; otherwise start with the given restschuld.
-  let restdarlehen = endfaellig ? 0 : Math.max(0, darlehenRestschuldAnfang);
+  // When endfaellig, Bereich 1 creates a new shareholder loan at 3%; otherwise use the given restschuld.
+  let restdarlehen = endfaellig ? reinvestiertesDarlehen : Math.max(0, darlehenRestschuldAnfang);
   const bereich2StartJahr = endfaellig ? 2 : 1;
 
   for (let i = 1; i <= state.laufzeitJahre; i++) {
     const jahr = bereich2StartJahr + i - 1;
 
-    const bruttoGehalt = state.geschaeftsfuehrergehalt;
+    const verbleibendeJahre = state.laufzeitJahre - i + 1;
+    const {
+      zinsertragBrutto: berechneteDarlehenZinsen,
+      tilgungsanteil: berechneteDarlehenTilgung,
+    } = berechneDarlehensAuszahlung(
+      restdarlehen,
+      endfaellig ? REINVESTIERTES_DARLEHEN_ZINSSATZ : darlehenZinssatzPercent,
+      verbleibendeJahre,
+      state.tilgungsrate
+    );
+    const bruttoGehalt = endfaellig
+      ? berechneMidijobAuffuellGehalt(berechneteDarlehenZinsen)
+      : state.geschaeftsfuehrergehalt;
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
 
-    const verbleibendeJahre = state.laufzeitJahre - i + 1;
-    const {
-      zinsertragBrutto: darlehenZinsen,
-      tilgungsanteil: darlehenTilgung,
-      gesamtauszahlungBrutto: darlehenGesamtauszahlungBrutto,
-    } = berechneDarlehensAuszahlung(
-      restdarlehen,
-      darlehenZinssatzPercent,
-      verbleibendeJahre,
-      state.tilgungsrate
-    );
+    const darlehenZinsen = berechneteDarlehenZinsen;
     const darlehenZinsenSteuer = berechneDarlehensZinsenSteuer(darlehenZinsen, bruttoGehalt);
     const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
-    const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
+    const zielnetto = endfaellig ? (state.zielnettoBereich2 ?? 0) : 0;
+    const konsumVorTilgung = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto;
+    const darlehenTilgung = endfaellig
+      ? berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen)
+      : berechneteDarlehenTilgung;
+    const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
+    const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer;
@@ -304,7 +340,7 @@ export function berechneEndeErgebnisse(
       nettogewinn: gesamtNetto,
       details: {
         bereich: 2,
-        zielnetto: state.zielnettoBereich2 ?? 0,
+        zielnetto,
         bruttoGehalt,
         nettoGehalt,
         einkommensteuer,
@@ -316,6 +352,8 @@ export function berechneEndeErgebnisse(
         darlehenGesamtauszahlungBrutto,
         darlehenGesamtauszahlungNetto,
         restdarlehen,
+        neuesDarlehenZinssatz: endfaellig ? REINVESTIERTES_DARLEHEN_ZINSSATZ : darlehenZinssatzPercent,
+        konsumVorTilgung,
         firmenGesamtabfluss,
         firmenEtfVermoegen,
         firmenDarlehensverbindlichkeit: restdarlehen,

@@ -170,7 +170,7 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="− Solidaritätszuschlag" value={d.soli} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.darlehenZinsenSteuer !== undefined && d.darlehenZinsenSteuer > 0 && (
-        <BilanzRow label="− Abgeltungssteuer auf Zinsanteil" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
+        <BilanzRow label="− Einkommensteuer auf Zinsanteil" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.kstSteuer !== undefined && d.kstSteuer > 0 && (
         <BilanzRow label="− Körperschaftsteuer (Finanzamt)" value={d.kstSteuer} prefix="−" colorClass="text-red-600" indent />
