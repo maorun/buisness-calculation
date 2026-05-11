@@ -117,7 +117,7 @@ export function berechneDarlehensZinsenSteuer(
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
 
-export function berechneMidijobAuffuellGehalt(
+export function berechneRestlichesMidijobGehalt(
   zinsen: number,
   jahreslimit: number = MIDIJOB_JAHR_MAX
 ): number {
@@ -217,7 +217,7 @@ export function berechneEndeErgebnisse(
 
     // Salary in Bereich 1 is only high enough to fill up to the Midijob limit together
     // with the deferred interest that becomes taxable in this year.
-    const bruttoGehalt = berechneMidijobAuffuellGehalt(aufgelaufeneZinsenNorm);
+    const bruttoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsenNorm);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
@@ -302,7 +302,7 @@ export function berechneEndeErgebnisse(
       state.tilgungsrate
     );
     const bruttoGehalt = endfaellig
-      ? berechneMidijobAuffuellGehalt(berechneteDarlehenZinsen)
+      ? berechneRestlichesMidijobGehalt(berechneteDarlehenZinsen)
       : state.geschaeftsfuehrergehalt;
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);

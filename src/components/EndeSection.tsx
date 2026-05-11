@@ -146,8 +146,9 @@ export function EndeSection() {
           <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Rückzahlung & Neustart Gesellschafterdarlehen</h3>
           <p className="text-xs text-slate-500 mb-4">
             Die GmbH zahlt das bisherige Gesellschafterdarlehen steuerfrei zurück. Die aufgelaufenen Zinsen
-            werden mit Einkommensteuer belastet und das Gehalt wird automatisch nur bis zur Midijob-Grenze
-            ergänzt. Aus Darlehensrückzahlung plus Zinsen nach Steuern entsteht anschließend das neue
+            werden mit Einkommensteuer belastet und das Gehalt wird automatisch nur so weit ergänzt,
+            dass aufgelaufene Zinsen plus Gehalt zusammen die Midijob-Grenze nicht überschreiten. Aus
+            Darlehensrückzahlung plus Zinsen nach Steuern entsteht anschließend das neue
             Gesellschafterdarlehen für Bereich 2.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">

@@ -6,7 +6,7 @@ import {
   berechneNettoAusschuettung,
   berechneDarlehensAuszahlung,
   berechneDarlehensZinsenSteuer,
-  berechneMidijobAuffuellGehalt,
+  berechneRestlichesMidijobGehalt,
   berechneFlexibleTilgung,
   berechneEndeErgebnisse,
   MIDIJOB_JAHR_MAX,
@@ -174,13 +174,13 @@ describe("berechneDarlehensZinsenSteuer", () => {
   });
 });
 
-describe("berechneMidijobAuffuellGehalt", () => {
-  it("fills salary only up to the Midijob limit", () => {
-    expect(berechneMidijobAuffuellGehalt(1000)).toBe(MIDIJOB_JAHR_MAX - 1000);
+describe("berechneRestlichesMidijobGehalt", () => {
+  it("returns the remaining salary room below the Midijob limit", () => {
+    expect(berechneRestlichesMidijobGehalt(1000)).toBe(MIDIJOB_JAHR_MAX - 1000);
   });
 
   it("returns 0 when interest already reaches the Midijob limit", () => {
-    expect(berechneMidijobAuffuellGehalt(MIDIJOB_JAHR_MAX + 1)).toBe(0);
+    expect(berechneRestlichesMidijobGehalt(MIDIJOB_JAHR_MAX + 1)).toBe(0);
   });
 });
 
@@ -350,7 +350,7 @@ describe("berechneEndeErgebnisse", () => {
     it("Bereich 1: taxes deferred interest at progressive Einkommensteuer (not Abgeltungssteuer)", () => {
       const aufgelaufeneZinsen = 2000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, aufgelaufeneZinsen, true);
-      const expectedGehalt = berechneMidijobAuffuellGehalt(aufgelaufeneZinsen);
+      const expectedGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
       const expectedZinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, expectedGehalt);
       expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
       expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
@@ -360,7 +360,7 @@ describe("berechneEndeErgebnisse", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
-      const autoGehalt = berechneMidijobAuffuellGehalt(aufgelaufeneZinsen);
+      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
       const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, autoGehalt);
       const zinsenNetto = aufgelaufeneZinsen - zinsSteuer;
       const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(autoGehalt);
@@ -371,7 +371,7 @@ describe("berechneEndeErgebnisse", () => {
     it("Bereich 1: turns repayment plus after-tax interest into a new shareholder loan", () => {
       const principal = 10000;
       const aufgelaufeneZinsen = 2000;
-      const autoGehalt = berechneMidijobAuffuellGehalt(aufgelaufeneZinsen);
+      const autoGehalt = berechneRestlichesMidijobGehalt(aufgelaufeneZinsen);
       const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, autoGehalt);
       const expectedNeuesDarlehen = principal + (aufgelaufeneZinsen - zinsSteuer);
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
