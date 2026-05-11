@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GmbH-Kalkulator
 
-## Getting Started
+Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft dabei, die finanziellen Aspekte einer Vermögensverwaltungs-GmbH in Deutschland zu planen und zu simulieren – von der Gründung über den laufenden Betrieb bis hin zur Auszahlungsphase.
 
-First, run the development server:
+> **Hinweis:** Alle Angaben ohne Gewähr. Dieses Tool ersetzt keine professionelle Steuerberatung.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 📋 Gründung
+- Erfassung aller **einmaligen Gründungskosten** (z. B. Notar, Handelsregistereintrag, Stammkapital)
+- Automatische Berechnung der **Gesamtgründungskosten**
+- Hinweis: Das Stammkapital (mind. 25.000 €) verbleibt als investierbares GmbH-Vermögen
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 📈 Betrieb
+- Simulation des **ETF-Investments** über eine frei wählbare Laufzeit
+- Konfiguration eines **Gesellschafter-Darlehens** (Betrag, Zinssatz, monatlicher Zuschuss, endfällig oder mit Tilgungsdatum)
+- Verwaltung **laufender Betriebskosten** (monatlich oder jährlich) mit direkter Auswirkung auf den steuerpflichtigen Gewinn
+- Steuerliche **Benefits**: Tankgutschein (max. 50 €/Monat, steuerfrei gem. § 8 Abs. 2 EStG) und Strategieessen
+- Automatische Berücksichtigung von **Firmenhandy-Kosten** als Betriebsausgabe
+- Transparente Darstellung aller **Steuerparameter** (KSt 15 %, Solidaritätszuschlag, GewSt ca. 14 %, Abgeltungsteuer, Vorabpauschale, Teilfreistellung)
+- **Jahresergebnisse**: Übersicht über Gesamtvermögen, Gewinn, Steuern und Nettogewinn pro Jahr
 
-## Learn More
+### 🏁 Ende (Auszahlungsphase)
+- Planung der **Auszahlungsphase** in zwei Bereichen:
+  - **Bereich 1**: Abwicklungsjahr mit gestundeten Darlehenszinsen, optimiert auf ein Zielnettoeinkommen
+  - **Bereich 2**: Reguläre Auszahljahre mit Geschäftsführergehalt und Gewinnausschüttung
+- Konfiguration von **Geschäftsführergehalt**, **Gewinnausschüttung** und **Tilgungsrate**
+- Berechnung der persönlichen Steuerbelastung (Einkommensteuer, Solidaritätszuschlag, Abgeltungsteuer)
+- **Jahresergebnisse** der Entnahmephase
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Steuerparameter (Stand 2024)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Parameter | Wert |
+|---|---|
+| Körperschaftsteuer (KSt) | 15,00 % |
+| KSt + Solidaritätszuschlag | 15,825 % |
+| Gewerbesteuer (GewSt) | ca. 14,00 % |
+| Gesamtbelastung GmbH | ca. 29,825 % |
+| Abgeltungsteuer | 25,00 % |
+| Abgeltungsteuer + SolZ | 26,375 % |
+| Basiszins 2024 | 2,29 % |
+| Teilfreistellung (ETF) | 30 % |
