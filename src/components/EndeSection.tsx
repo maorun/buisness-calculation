@@ -9,7 +9,7 @@ import {
   berechneDarlehensAuszahlung,
   berechneEinkommensteuer,
   berechneSoli,
-  KAPITALERTRAGSTEUER_MIT_SOLI_RATE,
+  berechneDarlehensZinsenSteuer,
   DEFAULT_ZIELNETTO_BEREICH1,
 } from "@/lib/calculations/ende";
 import {
@@ -84,7 +84,8 @@ export function EndeSection() {
     Math.max(1, ende.laufzeitJahre),
     ende.tilgungsrate
   );
-  const zinsensteuerProJahr = zinsertragProJahr * 0.25 * 1.055;
+  // Interest on shareholder loans is taxed at progressive Einkommensteuer, not flat Abgeltungssteuer
+  const zinsensteuerProJahr = berechneDarlehensZinsenSteuer(zinsertragProJahr, ende.geschaeftsfuehrergehalt);
   const nettoDarlehensauszahlungProJahr = tilgungProJahr + (zinsertragProJahr - zinsensteuerProJahr);
   const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
   const handyZyklus = HANDY_ERSATZZYKLUS_JAHRE;
@@ -97,7 +98,8 @@ export function EndeSection() {
   // Bereich 1 preview calculations (only relevant when endfaellig)
   const gehaltBereich1 = ende.gehaltBereich1;
   const nettoGehaltBereich1 = berechneNettoGehalt(gehaltBereich1);
-  const zinsSteuerBereich1 = aufgelaufeneZinsen * KAPITALERTRAGSTEUER_MIT_SOLI_RATE;
+  // Marginal income tax on accumulated deferred interest (§ 32d Abs. 2 Nr. 1b EStG)
+  const zinsSteuerBereich1 = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1);
   const zinsenNettoBereich1 = aufgelaufeneZinsen - zinsSteuerBereich1;
   const darlehenNettoAuszahlungBereich1 = offeneDarlehensschuld + zinsenNettoBereich1;
   const einkommensteuerBereich1 = berechneEinkommensteuer(gehaltBereich1);
@@ -167,7 +169,7 @@ export function EndeSection() {
               <p className="text-xs text-amber-700">Zinsen brutto: <span className="font-semibold">+ {aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">GF-Gehalt brutto: <span className="font-semibold">+ {gehaltBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
-              <p className="text-xs text-amber-700">Abgeltungssteuer Zinsen (26,375%): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Einkommensteuer Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-sm font-bold text-amber-900 border-t border-amber-300 pt-1 mt-1">
@@ -241,7 +243,7 @@ export function EndeSection() {
             <h4 className="font-semibold text-gray-600 mb-1">Darlehensauszahlung (aus GmbH an Gesellschafter)</h4>
             <p className="text-xs text-slate-500 mb-3">
               Die jährliche Auszahlung wird in Zinsertrag und Darlehensrückzahlung aufgeteilt.
-              Nur der Zinsanteil ist steuerpflichtig (Abgeltungssteuer 26,375%).
+              Der Zinsanteil wird mit progressiver Einkommensteuer besteuert (§ 32d Abs. 2 Nr. 1b EStG).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InputField
@@ -264,7 +266,7 @@ export function EndeSection() {
                   Zinsanteil: {zinsertragProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € · Tilgung: {tilgungProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
                 <p className="text-xs text-amber-600 mt-1">
-                  Steuer auf Zinsanteil: {zinsensteuerProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  Einkommensteuer Zinsanteil: {zinsensteuerProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -353,13 +355,12 @@ export function EndeSection() {
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
         <div className="text-xs text-gray-600 space-y-1">
-          {endfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Abgeltungssteuer 26,375% auf alle aufgelaufenen Zinsen (Zahlung der GmbH an Gesellschafter)</p>}
-          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Midijob oder weniger → progressive Einkommensteuer (14%–45%) + ggf. SolZ. Gehalt niedrig halten, um Gesamtsteuerlast zu minimieren.</p>}
+          {endfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Progressive Einkommensteuer auf Zinsen + Gehalt (kombiniert, § 32d Abs. 2 Nr. 1b EStG)</p>}
+          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Midijob oder weniger → progressive Einkommensteuer (14%–45%) + ggf. SolZ. Gehalt niedrig halten, um Steuerlast zu minimieren.</p>}
           <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
-          <p><span className="font-medium">Darlehen (Bereich 2):</span> Zinsanteil mit 26,375% Abgeltungssteuer, Tilgungsanteil steuerfrei</p>
-          <p><span className="font-medium">Abgeltungsteuer:</span> 25% + 5,5% SolZ = 26,375% (flat)</p>
+          <p><span className="font-medium">Darlehen (Zinsen):</span> Progressive Einkommensteuer (Marginalsteuersatz), Tilgungsanteil steuerfrei (§ 32d Abs. 2 Nr. 1b EStG)</p>
           <p><span className="font-medium">Teileinkünfteverfahren:</span> 60% des Betrags × persönlicher Steuersatz</p>
-          <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt.</p>
+          <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt. Abgeltungssteuer gilt nur für Gewinnausschüttungen.</p>
         </div>
       </div>
     </div>

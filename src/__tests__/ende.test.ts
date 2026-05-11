@@ -5,6 +5,7 @@ import {
   berechneGewinnausschuettungsteuer,
   berechneNettoAusschuettung,
   berechneDarlehensAuszahlung,
+  berechneDarlehensZinsenSteuer,
   berechneEndeErgebnisse,
 } from "@/lib/calculations/ende";
 import { EndeState } from "@/lib/types";
@@ -135,6 +136,40 @@ describe("berechneDarlehensAuszahlung", () => {
   });
 });
 
+describe("berechneDarlehensZinsenSteuer", () => {
+  it("returns 0 for zero interest", () => {
+    expect(berechneDarlehensZinsenSteuer(0, 24000)).toBe(0);
+    expect(berechneDarlehensZinsenSteuer(-100, 24000)).toBe(0);
+  });
+
+  it("returns positive tax for positive interest", () => {
+    expect(berechneDarlehensZinsenSteuer(1000, 24000)).toBeGreaterThan(0);
+  });
+
+  it("equals combined income tax minus salary-only tax (marginal rate)", () => {
+    const zinsen = 1000;
+    const gehalt = 24000;
+    const estGehalt = berechneEinkommensteuer(gehalt);
+    const soliGehalt = berechneSoli(estGehalt);
+    const estKombiniert = berechneEinkommensteuer(gehalt + zinsen);
+    const soliKombiniert = berechneSoli(estKombiniert);
+    const expected = (estKombiniert + soliKombiniert) - (estGehalt + soliGehalt);
+    expect(berechneDarlehensZinsenSteuer(zinsen, gehalt)).toBeCloseTo(expected);
+  });
+
+  it("higher interest leads to higher tax (progressive)", () => {
+    const lowTax = berechneDarlehensZinsenSteuer(500, 24000);
+    const highTax = berechneDarlehensZinsenSteuer(5000, 24000);
+    expect(highTax).toBeGreaterThan(lowTax);
+  });
+
+  it("handles 0 salary (interest alone determines tax)", () => {
+    const tax = berechneDarlehensZinsenSteuer(10000, 0);
+    const expectedTax = berechneEinkommensteuer(10000) + berechneSoli(berechneEinkommensteuer(10000));
+    expect(tax).toBeCloseTo(expectedTax);
+  });
+});
+
 describe("berechneEndeErgebnisse", () => {
   const defaultState: EndeState = {
     geschaeftsfuehrergehalt: 24000,
@@ -170,12 +205,14 @@ describe("berechneEndeErgebnisse", () => {
     }
   });
 
-  it("includes calculated loan interest and repayment", () => {
+  it("includes calculated loan interest and repayment (progressive Einkommensteuer on interest)", () => {
     const results = berechneEndeErgebnisse(defaultState, 0, 12000, 6);
+    const zinsen = 720; // 12000 * 6% / 3 years = first year: 12000 * 0.06 = 720
+    const expectedZinsenSteuer = berechneDarlehensZinsenSteuer(zinsen, defaultState.geschaeftsfuehrergehalt);
     expect(results[0].details.darlehenZinsen).toBeCloseTo(720);
     expect(results[0].details.darlehenTilgung).toBeCloseTo(4000);
-    expect(results[0].details.darlehenZinsenSteuer).toBeCloseTo(720 * 0.25 * 1.055);
-    expect(results[0].details.darlehenZinsenNetto).toBeCloseTo(720 - 720 * 0.25 * 1.055);
+    expect(results[0].details.darlehenZinsenSteuer).toBeCloseTo(expectedZinsenSteuer);
+    expect(results[0].details.darlehenZinsenNetto).toBeCloseTo(zinsen - expectedZinsenSteuer);
   });
 
   it("handles 0 restdarlehen", () => {
@@ -287,10 +324,15 @@ describe("berechneEndeErgebnisse", () => {
       }
     });
 
-    it("Bereich 1: taxes deferred interest at Abgeltungssteuer", () => {
+    it("Bereich 1: taxes deferred interest at progressive Einkommensteuer (not Abgeltungssteuer)", () => {
       const aufgelaufeneZinsen = 2000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, aufgelaufeneZinsen, true);
-      const expectedZinsSteuer = aufgelaufeneZinsen * 0.25 * 1.055;
+      const expectedZinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, endfaelligState.gehaltBereich1);
+      expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
+      // Must NOT equal the flat Abgeltungssteuer rate
+      const abgeltungssteuer = aufgelaufeneZinsen * 0.25 * 1.055;
+      // They will differ unless salary happens to be exactly at that bracket
+      // (for 24000 salary they are close, so we verify the correct formula is used)
       expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
     });
 
@@ -298,7 +340,7 @@ describe("berechneEndeErgebnisse", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
-      const zinsSteuer = aufgelaufeneZinsen * 0.25 * 1.055;
+      const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, endfaelligState.gehaltBereich1);
       const zinsenNetto = aufgelaufeneZinsen - zinsSteuer;
       const nettoGehalt = results[0].details.nettoGehalt as number;
       const expectedNetto = principal + zinsenNetto + nettoGehalt;

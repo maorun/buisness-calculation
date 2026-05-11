@@ -92,6 +92,29 @@ export function berechneNettoAusschuettung(
 
 export const KAPITALERTRAGSTEUER_MIT_SOLI_RATE = 0.25 * (1 + 0.055);
 
+/**
+ * Marginal income tax attributable to shareholder-loan interest.
+ *
+ * For a shareholder holding ≥10% of a GmbH the interest on their loan to the GmbH
+ * is excluded from the flat Abgeltungssteuer and instead taxed at the personal
+ * progressive rate (§ 32d Abs. 2 Nr. 1b EStG).
+ *
+ * We compute the marginal tax by comparing combined (salary + interest) tax to
+ * salary-only tax. This gives the exact additional tax burden the interest causes.
+ */
+export function berechneDarlehensZinsenSteuer(
+  zinsen: number,
+  bruttoGehalt: number
+): number {
+  if (zinsen <= 0) return 0;
+  const gehaltNorm = Math.max(0, bruttoGehalt);
+  const estNurGehalt = berechneEinkommensteuer(gehaltNorm);
+  const soliNurGehalt = berechneSoli(estNurGehalt);
+  const estKombiniert = berechneEinkommensteuer(gehaltNorm + zinsen);
+  const soliKombiniert = berechneSoli(estKombiniert);
+  return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
+}
+
 export function berechneDarlehensAuszahlung(
   restschuld: number,
   zinssatzPercent: number,
@@ -168,18 +191,19 @@ export function berechneEndeErgebnisse(
     const aufgelaufeneZinsenNorm = Math.max(0, aufgelaufeneZinsen);
     const darlehensrueckzahlung = Math.max(0, darlehenRestschuldAnfang); // principal, tax-free
 
-    // Tax on deferred interest at Abgeltungssteuer
-    const zinsSteuer = aufgelaufeneZinsenNorm * KAPITALERTRAGSTEUER_MIT_SOLI_RATE;
-    const zinsenNetto = aufgelaufeneZinsenNorm - zinsSteuer;
-
-    // Net loan return (principal + after-tax interest)
-    const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
-
     // Salary in Bereich 1 – can be Midijob or lower to minimise combined tax
     const bruttoGehalt = Math.max(0, state.gehaltBereich1);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
+
+    // Tax on deferred interest: progressive Einkommensteuer (§ 32d Abs. 2 Nr. 1b EStG),
+    // NOT flat Abgeltungssteuer. Marginal tax = combined(salary + interest) - salary-only tax.
+    const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsenNorm, bruttoGehalt);
+    const zinsenNetto = aufgelaufeneZinsenNorm - zinsSteuer;
+
+    // Net loan return (principal + after-tax interest)
+    const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
 
     // Total net Konsum available in Bereich 1
     const gesamtNetto = darlehenNettoAuszahlung + nettoGehalt;
@@ -255,7 +279,7 @@ export function berechneEndeErgebnisse(
       verbleibendeJahre,
       state.tilgungsrate
     );
-    const darlehenZinsenSteuer = darlehenZinsen * KAPITALERTRAGSTEUER_MIT_SOLI_RATE;
+    const darlehenZinsenSteuer = berechneDarlehensZinsenSteuer(darlehenZinsen, bruttoGehalt);
     const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
