@@ -153,7 +153,10 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Brutto-Gehalt" value={d.bruttoGehalt} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.darlehenZinsen !== undefined && d.darlehenZinsen > 0 && (
-        <BilanzRow label="Zinserträge aus Darlehen (brutto)" value={d.darlehenZinsen} prefix="+" colorClass="text-gray-700" indent />
+        <BilanzRow label="Zinsanteil Darlehen (brutto)" value={d.darlehenZinsen} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.darlehenTilgung !== undefined && d.darlehenTilgung > 0 && (
+        <BilanzRow label="Darlehensrückzahlung (Tilgung)" value={d.darlehenTilgung} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.gewinnausschuettung !== undefined && d.gewinnausschuettung > 0 && (
         <BilanzRow label="Gewinnausschüttung (brutto)" value={d.gewinnausschuettung} prefix="+" colorClass="text-gray-700" indent />
@@ -167,7 +170,7 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="− Solidaritätszuschlag" value={d.soli} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.darlehenZinsenSteuer !== undefined && d.darlehenZinsenSteuer > 0 && (
-        <BilanzRow label="− Abgeltungssteuer auf Zinsen" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
+        <BilanzRow label="− Abgeltungssteuer auf Zinsanteil" value={d.darlehenZinsenSteuer} prefix="−" colorClass="text-red-600" indent />
       )}
       {d.kstSteuer !== undefined && d.kstSteuer > 0 && (
         <BilanzRow label="− Körperschaftsteuer (Finanzamt)" value={d.kstSteuer} prefix="−" colorClass="text-red-600" indent />
@@ -181,7 +184,10 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Netto-Gehalt" value={d.nettoGehalt} prefix="+" colorClass="text-green-700" indent />
       )}
       {d.darlehenZinsenNetto !== undefined && d.darlehenZinsenNetto > 0 && (
-        <BilanzRow label="Zinserträge (netto)" value={d.darlehenZinsenNetto} prefix="+" colorClass="text-green-700" indent />
+        <BilanzRow label="Zinsanteil (netto)" value={d.darlehenZinsenNetto} prefix="+" colorClass="text-green-700" indent />
+      )}
+      {d.darlehenTilgung !== undefined && d.darlehenTilgung > 0 && (
+        <BilanzRow label="Tilgung (steuerfrei)" value={d.darlehenTilgung} prefix="+" colorClass="text-green-700" indent />
       )}
       {d.nettoAusschuettung !== undefined && d.nettoAusschuettung > 0 && (
         <BilanzRow label="Netto-Ausschüttung" value={d.nettoAusschuettung} prefix="+" colorClass="text-green-700" indent />
@@ -194,6 +200,35 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
         bold
         colorClass="text-green-700"
       />
+      <BilanzRow
+        label="= Gesamt Netto pro Monat"
+        value={e.nettogewinn / 12}
+        prefix={e.nettogewinn >= 0 ? "+" : "−"}
+        bold
+        colorClass="text-green-700"
+      />
+
+      {(d.firmenEtfVermoegen !== undefined && d.firmenDarlehensverbindlichkeit !== undefined) && (
+        <>
+          <SectionHeader label="Bilanz der Firma (Jahresende)" />
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
+          <BilanzRow label="ETF-/Liquiditätsbestand Firma" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
+          {d.firmenDarlehensverbindlichkeit > 0 && (
+            <>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
+              <BilanzRow label="Restdarlehen gegenüber Gesellschafter" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
+            </>
+          )}
+          <Divider />
+          <BilanzRow
+            label="= Firmen-Nettovermögen"
+            value={d.firmenNettovermoegen}
+            prefix={d.firmenNettovermoegen >= 0 ? "+" : "−"}
+            bold
+            colorClass="text-blue-800"
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -231,7 +266,14 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                   <td className="py-2 font-medium text-gray-700">Jahr {e.jahr}</td>
                   <td className="py-2 text-right text-gray-800">{formatEuro(e.gewinn)}</td>
                   <td className="py-2 text-right text-red-600">{formatEuro(e.steuer)}</td>
-                  <td className="py-2 text-right text-green-700 font-medium">{formatEuro(e.nettogewinn)}</td>
+                  <td className="py-2 text-right text-green-700 font-medium">
+                    {formatEuro(e.nettogewinn)}
+                    {"firmenNettovermoegen" in e.details && (
+                      <div className="text-[11px] font-normal text-green-600">
+                        ({formatEuro(e.nettogewinn / 12)} / Monat)
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 text-right font-bold text-blue-700">{formatEuro(e.gesamtvermoegen)}</td>
                   <td className="py-2 text-center">
                     <button
