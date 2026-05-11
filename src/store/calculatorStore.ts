@@ -29,14 +29,14 @@ const initialState: CalculatorState = {
     kosten: defaultGruendungskosten,
   },
   betrieb: {
-    startkapital: 50000,
+    startkapital: 12500,
     darlehen: {
       betrag: 25000,
       zinssatz: 3.5,
       monatlicherZuschuss: 100,
-      endfaellig: false,
+      endfaellig: true,
     },
-    etfRendite: 7,
+    etfRendite: 5,
     laufzeitJahre: 10,
     kosten: defaultBetriebskosten,
     benefits: {

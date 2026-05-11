@@ -254,8 +254,9 @@ describe("berechneBetriebsErgebnisse", () => {
   it("ETF value in year 1 is 7% growth minus all cash outflows", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     const r = results[0];
+    const initialEtf = defaultState.startkapital + defaultState.darlehen.betrag;
     // ETF grows 7% then cash outflows (costs + taxes) are deducted via ETF unit sales
-    const etfNachWachstum = 100000 * 1.07; // 107,000
+    const etfNachWachstum = initialEtf * 1.07;
     expect(r.details.etfWert).toBeCloseTo(etfNachWachstum - r.details.etfVerkauf);
     // ETF is less than pure growth because outflows are deducted
     expect(r.details.etfWert).toBeLessThan(etfNachWachstum);
@@ -383,8 +384,66 @@ describe("berechneBetriebsErgebnisse", () => {
   it("tracks theoretischer ETF-Ertrag separately from realized sale gain", () => {
     const results = berechneBetriebsErgebnisse(defaultState);
     const r = results[0];
-    expect(r.details.theoretischerEtfErtrag).toBeCloseTo(7000);
+    expect(r.details.theoretischerEtfErtrag).toBeCloseTo((defaultState.startkapital + defaultState.darlehen.betrag) * 0.07);
     expect(r.details.etfGewinn).toBeLessThan(r.details.theoretischerEtfErtrag);
+  });
+
+  it("shows startkapital and shareholder loan as separate ETF positions in assets", () => {
+    const result = berechneBetriebsErgebnisse(defaultState)[0];
+    expect(result.details.startkapitalEtfWert).toBeGreaterThan(0);
+    expect(result.details.darlehenEtfWert).toBeGreaterThan(0);
+    expect(result.details.startkapitalEtfWert + result.details.darlehenEtfWert + result.details.zuzahlungenEtfWert)
+      .toBeCloseTo(result.details.etfWert);
+  });
+
+  it("uses loan top-ups for operating expenses before investing the surplus", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 12500,
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [{ id: "1", bezeichnung: "Software", betrag: 600, periode: "jaehrlich" }],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+
+    expect(result.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBe(600);
+    expect(result.details.ungedeckteBetriebsausgaben).toBe(0);
+    expect(result.details.freieDarlehensZuzahlungen).toBe(600);
+    expect(result.details.zuzahlungenEtfWert).toBe(600);
+    expect(result.details.etfVerkauf).toBe(0);
+  });
+
+  it("sells the ETF position with the lowest tax burden first", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 10000,
+      etfRendite: 10,
+      laufzeitJahre: 2,
+      kosten: [{ id: "1", bezeichnung: "Kosten", betrag: 0, periode: "jaehrlich" }],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 10000, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
+    };
+
+    const [erstesJahr] = berechneBetriebsErgebnisse(state);
+    expect(erstesJahr.details.zuzahlungenEtfWert).toBeCloseTo(1200);
+
+    const stateMitKostenImZweitenJahr: BetriebState = {
+      ...state,
+      kosten: [{ id: "1", bezeichnung: "Kosten", betrag: 1800, periode: "jaehrlich" }],
+    };
+
+    const zweitesJahr = berechneBetriebsErgebnisse(stateMitKostenImZweitenJahr)[1];
+
+    expect(zweitesJahr.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBeCloseTo(1200);
+    expect(zweitesJahr.details.ungedeckteBetriebsausgaben).toBeCloseTo(600);
+    expect(zweitesJahr.details.etfGewinn).toBeGreaterThan(0);
+    expect(zweitesJahr.details.etfGewinn).toBeLessThan(80);
+    expect(zweitesJahr.details.startkapitalEtfWert).toBeCloseTo(12100, 4);
+    expect(zweitesJahr.details.darlehenEtfWert).toBeCloseTo(12100, 4);
+    expect(zweitesJahr.details.zuzahlungenEtfWert).toBeLessThan(1320);
   });
 
   it("cash reserve accumulates only positive annual net profit", () => {

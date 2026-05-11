@@ -96,12 +96,24 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
 
       {/* ── Cashflow ─────────────────────────────────── */}
       <SectionHeader label="Cashflow (ETF-Verkauf zur Kostendeckung)" />
-      <BilanzRow label="Betriebskosten + Steuern (aus dem ETF finanziert)" value={d.etfVerkauf} prefix="−" colorClass="text-orange-600" bold indent />
+      {d.ausZuzahlungenBeglicheneBetriebsausgaben > 0 && (
+        <BilanzRow label="Betriebsausgaben aus Darlehenszuzahlungen" value={d.ausZuzahlungenBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
+      )}
+      {d.freieDarlehensZuzahlungen > 0 && (
+        <BilanzRow label="Freie Darlehenszuzahlungen in ETF investiert" value={d.freieDarlehensZuzahlungen} prefix="+" colorClass="text-blue-700" indent />
+      )}
+      <BilanzRow label="ETF-Verkauf für ungedeckte Ausgaben + Steuern" value={d.etfVerkauf} prefix="−" colorClass="text-orange-600" bold indent />
 
       {/* ── Bilanz ───────────────────────────────────── */}
       <SectionHeader label="Bilanz (Jahresende)" />
       <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
-      <BilanzRow label="ETF-Wert" value={d.etfWert} prefix="+" colorClass="text-blue-700" bold indent />
+      <BilanzRow label="ETF-Wert aus Startkapital" value={d.startkapitalEtfWert} prefix="+" colorClass="text-blue-700" indent />
+      <BilanzRow label="ETF-Wert aus Gesellschafterdarlehen" value={d.darlehenEtfWert} prefix="+" colorClass="text-blue-700" indent />
+      {d.zuzahlungenEtfWert > 0 && (
+        <BilanzRow label="ETF-Wert aus freien Darlehenszuzahlungen" value={d.zuzahlungenEtfWert} prefix="+" colorClass="text-blue-700" indent />
+      )}
+      <Divider />
+      <BilanzRow label="Gesamter ETF-Wert" value={d.etfWert} prefix="+" colorClass="text-blue-700" bold indent />
       {d.cashReserve > 0 && (
         <BilanzRow label="Cash-Reserve" value={d.cashReserve} prefix="+" colorClass="text-blue-700" bold indent />
       )}

@@ -80,7 +80,7 @@ export function BetriebSection() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Betrieb</h2>
-        <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment</p>
+        <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und Überschüssen</p>
       </div>
 
       {/* Startkapital & ETF */}
@@ -92,14 +92,14 @@ export function BetriebSection() {
             value={betrieb.startkapital}
             onChange={(v) => setBetrieb({ startkapital: parseFloat(v) || 0 })}
             suffix="€"
-            hint="Startkapital der GmbH für ETF-Investment"
+            hint="Bei Gründung eingezahlte Einlage; wird als erste ETF-Position in den Aktiva geführt (Default: 12.500 €)"
           />
           <InputField
             label="ETF-Rendite (% p.a.)"
             value={betrieb.etfRendite}
             onChange={(v) => setBetrieb({ etfRendite: parseFloat(v) || 0 })}
             suffix="% p.a."
-            hint="Durchschnittliche jährliche ETF-Rendite"
+            hint="Durchschnittliche jährliche ETF-Rendite (Default: 5 %)"
           />
           <InputField
             label="Laufzeit (Jahre)"
@@ -119,6 +119,7 @@ export function BetriebSection() {
             value={betrieb.darlehen.betrag}
             onChange={(v) => updateDarlehen("betrag", v)}
             suffix="€"
+            hint="Wird als zweite ETF-Position in den Aktiva angelegt"
           />
           <InputField
             label="Zinssatz (% p.a.)"
@@ -132,7 +133,7 @@ export function BetriebSection() {
             value={betrieb.darlehen.monatlicherZuschuss}
             onChange={(v) => updateDarlehen("monatlicherZuschuss", v)}
             suffix="€/Monat"
-            hint="Erhöht das offene Darlehen monatlich (Standard: 100 €)"
+            hint="Deckt zuerst Betriebsausgaben; ein Überschuss wird als zusätzliche ETF-Position investiert"
           />
           <div className="flex items-center gap-3">
             <input
@@ -202,6 +203,10 @@ export function BetriebSection() {
 
       {/* Tax info box */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <p className="text-xs text-slate-500 mb-3">
+          Verkäufe erfolgen steueroptimiert: Wenn laufende Darlehenszuzahlungen die Betriebsausgaben nicht vollständig decken,
+          werden zuerst die ETF-Positionen mit der geringsten steuerpflichtigen stillen Reserve verkauft.
+        </p>
         <p className="text-xs font-semibold text-slate-700 mb-2">📊 Steuerparameter (GmbH) – Steuern ans Finanzamt</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
           <div><span className="font-medium">KSt:</span> 15,00%</div>

@@ -28,6 +28,14 @@ export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
 export const DARLEHEN_MONATE_PRO_JAHR = 12;
 
+type EtfLotTyp = "startkapital" | "darlehen" | "zuzahlung";
+
+interface EtfLot {
+  typ: EtfLotTyp;
+  wert: number;
+  einstandswert: number;
+}
+
 /**
  * Vorabpauschale: German annual pre-tax for accumulating ETFs.
  * = max(0, Basiszins × 0.7 × NAV_start, actualReturn)
@@ -165,13 +173,118 @@ export function berechneHandyNettoKostenProJahr(
   return anschaffungskosten - verkaufserloes;
 }
 
+function sumEtfWert(lots: EtfLot[]): number {
+  return lots.reduce((sum, lot) => sum + lot.wert, 0);
+}
+
+function sumEtfWertNachTyp(lots: EtfLot[], typ: EtfLotTyp): number {
+  return lots
+    .filter((lot) => lot.typ === typ)
+    .reduce((sum, lot) => sum + lot.wert, 0);
+}
+
+function wachseEtfLots(lots: EtfLot[], renditePercent: number): EtfLot[] {
+  return lots.map((lot) => ({
+    ...lot,
+    wert: berechneEtfWachstum(lot.wert, renditePercent),
+  }));
+}
+
+function fuegeEtfLotHinzu(lots: EtfLot[], typ: EtfLotTyp, betrag: number): EtfLot[] {
+  if (betrag <= 0) {
+    return lots;
+  }
+
+  return [...lots, { typ, wert: betrag, einstandswert: betrag }];
+}
+
+function berechneSteuerlastProEuro(lot: EtfLot): number {
+  if (lot.wert <= 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return Math.max(0, (lot.wert - lot.einstandswert) / lot.wert);
+}
+
+function verkaufeEtfLotsSteueroptimal(
+  lots: EtfLot[],
+  zielVerkauf: number
+): { lots: EtfLot[]; etfVerkauf: number; etfEinstandswertVerkauft: number; etfGewinn: number } {
+  let restVerkauf = Math.max(0, zielVerkauf);
+  let etfVerkauf = 0;
+  let etfEinstandswertVerkauft = 0;
+
+  const typPrioritaet: Record<EtfLotTyp, number> = {
+    zuzahlung: 0,
+    darlehen: 1,
+    startkapital: 2,
+  };
+
+  const sortierteLots = [...lots]
+    .map((lot, index) => ({ lot, index }))
+    .sort((a, b) => {
+      const steuerlastDifferenz = berechneSteuerlastProEuro(a.lot) - berechneSteuerlastProEuro(b.lot);
+      if (Math.abs(steuerlastDifferenz) > Number.EPSILON) {
+        return steuerlastDifferenz;
+      }
+
+      const typDifferenz = typPrioritaet[a.lot.typ] - typPrioritaet[b.lot.typ];
+      if (typDifferenz !== 0) {
+        return typDifferenz;
+      }
+
+      return a.index - b.index;
+    });
+
+  const lotMap = new Map<EtfLot, EtfLot>(
+    lots.map((lot) => [
+      lot,
+      { ...lot },
+    ])
+  );
+
+  for (const { lot } of sortierteLots) {
+    if (restVerkauf <= 0) {
+      break;
+    }
+
+    const aktuellerLot = lotMap.get(lot);
+    if (!aktuellerLot || aktuellerLot.wert <= 0) {
+      continue;
+    }
+
+    const verkaufsbetrag = Math.min(restVerkauf, aktuellerLot.wert);
+    const verkaufsquote = aktuellerLot.wert > 0 ? verkaufsbetrag / aktuellerLot.wert : 0;
+    const einstandswertVerkauft = aktuellerLot.einstandswert * verkaufsquote;
+
+    aktuellerLot.wert -= verkaufsbetrag;
+    aktuellerLot.einstandswert -= einstandswertVerkauft;
+
+    restVerkauf -= verkaufsbetrag;
+    etfVerkauf += verkaufsbetrag;
+    etfEinstandswertVerkauft += einstandswertVerkauft;
+  }
+
+  const aktualisierteLots = lots
+    .map((lot) => lotMap.get(lot) ?? lot)
+    .filter((lot) => lot.wert > 0.000001);
+
+  return {
+    lots: aktualisierteLots,
+    etfVerkauf,
+    etfEinstandswertVerkauft,
+    etfGewinn: Math.max(0, etfVerkauf - etfEinstandswertVerkauft),
+  };
+}
+
 /**
  * Calculate yearly Betrieb results for each year of the operating phase.
  */
 export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
-  let etfWert = state.startkapital;
-  let etfEinstandswert = state.startkapital;
+  let etfLots: EtfLot[] = [];
+  etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", Math.max(0, state.startkapital));
+  etfLots = fuegeEtfLotHinzu(etfLots, "darlehen", Math.max(0, state.darlehen.betrag));
   let cashReserve = 0;
   let offenesDarlehen = Math.max(0, state.darlehen.betrag);
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
@@ -179,12 +292,13 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   let aufgelaufeneZinsen = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
-    const etfWertVorjahrEnd = etfWert;
-    const etfWertNachWachstum = berechneEtfWachstum(etfWert, state.etfRendite);
+    const etfWertVorjahrEnd = sumEtfWert(etfLots);
+    const etfLotsNachWachstum = wachseEtfLots(etfLots, state.etfRendite);
+    const etfWertNachWachstum = sumEtfWert(etfLotsNachWachstum);
     const theoretischerEtfErtrag = Math.max(0, etfWertNachWachstum - etfWertVorjahrEnd);
 
     // Vorabpauschale tax
-    const vorabpauschale = berechneVorabpauschale(etfWert, etfWertNachWachstum);
+    const vorabpauschale = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum);
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale);
     // Recompute costs inside the yearly loop so changed expense inputs are reflected directly.
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
@@ -199,6 +313,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       state.darlehen.zinssatz,
       state.darlehen.monatlicherZuschuss
     );
+    const darlehensZuzahlungenJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
+    const ausZuzahlungenBeglicheneBetriebsausgaben = Math.min(darlehensZuzahlungenJaehrlich, betriebsausgabenGesamt);
+    const ungedeckteBetriebsausgaben = Math.max(0, betriebsausgabenGesamt - ausZuzahlungenBeglicheneBetriebsausgaben);
+    const freieDarlehensZuzahlungen = Math.max(0, darlehensZuzahlungenJaehrlich - ausZuzahlungenBeglicheneBetriebsausgaben);
     const jaehrlicheZinsen = state.darlehen.endfaellig ? 0 : darlehenszinsJaehrlich;
 
     // Accumulate deferred interest for endfällig loans (informational).
@@ -206,17 +324,13 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       aufgelaufeneZinsen += darlehenszinsJaehrlich;
     }
 
-    // Realized ETF gain only comes from actually sold ETF units.
-    const etfBasisQuote = etfWertNachWachstum > 0
-      ? Math.min(1, Math.max(0, etfEinstandswert / etfWertNachWachstum))
-      : 0;
-    const fixeAuszahlungen = betriebsausgabenGesamt + jaehrlicheZinsen + vorabpauschalesteuer;
+    const fixeAuszahlungen = ungedeckteBetriebsausgaben + jaehrlicheZinsen + vorabpauschalesteuer;
 
     // Solve sale amount iteratively because taxes depend on realized sale gain.
     let etfVerkauf = Math.min(etfWertNachWachstum, fixeAuszahlungen);
     for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
-      const einstandswertVerkauftIter = etfVerkauf * etfBasisQuote;
-      const realisierterEtfErtragIter = Math.max(0, etfVerkauf - einstandswertVerkauftIter);
+      const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf);
+      const realisierterEtfErtragIter = verkaufIteration.etfGewinn;
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
       const gewinnNachBetriebsausgabenIter =
         realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
@@ -234,8 +348,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       etfVerkauf = benoetigterVerkauf;
     }
 
-    const einstandswertVerkauft = etfVerkauf * etfBasisQuote;
-    const realisierterEtfErtrag = Math.max(0, etfVerkauf - einstandswertVerkauft);
+    const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf);
+    const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
+    const realisierterEtfErtrag = verkauf.etfGewinn;
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
       realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
@@ -255,15 +370,19 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer;
     const deckungssaldoNachAusgabenUndSteuern =
-      etfVerkauf - betriebsausgabenGesamt - jaehrlicheZinsen - vorabpauschalesteuer - gmbhSteuer - etfVerkaufssteuer;
+      etfVerkauf - ungedeckteBetriebsausgaben - jaehrlicheZinsen - vorabpauschalesteuer - gmbhSteuer - etfVerkaufssteuer;
 
     // Positive retained result is held as cash reserve (Aktiva).
     const cashReserveZugang = Math.max(0, nettogewinn);
     cashReserve += cashReserveZugang;
 
     // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
-    etfWert = Math.max(0, etfWertNachWachstum - etfVerkauf);
-    etfEinstandswert = Math.max(0, etfEinstandswert - einstandswertVerkauft);
+    etfLots = verkauf.lots;
+    etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", freieDarlehensZuzahlungen);
+    const etfWert = sumEtfWert(etfLots);
+    const startkapitalEtfWert = sumEtfWertNachTyp(etfLots, "startkapital");
+    const darlehenEtfWert = sumEtfWertNachTyp(etfLots, "darlehen");
+    const zuzahlungenEtfWert = sumEtfWertNachTyp(etfLots, "zuzahlung");
 
     offenesDarlehen = darlehenBetragEnde;
 
@@ -278,19 +397,25 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       gewinn: gewinnNachBetriebsausgaben,
       steuer: gesamtSteuer,
       nettogewinn,
-      details: {
-        etfWert,
-        etfGewinn: realisierterEtfErtrag,
-        etfEinstandswertVerkauft: einstandswertVerkauft,
-        theoretischerEtfErtrag,
-        etfVerkauf,
-        jaehrlicheKosten,
+        details: {
+          etfWert,
+          startkapitalEtfWert,
+          darlehenEtfWert,
+          zuzahlungenEtfWert,
+          etfGewinn: realisierterEtfErtrag,
+          etfEinstandswertVerkauft: einstandswertVerkauft,
+          theoretischerEtfErtrag,
+          etfVerkauf,
+          jaehrlicheKosten,
         handyNettoKosten,
-        benefitsKosten,
-        betriebsausgabenGesamt,
-        jaehrlicheZinsen,
-        aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
-        gewinnNachBetriebsausgaben,
+          benefitsKosten,
+          betriebsausgabenGesamt,
+          ausZuzahlungenBeglicheneBetriebsausgaben,
+          ungedeckteBetriebsausgaben,
+          freieDarlehensZuzahlungen,
+          jaehrlicheZinsen,
+          aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
+          gewinnNachBetriebsausgaben,
         vorabpauschale,
         vorabpauschalesteuer,
         etfVerkaufssteuer,
