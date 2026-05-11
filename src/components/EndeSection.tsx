@@ -135,7 +135,7 @@ export function EndeSection() {
         <div className="bg-white rounded-xl shadow-sm border border-amber-300 p-4 md:p-6">
           <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Rückzahlung Gesellschafterdarlehen (1 Jahr)</h3>
           <p className="text-xs text-slate-500 mb-4">
-            Die GmbH zahlt das Darlehen (steuerfrei) sowie die aufgelaufenen Zinsen (Abgeltungssteuer 26,375%) an den Gesellschafter zurück.
+            Die GmbH zahlt das Darlehen (steuerfrei) sowie die aufgelaufenen Zinsen (progressive Einkommensteuer) an den Gesellschafter zurück.
             Das Gehalt wird für dieses Jahr separat konfiguriert – niedrig genug, um die Gesamtsteuerlast (Zinsteuer + Einkommensteuer) gering zu halten.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -169,7 +169,7 @@ export function EndeSection() {
               <p className="text-xs text-amber-700">Zinsen brutto: <span className="font-semibold">+ {aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">GF-Gehalt brutto: <span className="font-semibold">+ {gehaltBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
-              <p className="text-xs text-amber-700">Einkommensteuer Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Einkommensteuer auf Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-sm font-bold text-amber-900 border-t border-amber-300 pt-1 mt-1">
