@@ -138,6 +138,7 @@ describe("berechneDarlehensAuszahlung", () => {
 describe("berechneEndeErgebnisse", () => {
   const defaultState: EndeState = {
     geschaeftsfuehrergehalt: 24000,
+    gehaltBereich1: 24000,
     gewinnausschuettung: 0,
     tilgungsrate: 0,
     laufzeitJahre: 3,
@@ -253,6 +254,7 @@ describe("berechneEndeErgebnisse", () => {
   describe("endfaellig = true (Bereich 1 + Bereich 2)", () => {
     const endfaelligState: EndeState = {
       geschaeftsfuehrergehalt: 24000,
+      gehaltBereich1: 24000,
       gewinnausschuettung: 0,
       tilgungsrate: 0,
       laufzeitJahre: 3,
@@ -292,7 +294,7 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
     });
 
-    it("Bereich 1: net Konsum = principal + after-tax interest + nettoGehalt", () => {
+    it("Bereich 1: net Konsum = principal + after-tax interest + nettoGehalt (uses gehaltBereich1)", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
@@ -301,6 +303,25 @@ describe("berechneEndeErgebnisse", () => {
       const nettoGehalt = results[0].details.nettoGehalt as number;
       const expectedNetto = principal + zinsenNetto + nettoGehalt;
       expect(results[0].nettogewinn).toBeCloseTo(expectedNetto);
+    });
+
+    it("Bereich 1: uses gehaltBereich1 independently from geschaeftsfuehrergehalt", () => {
+      // Set Bereich 1 salary to 0 (only loan repayment, no salary)
+      const stateWithZeroBereich1Salary = { ...endfaelligState, gehaltBereich1: 0 };
+      const results = berechneEndeErgebnisse(stateWithZeroBereich1Salary, 0, 10000, 3.5, 2000, true);
+      expect(results[0].details.bruttoGehalt).toBe(0);
+      expect(results[0].details.nettoGehalt).toBe(0);
+      // Bereich 2 still uses geschaeftsfuehrergehalt = 24000
+      expect(results[1].details.bruttoGehalt).toBe(24000);
+    });
+
+    it("Bereich 1: lower gehaltBereich1 reduces combined tax", () => {
+      const highSalaryState = { ...endfaelligState, gehaltBereich1: 24000 };
+      const lowSalaryState = { ...endfaelligState, gehaltBereich1: 0 };
+      const resultsHigh = berechneEndeErgebnisse(highSalaryState, 0, 10000, 3.5, 2000, true);
+      const resultsLow = berechneEndeErgebnisse(lowSalaryState, 0, 10000, 3.5, 2000, true);
+      // Lower salary → less total tax in Bereich 1
+      expect(resultsLow[0].steuer).toBeLessThan(resultsHigh[0].steuer);
     });
 
     it("Bereich 1: zielnetto stored in details", () => {

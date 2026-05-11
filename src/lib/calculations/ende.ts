@@ -123,17 +123,25 @@ export function berechneDarlehensAuszahlung(
  * Calculate yearly Ende results.
  * The Ende phase represents the wind-down / distribution phase.
  *
+ * Two parties are involved:
+ * - **GmbH** (Party 1): holds the ETF portfolio and outstanding shareholder loan obligation.
+ * - **Gesellschafter** (Party 2 / shareholder): receives loan repayments, interest, salary and
+ *   optional Gewinnausschüttung. The GmbH is NOT liquidated; it continues operating.
+ *
  * When the Betrieb loan is endfällig (interest deferred to end), the Ende phase is split:
  *
  * **Bereich 1** (single settlement year, only when endfaellig = true):
- *   - The GmbH repays the full loan principal + all accumulated deferred interest in one go.
- *   - Tax on the deferred interest is calculated at Abgeltungssteuer (26.375%).
- *   - Net available = (principal + after-tax deferred interest) + nettoGehalt (Midijob).
- *   - The zielnetto for this year is state.zielnettoBereich1 (default 17 000 €/a).
+ *   - The GmbH repays the full loan principal (tax-free for the shareholder) and all
+ *     accumulated deferred interest (taxed at Abgeltungssteuer 26.375%) to the shareholder.
+ *   - The shareholder also receives their Midijob salary (state.gehaltBereich1 – can be
+ *     lower than Midijob to keep the combined tax burden low).
+ *   - Shareholder's net Konsum = principal + after-tax interest + net salary.
+ *   - The zielnetto target for this year is state.zielnettoBereich1 (default 17 000 €/a).
  *
  * **Bereich 2** (remaining laufzeitJahre years):
  *   - Darlehen starts at 0 (fully settled in Bereich 1, or was never endfällig).
- *   - Regular salary, Gewinnausschüttung, and existing tilgung logic apply.
+ *   - Regular salary (state.geschaeftsfuehrergehalt), Gewinnausschüttung, and existing
+ *     tilgung logic apply.
  *   - The zielnetto target is state.zielnettoBereich2.
  *
  * Income sources (per year):
@@ -167,8 +175,8 @@ export function berechneEndeErgebnisse(
     // Net loan return (principal + after-tax interest)
     const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
 
-    // Salary in Bereich 1 (Midijob)
-    const bruttoGehalt = state.geschaeftsfuehrergehalt;
+    // Salary in Bereich 1 – can be Midijob or lower to minimise combined tax
+    const bruttoGehalt = Math.max(0, state.gehaltBereich1);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);

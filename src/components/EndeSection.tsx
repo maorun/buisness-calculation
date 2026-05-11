@@ -95,12 +95,15 @@ export function EndeSection() {
   const benefitsSteuerersparnis = berechneBenefitsSteuerersparnis(betrieb.benefits);
 
   // Bereich 1 preview calculations (only relevant when endfaellig)
+  const gehaltBereich1 = ende.gehaltBereich1;
+  const nettoGehaltBereich1 = berechneNettoGehalt(gehaltBereich1);
   const zinsSteuerBereich1 = aufgelaufeneZinsen * KAPITALERTRAGSTEUER_MIT_SOLI_RATE;
   const zinsenNettoBereich1 = aufgelaufeneZinsen - zinsSteuerBereich1;
   const darlehenNettoAuszahlungBereich1 = offeneDarlehensschuld + zinsenNettoBereich1;
-  const einkommensteuerBereich1 = berechneEinkommensteuer(ende.geschaeftsfuehrergehalt);
+  const einkommensteuerBereich1 = berechneEinkommensteuer(gehaltBereich1);
   const soliBereich1 = berechneSoli(einkommensteuerBereich1);
-  const konsumierbaresBereich1 = darlehenNettoAuszahlungBereich1 + nettoGehalt;
+  const konsumierbaresBereich1 = darlehenNettoAuszahlungBereich1 + nettoGehaltBereich1;
+  const gesamtSteuerBereich1 = zinsSteuerBereich1 + einkommensteuerBereich1 + soliBereich1;
 
   // Split ergebnisse for display
   const bereich1Ergebnisse = ergebnisse.filter((e) => e.details.bereich === 1);
@@ -128,30 +131,47 @@ export function EndeSection() {
       {/* Bereich 1 – only shown when endfaellig */}
       {endfaellig && (
         <div className="bg-white rounded-xl shadow-sm border border-amber-300 p-4 md:p-6">
-          <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Abrechnung der aufgelaufenen Zinsen (1 Jahr)</h3>
+          <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Rückzahlung Gesellschafterdarlehen (1 Jahr)</h3>
           <p className="text-xs text-slate-500 mb-4">
-            Im ersten Jahr der Endphase werden das zurückgezahlte Darlehen plus die aufgelaufenen Zinsen
-            (nach Abgeltungssteuer) zusammen mit dem Midijob-Gehalt als Konsum verbraucht.
+            Die GmbH zahlt das Darlehen (steuerfrei) sowie die aufgelaufenen Zinsen (Abgeltungssteuer 26,375%) an den Gesellschafter zurück.
+            Das Gehalt wird für dieses Jahr separat konfiguriert – niedrig genug, um die Gesamtsteuerlast (Zinsteuer + Einkommensteuer) gering zu halten.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputField
-              label="Zielnetto Bereich 1 (€/Jahr)"
-              value={ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1}
-              onChange={(v) => setEnde({ zielnettoBereich1: Math.max(0, parseFloat(v) || 0) })}
-              suffix="€/Jahr"
-              hint={`Angestrebtes Netto-Einkommen für das Abrechnungsjahr (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
-              min={0}
-            />
+            <div className="space-y-4">
+              <InputField
+                label="Zielnetto Bereich 1 (€/Jahr)"
+                value={ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1}
+                onChange={(v) => setEnde({ zielnettoBereich1: Math.max(0, parseFloat(v) || 0) })}
+                suffix="€/Jahr"
+                hint={`Angestrebtes Netto-Einkommen des Gesellschafters für das Abrechnungsjahr (default ${DEFAULT_ZIELNETTO_BEREICH1.toLocaleString("de-DE")} €)`}
+                min={0}
+              />
+              <InputField
+                label="GF-Gehalt Bereich 1 (€/Jahr)"
+                value={gehaltBereich1}
+                onChange={(v) => {
+                  const parsed = parseFloat(v);
+                  const normalized = Number.isFinite(parsed) ? Math.max(0, parsed) : gehaltBereich1;
+                  setEnde({ gehaltBereich1: Math.min(normalized, MIDIJOB_JAHR_MAX) });
+                }}
+                suffix="€/Jahr"
+                hint={`Midijob oder weniger (max. ${MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} €/Jahr). Niedrig halten, um Steuerlast durch Zinsen nicht zu erhöhen.`}
+                min={0}
+                max={MIDIJOB_JAHR_MAX}
+              />
+            </div>
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
-              <p className="text-xs text-amber-700 font-medium">Bereich-1 Übersicht</p>
-              <p className="text-xs text-amber-700">Darlehensrückzahlung (Tilgung): <span className="font-semibold">{offeneDarlehensschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Aufgelaufene Zinsen (brutto): <span className="font-semibold">{aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Steuer auf Zinsen (Abgeltungssteuer): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Darlehen netto (Tilgung + Zinsen netto): <span className="font-semibold">{darlehenNettoAuszahlungBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">GF-Gehalt netto (Midijob): <span className="font-semibold">{nettoGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Einkommensteuer Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700 font-medium">Gesellschafter Bereich-1 Übersicht</p>
+              <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium">Einnahmen</p>
+              <p className="text-xs text-amber-700">Darlehensrückzahlung (steuerfrei): <span className="font-semibold text-green-700">+ {offeneDarlehensschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Zinsen brutto: <span className="font-semibold">+ {aufgelaufeneZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">GF-Gehalt brutto: <span className="font-semibold">+ {gehaltBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
+              <p className="text-xs text-amber-700">Abgeltungssteuer Zinsen (26,375%): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-sm font-bold text-amber-900 border-t border-amber-300 pt-1 mt-1">
-                Gesamt Konsum: {konsumierbaresBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                Netto-Konsum Gesellschafter: {konsumierbaresBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 {" "}
                 <span className={konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "text-green-700" : "text-red-700"}>
                   ({konsumierbaresBereich1 >= (ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1) ? "≥" : "<"} Zielnetto {(ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1).toLocaleString("de-DE")} €)
@@ -333,9 +353,10 @@ export function EndeSection() {
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
         <div className="text-xs text-gray-600 space-y-1">
-          <p><span className="font-medium">GF-Gehalt:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
-          {endfaellig && <p><span className="font-medium">Aufgelaufene Zinsen (Bereich 1):</span> Abgeltungssteuer 26,375% auf gesamten Zinsbetrag</p>}
-          <p><span className="font-medium">Darlehen:</span> Zinsanteil mit 26,375% Abgeltungssteuer, Tilgung steuerfrei</p>
+          {endfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Abgeltungssteuer 26,375% auf alle aufgelaufenen Zinsen (Zahlung der GmbH an Gesellschafter)</p>}
+          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Midijob oder weniger → progressive Einkommensteuer (14%–45%) + ggf. SolZ. Gehalt niedrig halten, um Gesamtsteuerlast zu minimieren.</p>}
+          <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
+          <p><span className="font-medium">Darlehen (Bereich 2):</span> Zinsanteil mit 26,375% Abgeltungssteuer, Tilgungsanteil steuerfrei</p>
           <p><span className="font-medium">Abgeltungsteuer:</span> 25% + 5,5% SolZ = 26,375% (flat)</p>
           <p><span className="font-medium">Teileinkünfteverfahren:</span> 60% des Betrags × persönlicher Steuersatz</p>
           <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt.</p>
