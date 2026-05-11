@@ -247,6 +247,8 @@ export function berechneEndeErgebnisse(
     // into the new shareholder loan for Bereich 2 and therefore is not part of
     // the Bereich-1 zielnetto comparison.
     const konsumierbaresNettoBereich1 = nettoGehalt;
+    // gesamtNetto still tracks the full wealth effect of the year, including
+    // the new shareholder-loan asset that remains invested in the GmbH.
     const gesamtNetto = darlehenNettoAuszahlung + nettoGehalt;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
     const gesamtSteuer = zinsSteuer + einkommensteuer + soli;
