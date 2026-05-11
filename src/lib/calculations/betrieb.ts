@@ -28,6 +28,7 @@ export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
 export const DARLEHEN_MONATE_PRO_JAHR = 12;
 export const MIN_ETF_LOT_WERT = 0.000001;
+export const ETF_SORT_EPSILON = 0.0000000001;
 
 type EtfLotTyp = "startkapital" | "darlehen" | "zuzahlung";
 
@@ -200,32 +201,26 @@ function fuegeEtfLotHinzu(lots: EtfLot[], typ: EtfLotTyp, betrag: number): EtfLo
 }
 
 function berechneWertsteigerungsanteil(lot: EtfLot): number {
-  if (lot.wert <= 0) {
-    return Number.POSITIVE_INFINITY;
+  if (lot.wert <= MIN_ETF_LOT_WERT) {
+    return -1;
   }
 
   return Math.max(0, (lot.wert - lot.einstandswert) / lot.wert);
 }
 
-function verkaufeEtfLotsSteueroptimal(
-  lots: EtfLot[],
-  zielVerkauf: number
-): { lots: EtfLot[]; etfVerkauf: number; etfEinstandswertVerkauft: number; etfGewinn: number } {
-  let restVerkauf = Math.max(0, zielVerkauf);
-  let etfVerkauf = 0;
-  let etfEinstandswertVerkauft = 0;
-
+function sortiereEtfLotIndizesNachSteueroptimierung(lots: EtfLot[]): number[] {
   const typPrioritaet: Record<EtfLotTyp, number> = {
     zuzahlung: 0,
     darlehen: 1,
     startkapital: 2,
   };
 
-  const sortierteLots = [...lots]
+  return lots
     .map((lot, index) => ({ lot, index }))
+    .filter(({ lot }) => lot.wert > MIN_ETF_LOT_WERT)
     .sort((a, b) => {
       const steuerlastDifferenz = berechneWertsteigerungsanteil(a.lot) - berechneWertsteigerungsanteil(b.lot);
-      if (Math.abs(steuerlastDifferenz) > Number.EPSILON) {
+      if (Math.abs(steuerlastDifferenz) > ETF_SORT_EPSILON) {
         return steuerlastDifferenz;
       }
 
@@ -235,22 +230,27 @@ function verkaufeEtfLotsSteueroptimal(
       }
 
       return a.index - b.index;
-    });
+    })
+    .map(({ index }) => index);
+}
 
-  const lotMap = new Map<EtfLot, EtfLot>(
-    lots.map((lot) => [
-      lot,
-      { ...lot },
-    ])
-  );
+function verkaufeEtfLotsSteueroptimal(
+  lots: EtfLot[],
+  zielVerkauf: number,
+  sortierteLotIndizes: number[]
+): { lots: EtfLot[]; etfVerkauf: number; etfEinstandswertVerkauft: number; etfGewinn: number } {
+  let restVerkauf = Math.max(0, zielVerkauf);
+  let etfVerkauf = 0;
+  let etfEinstandswertVerkauft = 0;
+  const aktualisierteLots = lots.map((lot) => ({ ...lot }));
 
-  for (const { lot } of sortierteLots) {
+  for (const lotIndex of sortierteLotIndizes) {
     if (restVerkauf <= 0) {
       break;
     }
 
-    const aktuellerLot = lotMap.get(lot);
-    if (!aktuellerLot || aktuellerLot.wert <= 0) {
+    const aktuellerLot = aktualisierteLots[lotIndex];
+    if (!aktuellerLot || aktuellerLot.wert <= MIN_ETF_LOT_WERT) {
       continue;
     }
 
@@ -266,12 +266,8 @@ function verkaufeEtfLotsSteueroptimal(
     etfEinstandswertVerkauft += einstandswertVerkauft;
   }
 
-  const aktualisierteLots = lots
-    .map((lot) => lotMap.get(lot) ?? lot)
-    .filter((lot) => lot.wert > MIN_ETF_LOT_WERT);
-
   return {
-    lots: aktualisierteLots,
+    lots: aktualisierteLots.filter((lot) => lot.wert > MIN_ETF_LOT_WERT),
     etfVerkauf,
     etfEinstandswertVerkauft,
     etfGewinn: Math.max(0, etfVerkauf - etfEinstandswertVerkauft),
@@ -319,6 +315,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const ungedeckteBetriebsausgaben = Math.max(0, betriebsausgabenGesamt - ausZuzahlungenBeglicheneBetriebsausgaben);
     const freieDarlehensZuzahlungen = Math.max(0, darlehensZuzahlungenJaehrlich - ausZuzahlungenBeglicheneBetriebsausgaben);
     const jaehrlicheZinsen = state.darlehen.endfaellig ? 0 : darlehenszinsJaehrlich;
+    const sortierteLotIndizes = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstum);
 
     // Accumulate deferred interest for endfällig loans (informational).
     if (state.darlehen.endfaellig) {
@@ -330,7 +327,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Solve sale amount iteratively because taxes depend on realized sale gain.
     let etfVerkauf = Math.min(etfWertNachWachstum, fixeAuszahlungen);
     for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
-      const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf);
+      const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
       const realisierterEtfErtragIter = verkaufIteration.etfGewinn;
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
       const gewinnNachBetriebsausgabenIter =
@@ -349,7 +346,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       etfVerkauf = benoetigterVerkauf;
     }
 
-    const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf);
+    const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
     const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
     const realisierterEtfErtrag = verkauf.etfGewinn;
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
