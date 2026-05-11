@@ -141,14 +141,16 @@ describe("berechneEndeErgebnisse", () => {
     gewinnausschuettung: 0,
     tilgungsrate: 0,
     laufzeitJahre: 3,
+    zielnettoBereich1: 17000,
+    zielnettoBereich2: 0,
   };
 
-  it("returns one entry per year", () => {
+  it("returns one entry per year (non-endfaellig)", () => {
     const results = berechneEndeErgebnisse(defaultState);
     expect(results).toHaveLength(3);
   });
 
-  it("Jahr numbers are sequential", () => {
+  it("Jahr numbers are sequential (non-endfaellig)", () => {
     const results = berechneEndeErgebnisse(defaultState);
     expect(results[0].jahr).toBe(1);
     expect(results[2].jahr).toBe(3);
@@ -244,5 +246,78 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[0].details.firmenNettovermoegen).toBeCloseTo(
       results[0].details.firmenEtfVermoegen - results[0].details.firmenDarlehensverbindlichkeit
     );
+  });
+
+  // ---- Bereich 1 / endfällig tests ----
+
+  describe("endfaellig = true (Bereich 1 + Bereich 2)", () => {
+    const endfaelligState: EndeState = {
+      geschaeftsfuehrergehalt: 24000,
+      gewinnausschuettung: 0,
+      tilgungsrate: 0,
+      laufzeitJahre: 3,
+      zielnettoBereich1: 17000,
+      zielnettoBereich2: 0,
+    };
+
+    it("returns laufzeitJahre + 1 entries when endfaellig (1 Bereich-1 + N Bereich-2)", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results).toHaveLength(4); // 1 (Bereich 1) + 3 (Bereich 2)
+    });
+
+    it("first entry is Bereich 1, rest are Bereich 2", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].details.bereich).toBe(1);
+      for (let i = 1; i < results.length; i++) {
+        expect(results[i].details.bereich).toBe(2);
+      }
+    });
+
+    it("Bereich 1: restdarlehen is 0 (full repayment in settlement year)", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].details.restdarlehen).toBe(0);
+    });
+
+    it("Bereich 2: restdarlehen stays 0 (no new debt)", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      for (let i = 1; i < results.length; i++) {
+        expect(results[i].details.restdarlehen).toBe(0);
+      }
+    });
+
+    it("Bereich 1: taxes deferred interest at Abgeltungssteuer", () => {
+      const aufgelaufeneZinsen = 2000;
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, aufgelaufeneZinsen, true);
+      const expectedZinsSteuer = aufgelaufeneZinsen * 0.25 * 1.055;
+      expect(results[0].details.zinsSteuerBereich1).toBeCloseTo(expectedZinsSteuer);
+    });
+
+    it("Bereich 1: net Konsum = principal + after-tax interest + nettoGehalt", () => {
+      const aufgelaufeneZinsen = 2000;
+      const principal = 10000;
+      const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      const zinsSteuer = aufgelaufeneZinsen * 0.25 * 1.055;
+      const zinsenNetto = aufgelaufeneZinsen - zinsSteuer;
+      const nettoGehalt = results[0].details.nettoGehalt as number;
+      const expectedNetto = principal + zinsenNetto + nettoGehalt;
+      expect(results[0].nettogewinn).toBeCloseTo(expectedNetto);
+    });
+
+    it("Bereich 1: zielnetto stored in details", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].details.zielnetto).toBe(17000);
+    });
+
+    it("Jahr numbers: Bereich 1 = 1, Bereich 2 starts at 2", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 1500, true);
+      expect(results[0].jahr).toBe(1);
+      expect(results[1].jahr).toBe(2);
+      expect(results[3].jahr).toBe(4);
+    });
+
+    it("endfaellig=false with 0 aufgelaufeneZinsen returns same count as laufzeitJahre", () => {
+      const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 0, false);
+      expect(results).toHaveLength(3);
+    });
   });
 });

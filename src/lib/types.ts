@@ -39,6 +39,10 @@ export interface EndeState {
   gewinnausschuettung: number; // annual profit distribution
   tilgungsrate: number; // annual principal repayment in payout phase (0 = linear by remaining years)
   laufzeitJahre: number;
+  /** Target net income for Bereich 1 (the single year that settles deferred interest). Default 17 000 €. */
+  zielnettoBereich1: number;
+  /** Target net income per year for Bereich 2 (regular payout years, darlehen = 0). */
+  zielnettoBereich2: number;
 }
 
 export interface CalculatorState {

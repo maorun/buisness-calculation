@@ -88,7 +88,7 @@ export function berechneNettoAusschuettung(
   return { nettoAusschuettung, kstSteuer, ausschuettungsteuer };
 }
 
-const KAPITALERTRAGSTEUER_MIT_SOLI_RATE = 0.25 * (1 + 0.055);
+export const KAPITALERTRAGSTEUER_MIT_SOLI_RATE = 0.25 * (1 + 0.055);
 
 export function berechneDarlehensAuszahlung(
   restschuld: number,
@@ -121,32 +121,120 @@ export function berechneDarlehensAuszahlung(
  * Calculate yearly Ende results.
  * The Ende phase represents the wind-down / distribution phase.
  *
- * Income sources:
+ * When the Betrieb loan is endfällig (interest deferred to end), the Ende phase is split:
+ *
+ * **Bereich 1** (single settlement year, only when endfaellig = true):
+ *   - The GmbH repays the full loan principal + all accumulated deferred interest in one go.
+ *   - Tax on the deferred interest is calculated at Abgeltungssteuer (26.375%).
+ *   - Net available = (principal + after-tax deferred interest) + nettoGehalt (Midijob).
+ *   - The zielnetto for this year is state.zielnettoBereich1 (default 17 000 €/a).
+ *
+ * **Bereich 2** (remaining laufzeitJahre years):
+ *   - Darlehen starts at 0 (fully settled in Bereich 1, or was never endfällig).
+ *   - Regular salary, Gewinnausschüttung, and existing tilgung logic apply.
+ *   - The zielnetto target is state.zielnettoBereich2.
+ *
+ * Income sources (per year):
  * - Geschäftsführergehalt (salary) – taxed at progressive Einkommensteuer
  * - Darlehensauszahlung (shareholder loan servicing):
  *   - Zinsanteil taxed at 26.375% Abgeltungssteuer
  *   - Tilgungsanteil tax-free principal repayment
  * - Gewinnausschüttung (profit distribution) – taxed at best-of Abgeltungssteuer / Teileinkünfte
- * - Benefits (ongoing non-cash perks from GmbH)
  */
 export function berechneEndeErgebnisse(
   state: EndeState,
   etfWertAnfang: number = 0,
   darlehenRestschuldAnfang: number = 0,
-  darlehenZinssatzPercent: number = 0
+  darlehenZinssatzPercent: number = 0,
+  aufgelaufeneZinsen: number = 0,
+  endfaellig: boolean = false
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   let restvermoegen = etfWertAnfang;
   let firmenEtfVermoegen = Math.max(0, etfWertAnfang);
-  let restdarlehen = Math.max(0, darlehenRestschuldAnfang);
 
-  for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
+  // --- Bereich 1: settlement year for endfällig deferred interest ---
+  if (endfaellig) {
+    const aufgelaufeneZinsenNorm = Math.max(0, aufgelaufeneZinsen);
+    const darlehensrueckzahlung = Math.max(0, darlehenRestschuldAnfang); // principal, tax-free
+
+    // Tax on deferred interest at Abgeltungssteuer
+    const zinsSteuer = aufgelaufeneZinsenNorm * KAPITALERTRAGSTEUER_MIT_SOLI_RATE;
+    const zinsenNetto = aufgelaufeneZinsenNorm - zinsSteuer;
+
+    // Net loan return (principal + after-tax interest)
+    const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
+
+    // Salary in Bereich 1 (Midijob)
+    const bruttoGehalt = state.geschaeftsfuehrergehalt;
+    const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
+    const soli = berechneSoli(einkommensteuer);
+    const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
+
+    // Total net Konsum available in Bereich 1
+    const gesamtNetto = darlehenNettoAuszahlung + nettoGehalt;
+    const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
+    const gesamtSteuer = zinsSteuer + einkommensteuer + soli;
+
+    // The GmbH ETF must fund the full gross repayment + salary
+    const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
+    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenGesamtabfluss);
+
+    restvermoegen += gesamtNetto;
+
+    ergebnisse.push({
+      jahr: 1,
+      gesamtvermoegen: restvermoegen,
+      gewinn: gesamtBrutto,
+      steuer: gesamtSteuer,
+      nettogewinn: gesamtNetto,
+      details: {
+        bereich: 1,
+        zielnetto: state.zielnettoBereich1 ?? 17000,
+        bruttoGehalt,
+        nettoGehalt,
+        einkommensteuer,
+        soli,
+        // Deferred-interest settlement
+        aufgelaufeneZinsen: aufgelaufeneZinsenNorm,
+        zinsSteuerBereich1: zinsSteuer,
+        zinsenNettoBereich1: zinsenNetto,
+        darlehensrueckzahlung,
+        darlehenNettoAuszahlung,
+        // No ongoing tilgung in Bereich 1 (full repayment in one shot)
+        darlehenZinsen: aufgelaufeneZinsenNorm,
+        darlehenZinsenSteuer: zinsSteuer,
+        darlehenZinsenNetto: zinsenNetto,
+        darlehenTilgung: darlehensrueckzahlung,
+        darlehenGesamtauszahlungBrutto: gesamtBrutto - bruttoGehalt,
+        darlehenGesamtauszahlungNetto: darlehenNettoAuszahlung,
+        restdarlehen: 0,
+        firmenGesamtabfluss,
+        firmenEtfVermoegen,
+        firmenDarlehensverbindlichkeit: 0,
+        firmenNettovermoegen: firmenEtfVermoegen,
+        gewinnausschuettung: 0,
+        nettoAusschuettung: 0,
+        kstSteuer: 0,
+        ausschuettungsteuer: 0,
+      },
+    });
+  }
+
+  // --- Bereich 2: regular payout years (darlehen = 0 after Bereich 1, or normal flow) ---
+  // When endfaellig the loan is fully settled in Bereich 1; otherwise start with the given restschuld.
+  let restdarlehen = endfaellig ? 0 : Math.max(0, darlehenRestschuldAnfang);
+  const bereich2StartJahr = endfaellig ? 2 : 1;
+
+  for (let i = 1; i <= state.laufzeitJahre; i++) {
+    const jahr = bereich2StartJahr + i - 1;
+
     const bruttoGehalt = state.geschaeftsfuehrergehalt;
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
 
-    const verbleibendeJahre = state.laufzeitJahre - jahr + 1;
+    const verbleibendeJahre = state.laufzeitJahre - i + 1;
     const {
       zinsertragBrutto: darlehenZinsen,
       tilgungsanteil: darlehenTilgung,
@@ -181,6 +269,8 @@ export function berechneEndeErgebnisse(
       steuer: gesamtSteuer,
       nettogewinn: gesamtNetto,
       details: {
+        bereich: 2,
+        zielnetto: state.zielnettoBereich2 ?? 0,
         bruttoGehalt,
         nettoGehalt,
         einkommensteuer,

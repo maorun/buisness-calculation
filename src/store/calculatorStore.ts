@@ -49,6 +49,8 @@ const initialState: CalculatorState = {
     gewinnausschuettung: 0,
     tilgungsrate: 0,
     laufzeitJahre: 5,
+    zielnettoBereich1: 17000,
+    zielnettoBereich2: 0,
   },
 };
 
@@ -149,11 +151,15 @@ export const useCalculatorStore = create<CalculatorStore>((set, get) => ({
     const letzterEtfWert = letztesBetriebsergebnis?.details.etfWert ?? 0;
     const offenesDarlehen = letztesBetriebsergebnis?.details.offenesDarlehen
       ?? Math.max(0, get().betrieb.darlehen.betrag);
+    const aufgelaufeneZinsen = letztesBetriebsergebnis?.details.aufgelaufeneZinsen ?? 0;
+    const endfaellig = get().betrieb.darlehen.endfaellig;
     return berechneEndeErgebnisse(
       get().ende,
       letzterEtfWert,
       offenesDarlehen,
-      get().betrieb.darlehen.zinssatz
+      get().betrieb.darlehen.zinssatz,
+      aufgelaufeneZinsen,
+      endfaellig
     );
   },
 }));
