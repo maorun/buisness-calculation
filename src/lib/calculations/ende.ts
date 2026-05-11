@@ -117,6 +117,10 @@ export function berechneDarlehensZinsenSteuer(
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
 
+/**
+ * Calculates how much annual gross salary can still be paid before the
+ * shareholder's taxable salary + interest reaches the Midijob ceiling.
+ */
 export function berechneRestlichesMidijobGehalt(
   zinsen: number,
   jahreslimit: number = MIDIJOB_JAHR_MAX
@@ -124,6 +128,10 @@ export function berechneRestlichesMidijobGehalt(
   return Math.max(0, jahreslimit - Math.max(0, zinsen));
 }
 
+/**
+ * Calculates the flexible principal withdrawal needed to close a yearly
+ * Zielnetto gap after salary, interest and any distribution have been counted.
+ */
 export function berechneFlexibleTilgung(
   zielnetto: number,
   konsumVorTilgung: number,
