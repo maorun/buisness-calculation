@@ -262,7 +262,7 @@ export function EndeSection() {
                   {bereich2AutoGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr
                 </p>
                 <p className="text-xs text-green-600 mt-1">
-                  Netto: {bereich2NettoGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  Netto-Gehalt: {bereich2NettoGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">

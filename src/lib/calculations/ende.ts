@@ -130,7 +130,8 @@ export function berechneFlexibleTilgung(
   restdarlehen: number
 ): number {
   if (zielnetto <= 0 || restdarlehen <= 0) return 0;
-  return Math.min(Math.max(0, restdarlehen), Math.max(0, zielnetto - konsumVorTilgung));
+  const lueckeZumZielnetto = Math.max(0, zielnetto - konsumVorTilgung);
+  return Math.min(lueckeZumZielnetto, restdarlehen);
 }
 
 export function berechneDarlehensAuszahlung(
