@@ -244,7 +244,6 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
           <BilanzRow label="ETF-/Liquiditätsbestand vor Bereich 1" value={d.firmenEtfVermoegenVorBereich1} prefix="+" colorClass="text-blue-600" indent />
           <BilanzRow label="ETF-/Liquiditätsbestand nach Bereich 1" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
-          <BilanzRow label="Altes Gesellschafterdarlehen vor Rückzahlung" value={d.firmenDarlehensverbindlichkeitAlt} prefix="−" colorClass="text-gray-500" indent />
           <BilanzRow label="Neues Gesellschafterdarlehen nach Neustart" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
           <Divider />
           <BilanzRow

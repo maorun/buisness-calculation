@@ -450,6 +450,23 @@ describe("berechneEndeErgebnisse", () => {
       );
     });
 
+    it("Bereich 1: firmenEtfVermoegen accounts for reinvestiertes Darlehen flowing back into the GmbH", () => {
+      const etfStart = 50000;
+      const principal = 10000;
+      const aufgelaufeneZinsen = 1500;
+      const teiltilgung = 2000;
+      const state = { ...endfaelligState, teiltilgungBereich1: teiltilgung };
+      const results = berechneEndeErgebnisse(state, etfStart, principal, 3.5, aufgelaufeneZinsen, true);
+      const bereich1 = results[0];
+      const bruttoGehalt = endfaelligState.gehaltBereich1;
+      const reinvestiertesDarlehen = principal - teiltilgung;
+      // Net ETF after Bereich 1: pay out full principal + interest + salary, receive new loan back
+      const expectedEtf = etfStart - (principal + aufgelaufeneZinsen + bruttoGehalt) + reinvestiertesDarlehen;
+      expect(bereich1.details.firmenEtfVermoegen).toBeCloseTo(expectedEtf);
+      // nettovermoegen = ETF - new loan
+      expect(bereich1.details.firmenNettovermoegen).toBeCloseTo(expectedEtf - reinvestiertesDarlehen);
+    });
+
     it("Bereich 2: uses the new 3%-loan instead of dropping restdarlehen to 0", () => {
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 2000, true);
       expect(results[1].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
