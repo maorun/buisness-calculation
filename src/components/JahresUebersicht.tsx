@@ -51,12 +51,22 @@ function SectionHeader({ label }: { label: string }) {
 function BetriebBilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
   const gesamtSteuer = d.gmbhSteuer + d.vorabpauschalesteuer + d.etfVerkaufssteuer;
+  const betriebskostenPosten = e.betriebskostenPosten ?? [];
   return (
     <div className="space-y-0.5 text-xs">
       {/* ── GuV ──────────────────────────────────────── */}
       <SectionHeader label="Gewinn- und Verlustrechnung" />
       <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
       <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
+      {betriebskostenPosten.map((posten) => (
+        <BilanzRow
+          key={posten.label}
+          label={`• ${posten.label}`}
+          value={posten.wert}
+          colorClass="text-gray-500"
+          indent
+        />
+      ))}
       {d.jaehrlicheZinsen > 0 && (
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
@@ -134,7 +144,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       />
 
       {/* ── Weitere Infos ─────────────────────────────── */}
-      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0 || d.benefitsKosten > 0) && (
+      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0) && (
         <>
           <SectionHeader label="Weitere Infos" />
           {d.theoretischerEtfErtrag > 0 && (
@@ -142,9 +152,6 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           )}
           {d.vorabpauschale > 0 && (
             <BilanzRow label="Vorabpauschale (Bemessungsgrundlage)" value={d.vorabpauschale} colorClass="text-gray-500" indent />
-          )}
-          {d.benefitsKosten > 0 && (
-            <BilanzRow label="Benefits (in Betriebsausgaben enthalten)" value={d.benefitsKosten} colorClass="text-gray-500" indent />
           )}
           {d.aufgelaufeneZinsen > 0 && (
             <BilanzRow label="Aufgelaufene Zinsen (endfällig, kumuliert)" value={d.aufgelaufeneZinsen} colorClass="text-amber-600" indent />
