@@ -252,8 +252,8 @@ export function berechneEndeErgebnisse(
   let restvermoegen = etfWertAnfang;
   let firmenEtfVermoegen = Math.max(0, etfWertAnfang);
   let reinvestiertesDarlehen = 0;
-  // Tracks the sequential year within the Ende phase for phone-cost cycle.
-  let endeJahr = 1;
+  // Tracks the sequential year within the Ende phase for the 3-year phone replacement cycle.
+  let endePhaseJahr = 1;
 
   // --- Bereich 1: settlement year for endfällig deferred interest ---
   if (endfaellig) {
@@ -276,12 +276,12 @@ export function berechneEndeErgebnisse(
 
     // Betriebskosten for Bereich 1 (running GmbH costs continue in Ende phase)
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
-    const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endeJahr);
+    const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr);
     const benefitsKostenB1 = berechneBenefitsKosten(benefits);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
     const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
     const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * GMBH_STEUER_GESAMT : 0;
-    endeJahr++;
+    endePhaseJahr++;
 
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
@@ -399,10 +399,10 @@ export function berechneEndeErgebnisse(
 
     // Betriebskosten for this year (running GmbH costs continue in Ende phase)
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
-    const handyNettoKosten = berechneHandyNettoKostenProJahr(endeJahr);
+    const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr);
     const benefitsKosten = berechneBenefitsKosten(benefits);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
-    endeJahr++;
+    endePhaseJahr++;
 
     const verbleibendeJahre = state.laufzeitJahre - i + 1;
     const {
@@ -439,8 +439,8 @@ export function berechneEndeErgebnisse(
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
     // GmbH tax on net ETF gain after Betriebskosten and deductible interest
-    const gewinnNachBetriebsausgaben = theoretischerEtfErtrag - betriebsausgabenGesamt - darlehenZinsen;
-    const gmbhSteuer = gewinnNachBetriebsausgaben > 0 ? gewinnNachBetriebsausgaben * GMBH_STEUER_GESAMT : 0;
+    const steuerpflichtigerGewinn = theoretischerEtfErtrag - betriebsausgabenGesamt - darlehenZinsen;
+    const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * GMBH_STEUER_GESAMT : 0;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
