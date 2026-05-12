@@ -1,4 +1,13 @@
-import { EndeState, JahresErgebnis } from "../types";
+import { EndeState, JahresErgebnis, KostenPosition, BenefitConfig } from "../types";
+import {
+  berechneVorabpauschale,
+  berechneVorabpauschalesteuer,
+  berechneBetriebskosten,
+  berechneHandyNettoKostenProJahr,
+  berechneBenefitsKosten,
+  TEILFREISTELLUNG_AKTIEN_GMBH,
+  GMBH_STEUER_GESAMT,
+} from "./betrieb";
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
 // Annualized lower bound of the 556 € monthly Übergangsbereich threshold (§ 20 Abs. 2 SGB IV).
@@ -234,12 +243,17 @@ export function berechneEndeErgebnisse(
   darlehenRestschuldAnfang: number = 0,
   darlehenZinssatzPercent: number = 0,
   aufgelaufeneZinsen: number = 0,
-  endfaellig: boolean = false
+  endfaellig: boolean = false,
+  etfRenditePercent: number = 0,
+  kosten: KostenPosition[] = [],
+  benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 0 }
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   let restvermoegen = etfWertAnfang;
   let firmenEtfVermoegen = Math.max(0, etfWertAnfang);
   let reinvestiertesDarlehen = 0;
+  // Tracks the sequential year within the Ende phase for the 3-year phone replacement cycle.
+  let endePhaseJahr = 1;
 
   // --- Bereich 1: settlement year for endfällig deferred interest ---
   if (endfaellig) {
@@ -252,6 +266,22 @@ export function berechneEndeErgebnisse(
       darlehensrueckzahlung,
       Math.max(0, state.teiltilgungBereich1)
     );
+
+    // ETF growth for Bereich 1
+    const etfVorWachstumB1 = firmenEtfVermoegen;
+    const etfNachWachstumB1 = etfVorWachstumB1 * (1 + etfRenditePercent / 100);
+    const theoretischerEtfErtragB1 = Math.max(0, etfNachWachstumB1 - etfVorWachstumB1);
+    const vorabpauschaleB1 = berechneVorabpauschale(etfVorWachstumB1, etfNachWachstumB1);
+    const vorabpauschalesteuerB1 = berechneVorabpauschalesteuer(vorabpauschaleB1, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
+
+    // Betriebskosten for Bereich 1 (running GmbH costs continue in Ende phase)
+    const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
+    const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr);
+    const benefitsKostenB1 = berechneBenefitsKosten(benefits);
+    const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
+    const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
+    const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * GMBH_STEUER_GESAMT : 0;
+    endePhaseJahr++;
 
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
@@ -275,17 +305,17 @@ export function berechneEndeErgebnisse(
     const konsumierbaresNettoBereich1VorGkv = nettoGehalt + zinsenNetto + teiltilgungBereich1;
     const konsumierbaresNettoBereich1 = konsumierbaresNettoBereich1VorGkv - gesetzlicheKrankenversicherungBeitrag;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
-    const gesamtSteuer = zinsSteuer + einkommensteuer + soli;
+    const gesamtSteuer = zinsSteuer + einkommensteuer + soli + vorabpauschalesteuerB1 + gmbhSteuerB1;
 
-    // The GmbH ETF must fund the full gross repayment + salary.
+    // The GmbH ETF grows first, then funds the full gross repayment + salary + running costs.
     // The shareholder immediately relends the reinvestiertesDarlehen portion back to the GmbH,
-    // so the net ETF outflow is only (teiltilgungBereich1 + interest + salary).
-    const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
-    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenGesamtabfluss + reinvestiertesDarlehen);
+    // so the net ETF outflow is only (teiltilgungBereich1 + interest + salary + Betriebskosten).
+    const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1 + vorabpauschalesteuerB1 + gmbhSteuerB1;
+    firmenEtfVermoegen = Math.max(0, etfNachWachstumB1 - firmenGesamtabfluss + reinvestiertesDarlehen);
     const firmenGuVGehaltAufwand = bruttoGehalt;
     const firmenGuVZinsaufwand = aufgelaufeneZinsenNorm;
-    const firmenGuVSummeAufwand = firmenGuVGehaltAufwand + firmenGuVZinsaufwand;
-    const firmenGuVSaldo = -firmenGuVSummeAufwand;
+    const firmenGuVSummeAufwand = firmenGuVGehaltAufwand + firmenGuVZinsaufwand + betriebsausgabenGesamtB1;
+    const firmenGuVSaldo = theoretischerEtfErtragB1 - firmenGuVSummeAufwand;
 
     // Only the consumable net (salary + net interest + teiltilgung - GKV) accrues to the
     // shareholder's wealth here. The reinvested principal (reinvestiertesDarlehen) is NOT
@@ -341,6 +371,13 @@ export function berechneEndeErgebnisse(
         nettoAusschuettung: 0,
         kstSteuer: 0,
         ausschuettungsteuer: 0,
+        // ETF growth and Betriebskosten details
+        theoretischerEtfErtrag: theoretischerEtfErtragB1,
+        vorabpauschale: vorabpauschaleB1,
+        vorabpauschalesteuer: vorabpauschalesteuerB1,
+        jaehrlicheKosten: jaehrlicheKostenB1,
+        betriebsausgabenGesamt: betriebsausgabenGesamtB1,
+        gmbhSteuer: gmbhSteuerB1,
       },
     });
   }
@@ -352,6 +389,20 @@ export function berechneEndeErgebnisse(
 
   for (let i = 1; i <= state.laufzeitJahre; i++) {
     const jahr = bereich2StartJahr + i - 1;
+
+    // ETF growth for this year
+    const etfVorWachstum = firmenEtfVermoegen;
+    const etfNachWachstum = etfVorWachstum * (1 + etfRenditePercent / 100);
+    const theoretischerEtfErtrag = Math.max(0, etfNachWachstum - etfVorWachstum);
+    const vorabpauschale = berechneVorabpauschale(etfVorWachstum, etfNachWachstum);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
+
+    // Betriebskosten for this year (running GmbH costs continue in Ende phase)
+    const jaehrlicheKosten = berechneBetriebskosten(kosten);
+    const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr);
+    const benefitsKosten = berechneBenefitsKosten(benefits);
+    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
+    endePhaseJahr++;
 
     const verbleibendeJahre = state.laufzeitJahre - i + 1;
     const {
@@ -387,14 +438,18 @@ export function berechneEndeErgebnisse(
     const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
+    // GmbH tax on net ETF gain after Betriebskosten and deductible interest
+    const steuerpflichtigerGewinn = theoretischerEtfErtrag - betriebsausgabenGesamt - darlehenZinsen;
+    const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * GMBH_STEUER_GESAMT : 0;
+
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
-    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer;
+    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
     const gesamtNetto =
       nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto - gesetzlicheKrankenversicherungBeitrag;
-    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer;
+    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer;
 
     restvermoegen += gesamtNetto;
-    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenGesamtabfluss);
+    firmenEtfVermoegen = Math.max(0, etfNachWachstum - firmenGesamtabfluss);
     restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
     const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen;
 
@@ -431,6 +486,13 @@ export function berechneEndeErgebnisse(
         nettoAusschuettung,
         kstSteuer,
         ausschuettungsteuer,
+        // ETF growth and Betriebskosten details
+        theoretischerEtfErtrag,
+        vorabpauschale,
+        vorabpauschalesteuer,
+        jaehrlicheKosten,
+        betriebsausgabenGesamt,
+        gmbhSteuer,
       },
     });
   }
