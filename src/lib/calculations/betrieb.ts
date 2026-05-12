@@ -136,9 +136,12 @@ export function berechneDarlehensjahr(
  */
 export function berechneBetriebskosten(kosten: KostenPosition[]): number {
   return kosten.reduce((sum, k) => {
-    const jahresBetrag = k.periode === 'monatlich' ? k.betrag * 12 : k.betrag;
-    return sum + jahresBetrag;
+    return sum + berechneKostenPositionJahresBetrag(k);
   }, 0);
+}
+
+function berechneKostenPositionJahresBetrag(kostenPosition: KostenPosition): number {
+  return kostenPosition.periode === 'monatlich' ? kostenPosition.betrag * 12 : kostenPosition.betrag;
 }
 
 /**
@@ -165,6 +168,26 @@ export function berechneBenefitsKosten(benefits: BenefitConfig): number {
   const tankJahr = clampedTankMonthly * 12;
   const strategieessen = benefits.strategieessen;
   return tankJahr + strategieessen;
+}
+
+function berechneBetriebskostenPosten(
+  kosten: KostenPosition[],
+  benefits: BenefitConfig,
+  handyNettoKosten: number
+): { label: string; wert: number }[] {
+  const kostenPosten = kosten.map((kostenPosition) => ({
+    label: kostenPosition.bezeichnung,
+    wert: berechneKostenPositionJahresBetrag(kostenPosition),
+  }));
+
+  const tankgutscheinJaehrlich = Math.min(Math.max(benefits.tankgutschein, 0), 50) * DARLEHEN_MONATE_PRO_JAHR;
+  const benefitsPosten = [
+    { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
+    { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
+    { label: `Firmenhandy (alle ${HANDY_ERSATZZYKLUS_JAHRE} Jahre)`, wert: handyNettoKosten },
+  ];
+
+  return [...kostenPosten, ...benefitsPosten];
 }
 
 /**
@@ -311,6 +334,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
+    const betriebskostenPosten = berechneBetriebskostenPosten(state.kosten, state.benefits, handyNettoKosten);
 
     const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
       offenesDarlehen,
@@ -402,25 +426,25 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       gewinn: gewinnNachBetriebsausgaben,
       steuer: gesamtSteuer,
       nettogewinn,
-        details: {
-          etfWert,
-          startkapitalEtfWert,
-          darlehenEtfWert,
-          zuzahlungenEtfWert,
-          etfGewinn: realisierterEtfErtrag,
-          etfEinstandswertVerkauft: einstandswertVerkauft,
-          theoretischerEtfErtrag,
-          etfVerkauf,
-          jaehrlicheKosten,
+      details: {
+        etfWert,
+        startkapitalEtfWert,
+        darlehenEtfWert,
+        zuzahlungenEtfWert,
+        etfGewinn: realisierterEtfErtrag,
+        etfEinstandswertVerkauft: einstandswertVerkauft,
+        theoretischerEtfErtrag,
+        etfVerkauf,
+        jaehrlicheKosten,
         handyNettoKosten,
-          benefitsKosten,
-          betriebsausgabenGesamt,
-          ausZuzahlungenBeglicheneBetriebsausgaben,
-          ungedeckteBetriebsausgaben,
-          freieDarlehensZuzahlungen,
-          jaehrlicheZinsen,
-          aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
-          gewinnNachBetriebsausgaben,
+        benefitsKosten,
+        betriebsausgabenGesamt,
+        ausZuzahlungenBeglicheneBetriebsausgaben,
+        ungedeckteBetriebsausgaben,
+        freieDarlehensZuzahlungen,
+        jaehrlicheZinsen,
+        aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
+        gewinnNachBetriebsausgaben,
         vorabpauschale,
         vorabpauschalesteuer,
         etfVerkaufssteuer,
@@ -431,6 +455,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         offenesDarlehen,
         nettovermoegen,
       },
+      betriebskostenPosten,
     });
   }
 

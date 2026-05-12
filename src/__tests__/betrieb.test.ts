@@ -545,6 +545,31 @@ describe("berechneBetriebsErgebnisse", () => {
     );
   });
 
+  it("tracks operating expense items including phone cadence in the yearly breakdown", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      etfRendite: 0,
+      laufzeitJahre: 4,
+      kosten: [{ id: "1", bezeichnung: "Software", betrag: 100, periode: "monatlich" }],
+      benefits: { tankgutschein: 50, strategieessen: 1500 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+    };
+
+    const [jahr1, jahr2] = berechneBetriebsErgebnisse(state);
+    const firmenhandyJahr1 = jahr1.betriebskostenPosten?.find((posten) => posten.label.includes("Firmenhandy"));
+    const firmenhandyJahr2 = jahr2.betriebskostenPosten?.find((posten) => posten.label.includes("Firmenhandy"));
+
+    expect(jahr1.betriebskostenPosten).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "Software", wert: 1200 }),
+        expect.objectContaining({ label: "Tankgutschein", wert: 600 }),
+        expect.objectContaining({ label: "Strategieessen", wert: 1500 }),
+      ])
+    );
+    expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE));
+    expect(firmenhandyJahr2?.wert).toBe(0);
+  });
+
   it("increases outstanding loan balance each year for monthly top-ups", () => {
     const state: BetriebState = {
       ...defaultState,

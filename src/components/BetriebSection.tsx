@@ -196,7 +196,7 @@ export function BetriebSection() {
         <p className="text-xs text-gray-400 mb-4">
           Alle Positionen reduzieren den steuerpflichtigen Gewinn direkt. Das Firmenhandy
           ({handyAnschaffung} € alle {handyZyklus} Jahre, abzüglich {handyVerkaufsquote}% Verkaufserlös)
-          wird automatisch als Betriebsausgabe berücksichtigt.
+          wird nur im jeweiligen Ersatzjahr als Betriebsausgabe berücksichtigt.
         </p>
         <KostenListe
           kosten={betrieb.kosten}

@@ -62,4 +62,8 @@ export interface JahresErgebnis {
   steuer: number;
   nettogewinn: number;
   details: Record<string, number>;
+  betriebskostenPosten?: {
+    label: string;
+    wert: number;
+  }[];
 }
