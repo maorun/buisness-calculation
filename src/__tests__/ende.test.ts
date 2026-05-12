@@ -385,7 +385,7 @@ describe("berechneEndeErgebnisse", () => {
       expect(resultsMax[0].details.bruttoGehalt).toBe(50000);
     });
 
-    it("Bereich 1: total asset inflow still includes the new shareholder loan plus salary net", () => {
+    it("Bereich 1: nettogewinn equals consumable net (salary + net interest + teiltilgung - GKV), without reinvested principal", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
@@ -393,7 +393,8 @@ describe("berechneEndeErgebnisse", () => {
       const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1);
       const gkv = berechneGesetzlicheKrankenversicherungBeitrag(gehaltBereich1 + aufgelaufeneZinsen);
       const zinsenNetto = aufgelaufeneZinsen - zinsSteuer;
-      const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(gehaltBereich1) - gkv;
+      // teiltilgungBereich1 = 0 in endfaelligState; reinvested principal is NOT counted here
+      const expectedNetto = zinsenNetto + berechneNettoGehalt(gehaltBereich1) - gkv;
       expect(results[0].nettogewinn).toBeCloseTo(expectedNetto);
       expect(results[0].details.bruttoGehalt).toBe(gehaltBereich1);
     });
@@ -411,7 +412,8 @@ describe("berechneEndeErgebnisse", () => {
         state.teiltilgungBereich1 -
         gkv;
       expect(results[0].details.konsumierbaresNettoBereich1).toBeCloseTo(expectedKonsumierbar);
-      expect(results[0].details.konsumierbaresNettoBereich1).toBeLessThan(results[0].nettogewinn);
+      // nettogewinn now equals konsumierbaresNettoBereich1 (reinvested principal excluded)
+      expect(results[0].nettogewinn).toBeCloseTo(expectedKonsumierbar);
     });
 
     it("Bereich 1: keeps only the unrepaid principal as the new shareholder loan", () => {

@@ -89,6 +89,13 @@ describe("berechneVorabpauschalesteuer", () => {
     const expectedTax = taxableAmount * ABGELTUNGSSTEUER_GESAMT;
     expect(berechneVorabpauschalesteuer(vp, 0.5)).toBeCloseTo(expectedTax);
   });
+
+  it("uses GmbH Teilfreistellung (80%) and corporate tax rate when called with GmbH parameters", () => {
+    const vp = 1000;
+    const taxableAmount = vp * (1 - TEILFREISTELLUNG_AKTIEN_GMBH); // 200
+    const expectedTax = taxableAmount * GMBH_STEUER_GESAMT;
+    expect(berechneVorabpauschalesteuer(vp, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT)).toBeCloseTo(expectedTax);
+  });
 });
 
 describe("berechneEtfVerkaufssteuer", () => {

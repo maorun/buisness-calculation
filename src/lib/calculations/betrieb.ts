@@ -61,15 +61,18 @@ export function berechneVorabpauschale(
 }
 
 /**
- * Tax on Vorabpauschale using Abgeltungssteuer with Teilfreistellung.
- * For equity ETFs: 30% tax-free → tax applies to 70% of Vorabpauschale.
+ * Tax on Vorabpauschale with Teilfreistellung.
+ * For private investors (equity ETFs): 30% tax-free → Abgeltungssteuer on 70%.
+ * For GmbH/Körperschaft (equity ETFs): 80% tax-free → corporate tax (KSt+GewSt) on 20%.
+ * Pass TEILFREISTELLUNG_AKTIEN_GMBH and GMBH_STEUER_GESAMT when calling from a GmbH context.
  */
 export function berechneVorabpauschalesteuer(
   vorabpauschale: number,
-  teilfreistellung: number = TEILFREISTELLUNG_AKTIEN
+  teilfreistellung: number = TEILFREISTELLUNG_AKTIEN,
+  steuersatz: number = ABGELTUNGSSTEUER_GESAMT
 ): number {
   const steuerpflichtig = vorabpauschale * (1 - teilfreistellung);
-  return steuerpflichtig * ABGELTUNGSSTEUER_GESAMT;
+  return steuerpflichtig * steuersatz;
 }
 
 /**
@@ -298,9 +301,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const etfWertNachWachstum = sumEtfWert(etfLotsNachWachstum);
     const theoretischerEtfErtrag = Math.max(0, etfWertNachWachstum - etfWertVorjahrEnd);
 
-    // Vorabpauschale tax
+    // Vorabpauschale tax – GmbH uses 80% Teilfreistellung and corporate tax rate (KSt + GewSt)
     const vorabpauschale = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
     // Recompute costs inside the yearly loop so changed expense inputs are reflected directly.
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
