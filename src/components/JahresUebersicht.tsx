@@ -107,7 +107,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       {/* ── Cashflow ─────────────────────────────────── */}
       <SectionHeader label="Cashflow (ETF-Verkauf zur Kostendeckung)" />
       {d.ausCashZuschussBeglicheneBetriebsausgaben > 0 && (
-        <BilanzRow label="Betriebsausgaben aus jährlichem Cash-Zuschuss" value={d.ausCashZuschussBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
+        <BilanzRow label="Betriebsausgaben aus Cash-Zuschuss" value={d.ausCashZuschussBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
       )}
       {d.ausCashReserveBeglicheneBetriebsausgaben > 0 && (
         <BilanzRow label="Betriebsausgaben aus Cash-Reserve" value={d.ausCashReserveBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />

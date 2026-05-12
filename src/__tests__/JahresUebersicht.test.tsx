@@ -61,7 +61,7 @@ describe("JahresUebersicht", () => {
     expect(screen.getByText("• Tankgutschein")).toBeTruthy();
     expect(screen.getByText("• Strategieessen")).toBeTruthy();
     expect(screen.getByText("• Firmenhandy (alle 3 Jahre)")).toBeTruthy();
-    expect(screen.getByText("Betriebsausgaben aus jährlichem Cash-Zuschuss")).toBeTruthy();
+    expect(screen.getByText("Betriebsausgaben aus Cash-Zuschuss")).toBeTruthy();
     expect(screen.getByText("Betriebsausgaben aus Cash-Reserve")).toBeTruthy();
   });
 });

@@ -380,9 +380,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const betriebsausgabenNachCashZuschuss = Math.max(0, betriebsausgabenGesamt - ausCashZuschussBeglicheneBetriebsausgaben);
     const ausCashReserveBeglicheneBetriebsausgaben = Math.min(cashReserveVorjahr, betriebsausgabenNachCashZuschuss);
     const betriebsausgabenNachCashReserve = Math.max(0, betriebsausgabenNachCashZuschuss - ausCashReserveBeglicheneBetriebsausgaben);
-    cashReserve = cashReserveVorjahr + jaehrlicherCashZuschuss
-      - ausCashZuschussBeglicheneBetriebsausgaben
-      - ausCashReserveBeglicheneBetriebsausgaben;
+    const unverbrauchterCashZuschuss = jaehrlicherCashZuschuss - ausCashZuschussBeglicheneBetriebsausgaben;
+    cashReserve = cashReserveVorjahr + unverbrauchterCashZuschuss - ausCashReserveBeglicheneBetriebsausgaben;
     const ausZuzahlungenBeglicheneBetriebsausgaben = Math.min(darlehensZuzahlungenJaehrlich, betriebsausgabenNachCashReserve);
     const ungedeckteBetriebsausgaben = Math.max(0, betriebsausgabenNachCashReserve - ausZuzahlungenBeglicheneBetriebsausgaben);
     const verbleibendeDarlehensZuzahlungen = Math.max(0, darlehensZuzahlungenJaehrlich - ausZuzahlungenBeglicheneBetriebsausgaben);
