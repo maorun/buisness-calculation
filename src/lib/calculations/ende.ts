@@ -6,6 +6,9 @@ export const MIDIJOB_MONAT_MIN = 556;
 export const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
 export const MIDIJOB_JAHR_MAX = 24000;
 export const REINVESTIERTES_DARLEHEN_ZINSSATZ = 3;
+export const GKV_BEITRAGSSATZ = 0.146 + 0.025; // allgemeiner Satz + durchschnittlicher Zusatzbeitrag
+export const GKV_BEMESSUNG_MONAT_MAX = 5512.5;
+export const GKV_BEMESSUNG_JAHR_MAX = GKV_BEMESSUNG_MONAT_MAX * 12;
 
 // Progressive German income tax brackets 2024 (approximation)
 // https://www.bundesfinanzministerium.de
@@ -145,6 +148,21 @@ export function berechneFlexibleTilgung(
   return Math.min(lueckeZumZielnetto, restdarlehen);
 }
 
+/**
+ * Gesetzlicher Krankenversicherungsbeitrag für freiwillig gesetzlich versicherte
+ * Personen (vereinfachte Näherung mit Beitragsbemessungsgrenze).
+ * Wird aus dem bereits versteuerten Netto getragen.
+ */
+export function berechneGesetzlicheKrankenversicherungBeitrag(
+  jahresEinnahmen: number,
+  beitragssatz: number = GKV_BEITRAGSSATZ,
+  beitragsbemessungJahrMax: number = GKV_BEMESSUNG_JAHR_MAX
+): number {
+  const einnahmen = Math.max(0, jahresEinnahmen);
+  const beitragspflichtigeEinnahmen = Math.min(einnahmen, beitragsbemessungJahrMax);
+  return beitragspflichtigeEinnahmen * Math.max(0, beitragssatz);
+}
+
 export function berechneDarlehensAuszahlung(
   restschuld: number,
   zinssatzPercent: number,
@@ -186,7 +204,7 @@ export function berechneDarlehensAuszahlung(
  * **Bereich 1** (single settlement year, only when endfaellig = true):
  *   - The GmbH repays the full loan principal (tax-free for the shareholder) and all
  *     accumulated deferred interest (taxed at progressive Einkommensteuer) to the shareholder.
- *   - The shareholder salary is configured inside the Midijob corridor.
+ *   - The shareholder salary is freely configurable (only non-negative).
  *   - A configurable Teil-Tilgung can be consumed directly in Bereich 1.
  *   - Interest payments count towards the Bereich-1 Zielnetto as well.
  *   - The remaining principal becomes a new shareholder loan to the GmbH at 3% p.a.
@@ -196,8 +214,7 @@ export function berechneDarlehensAuszahlung(
  *
  * **Bereich 2** (remaining laufzeitJahre years):
  *   - For endfällig loans, the new 3%-loan from Bereich 1 is carried forward.
- *   - The salary is automatically topped up so that salary + annual interest reaches at most
- *     the Midijob upper limit.
+ *   - The salary is taken from state.geschaeftsfuehrergehalt (freely configurable).
  *   - If the annual netto from salary + interest + Ausschüttung is still below the target,
  *     principal is withdrawn flexibly from the new shareholder loan.
  *   - For non-endfällig loans, the previous salary and tilgung logic stays unchanged.
@@ -209,6 +226,7 @@ export function berechneDarlehensAuszahlung(
  *   - Zinsanteil taxed at progressive Einkommensteuer
  *   - Tilgungsanteil tax-free principal repayment
  * - Gewinnausschüttung (profit distribution) – taxed at best-of Abgeltungssteuer / Teileinkünfte
+ * - Gesetzliche Krankenversicherung (vereinfachte Näherung) – paid from net income
  */
 export function berechneEndeErgebnisse(
   state: EndeState,
@@ -229,10 +247,7 @@ export function berechneEndeErgebnisse(
     const darlehensrueckzahlung = Math.max(0, darlehenRestschuldAnfang); // principal, tax-free
     const firmenEtfVermoegenVorBereich1 = firmenEtfVermoegen;
     const firmenDarlehensverbindlichkeitAlt = darlehensrueckzahlung;
-    const bruttoGehalt = Math.min(
-      MIDIJOB_JAHR_MAX,
-      Math.max(MIDIJOB_JAHR_MIN, state.gehaltBereich1)
-    );
+    const bruttoGehalt = Math.max(0, state.gehaltBereich1);
     const teiltilgungBereich1 = Math.min(
       darlehensrueckzahlung,
       Math.max(0, state.teiltilgungBereich1)
@@ -253,10 +268,16 @@ export function berechneEndeErgebnisse(
 
     // Bereich 1 target net counts salary, after-tax interest and the configurable
     // partial principal repayment that is not rolled into the new shareholder loan.
-    const konsumierbaresNettoBereich1 = nettoGehalt + zinsenNetto + teiltilgungBereich1;
+    const beitragspflichtigeEinnahmenGkv = bruttoGehalt + aufgelaufeneZinsenNorm;
+    const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
+      beitragspflichtigeEinnahmenGkv
+    );
+    const konsumierbaresNettoBereich1VorGkv = nettoGehalt + zinsenNetto + teiltilgungBereich1;
+    const konsumierbaresNettoBereich1 = konsumierbaresNettoBereich1VorGkv - gesetzlicheKrankenversicherungBeitrag;
     // gesamtNetto still tracks the full wealth effect of the year, including
     // the new shareholder-loan asset that remains invested in the GmbH.
-    const gesamtNetto = darlehenNettoAuszahlung + nettoGehalt;
+    const gesamtNettoVorGkv = darlehenNettoAuszahlung + nettoGehalt;
+    const gesamtNetto = gesamtNettoVorGkv - gesetzlicheKrankenversicherungBeitrag;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
     const gesamtSteuer = zinsSteuer + einkommensteuer + soli;
 
@@ -287,6 +308,8 @@ export function berechneEndeErgebnisse(
         aufgelaufeneZinsen: aufgelaufeneZinsenNorm,
         zinsSteuerBereich1: zinsSteuer,
         zinsenNettoBereich1: zinsenNetto,
+        gesetzlicheKrankenversicherungBeitrag,
+        beitragspflichtigeEinnahmenGkv,
         darlehensrueckzahlung,
         darlehenNettoAuszahlung,
         teiltilgungBereich1,
@@ -297,6 +320,7 @@ export function berechneEndeErgebnisse(
         darlehenTilgung: darlehensrueckzahlung,
         darlehenGesamtauszahlungBrutto: gesamtBrutto - bruttoGehalt,
         darlehenGesamtauszahlungNetto: darlehenNettoAuszahlung,
+        konsumierbaresNettoBereich1VorGkv,
         konsumierbaresNettoBereich1,
         restdarlehen: reinvestiertesDarlehen,
         neuesDarlehenStart: reinvestiertesDarlehen,
@@ -337,9 +361,7 @@ export function berechneEndeErgebnisse(
       verbleibendeJahre,
       state.tilgungsrate
     );
-    const bruttoGehalt = endfaellig
-      ? berechneRestlichesMidijobGehalt(berechneteDarlehenZinsen)
-      : state.geschaeftsfuehrergehalt;
+    const bruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
@@ -351,7 +373,12 @@ export function berechneEndeErgebnisse(
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
     const zielnetto = endfaellig ? (state.zielnettoBereich2 ?? 0) : 0;
-    const konsumVorTilgung = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto;
+    const beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + state.gewinnausschuettung;
+    const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
+      beitragspflichtigeEinnahmenGkv
+    );
+    const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto;
+    const konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
     const darlehenTilgung = endfaellig
       ? berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen)
       : berechneteDarlehenTilgung;
@@ -360,7 +387,8 @@ export function berechneEndeErgebnisse(
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer;
-    const gesamtNetto = nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto;
+    const gesamtNetto =
+      nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto - gesetzlicheKrankenversicherungBeitrag;
     const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer;
 
     restvermoegen += gesamtNetto;
@@ -389,6 +417,9 @@ export function berechneEndeErgebnisse(
         darlehenGesamtauszahlungNetto,
         restdarlehen,
         neuesDarlehenZinssatz: endfaellig ? REINVESTIERTES_DARLEHEN_ZINSSATZ : darlehenZinssatzPercent,
+        beitragspflichtigeEinnahmenGkv,
+        gesetzlicheKrankenversicherungBeitrag,
+        konsumVorTilgungVorGkv,
         konsumVorTilgung,
         firmenGesamtabfluss,
         firmenEtfVermoegen,

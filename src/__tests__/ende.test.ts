@@ -8,8 +8,8 @@ import {
   berechneDarlehensZinsenSteuer,
   berechneRestlichesMidijobGehalt,
   berechneFlexibleTilgung,
+  berechneGesetzlicheKrankenversicherungBeitrag,
   berechneEndeErgebnisse,
-  MIDIJOB_JAHR_MIN,
   MIDIJOB_JAHR_MAX,
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
@@ -223,10 +223,14 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[1].gesamtvermoegen).toBeGreaterThan(results[0].gesamtvermoegen);
   });
 
-  it("nettogewinn = nettoGehalt + nettoAusschuettung + darlehensauszahlungNetto", () => {
+  it("nettogewinn = nettoGehalt + nettoAusschuettung + darlehensauszahlungNetto - GKV", () => {
     const results = berechneEndeErgebnisse(defaultState, 0, 12000, 6);
     for (const r of results) {
-      const expected = r.details.nettoGehalt + r.details.nettoAusschuettung + r.details.darlehenGesamtauszahlungNetto;
+      const expected =
+        r.details.nettoGehalt +
+        r.details.nettoAusschuettung +
+        r.details.darlehenGesamtauszahlungNetto -
+        r.details.gesetzlicheKrankenversicherungBeitrag;
       expect(r.nettogewinn).toBeCloseTo(expected);
     }
   });
@@ -359,7 +363,7 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.bruttoGehalt).toBe(expectedGehalt);
     });
 
-    it("Bereich 1: clamps configured salary to the Midijob corridor", () => {
+    it("Bereich 1: keeps configured salary without upper limit (only non-negative)", () => {
       const resultsMin = berechneEndeErgebnisse(
         { ...endfaelligState, gehaltBereich1: 0 },
         0,
@@ -377,8 +381,8 @@ describe("berechneEndeErgebnisse", () => {
         true
       );
 
-      expect(resultsMin[0].details.bruttoGehalt).toBe(MIDIJOB_JAHR_MIN);
-      expect(resultsMax[0].details.bruttoGehalt).toBe(MIDIJOB_JAHR_MAX);
+      expect(resultsMin[0].details.bruttoGehalt).toBe(0);
+      expect(resultsMax[0].details.bruttoGehalt).toBe(50000);
     });
 
     it("Bereich 1: total asset inflow still includes the new shareholder loan plus salary net", () => {
@@ -387,8 +391,9 @@ describe("berechneEndeErgebnisse", () => {
       const results = berechneEndeErgebnisse(endfaelligState, 0, principal, 3.5, aufgelaufeneZinsen, true);
       const gehaltBereich1 = endfaelligState.gehaltBereich1;
       const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1);
+      const gkv = berechneGesetzlicheKrankenversicherungBeitrag(gehaltBereich1 + aufgelaufeneZinsen);
       const zinsenNetto = aufgelaufeneZinsen - zinsSteuer;
-      const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(gehaltBereich1);
+      const expectedNetto = principal + zinsenNetto + berechneNettoGehalt(gehaltBereich1) - gkv;
       expect(results[0].nettogewinn).toBeCloseTo(expectedNetto);
       expect(results[0].details.bruttoGehalt).toBe(gehaltBereich1);
     });
@@ -399,10 +404,12 @@ describe("berechneEndeErgebnisse", () => {
       const state = { ...endfaelligState, teiltilgungBereich1: 3000 };
       const results = berechneEndeErgebnisse(state, 0, principal, 3.5, aufgelaufeneZinsen, true);
       const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, state.gehaltBereich1);
+      const gkv = berechneGesetzlicheKrankenversicherungBeitrag(state.gehaltBereich1 + aufgelaufeneZinsen);
       const expectedKonsumierbar =
         berechneNettoGehalt(state.gehaltBereich1) +
         (aufgelaufeneZinsen - zinsSteuer) +
-        state.teiltilgungBereich1;
+        state.teiltilgungBereich1 -
+        gkv;
       expect(results[0].details.konsumierbaresNettoBereich1).toBeCloseTo(expectedKonsumierbar);
       expect(results[0].details.konsumierbaresNettoBereich1).toBeLessThan(results[0].nettogewinn);
     });
@@ -453,11 +460,10 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.zielnetto).toBe(17000);
     });
 
-    it("Bereich 2: auto salary fills up to the Midijob limit together with yearly interest", () => {
+    it("Bereich 2: uses configured salary directly (without Midijob auto-fill)", () => {
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 2000, true);
       const jahr1Bereich2 = results[1];
-      expect(jahr1Bereich2.details.bruttoGehalt + jahr1Bereich2.details.darlehenZinsen)
-        .toBeCloseTo(MIDIJOB_JAHR_MAX);
+      expect(jahr1Bereich2.details.bruttoGehalt).toBe(endfaelligState.geschaeftsfuehrergehalt);
     });
 
     it("Bereich 2: tilgung is withdrawn flexibly when target net would otherwise be missed", () => {
