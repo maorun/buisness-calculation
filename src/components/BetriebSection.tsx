@@ -77,12 +77,12 @@ export function BetriebSection() {
     });
   };
 
-  const updateFirmenhandy = (field: keyof NonNullable<typeof betrieb.firmenhandy>, value: string | boolean) => {
+  const updateFirmenhandy = (field: keyof NonNullable<typeof betrieb.firmenhandy>, value: string | boolean | number) => {
     const currentHandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     setBetrieb({
       firmenhandy: {
         ...currentHandy,
-        [field]: typeof value === "boolean" ? value : parseFloat(value as string) || 0,
+        [field]: typeof value === "boolean" ? value : typeof value === "number" ? value : parseFloat(value) || 0,
       },
     });
   };
