@@ -25,6 +25,28 @@ export interface BenefitConfig {
   strategieessen: number; // annual strategy dinner (deductible)
 }
 
+export interface FirmenhandyConfig {
+  /** Whether the company-phone programme is active at all. */
+  aktiv: boolean;
+  /** Purchase price of the phone in €. */
+  anschaffungskosten: number;
+  /**
+   * Fraction of the purchase price recovered as resale proceeds when the old
+   * phone is sold before buying a new one (0–1, e.g. 0.1 = 10 %).
+   * Applies from the second purchase onward; the first purchase has no old
+   * device to sell.
+   */
+  restwertQuote: number;
+  /** How many years between phone replacements. */
+  ersatzzyklusJahre: number;
+  /**
+   * The operating-phase year in which the very first phone is purchased
+   * (1-based, default 1 = first year of the Betrieb phase).
+   * Years before this are treated as if the phone programme hasn't started yet.
+   */
+  erstanschaffungJahr?: number;
+}
+
 export interface BetriebState {
   startkapital: number;
   darlehen: DarlehenConfig;
@@ -32,6 +54,8 @@ export interface BetriebState {
   laufzeitJahre: number;
   kosten: KostenPosition[];
   benefits: BenefitConfig;
+  /** Configuration for the company mobile-phone programme. */
+  firmenhandy?: FirmenhandyConfig;
 }
 
 export interface EndeState {

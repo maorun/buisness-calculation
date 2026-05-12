@@ -617,13 +617,13 @@ describe("berechneEndeErgebnisse", () => {
       );
     });
 
-    it("phone cost (900 €) applies in Ende year 1 and cycles every 3 years", () => {
+    it("phone cost applies in Ende year 1 and cycles every 3 years", () => {
       const etfStart = 500000;
       const results = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, 0, []);
-      // Jahr 1 (endeJahr=1): phone cost = 900 (year 1 of 3-year cycle)
+      // Jahr 1 (endeJahr=1): first acquisition – full purchase price (no trade-in), 1000 €
       // Jahr 2 (endeJahr=2): no phone cost
       // Jahr 3 (endeJahr=3): no phone cost
-      expect(results[0].details.betriebsausgabenGesamt).toBeCloseTo(900); // handy cost only
+      expect(results[0].details.betriebsausgabenGesamt).toBeCloseTo(1000); // handy first acquisition
       expect(results[1].details.betriebsausgabenGesamt).toBeCloseTo(0);
       expect(results[2].details.betriebsausgabenGesamt).toBeCloseTo(0);
     });

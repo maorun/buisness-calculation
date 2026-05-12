@@ -3,10 +3,8 @@
 import React from "react";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import {
-  HANDY_ANSCHAFFUNGSKOSTEN,
-  HANDY_ERSATZZYKLUS_JAHRE,
-  HANDY_VERKAUFSQUOTE,
   TEILFREISTELLUNG_AKTIEN_GMBH,
+  DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -53,9 +51,6 @@ function InputField({
 export function BetriebSection() {
   const { betrieb, setBetrieb, addBetriebskosten, updateBetriebskosten, removeBetriebskosten, getBetriebsErgebnisse } =
     useCalculatorStore();
-  const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
-  const handyZyklus = HANDY_ERSATZZYKLUS_JAHRE;
-  const handyVerkaufsquote = (HANDY_VERKAUFSQUOTE * 100).toLocaleString("de-DE");
   const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
@@ -81,6 +76,18 @@ export function BetriebSection() {
       benefits: { ...betrieb.benefits, [field]: normalizedValue },
     });
   };
+
+  const updateFirmenhandy = (field: keyof NonNullable<typeof betrieb.firmenhandy>, value: string | boolean | number) => {
+    const currentHandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
+    setBetrieb({
+      firmenhandy: {
+        ...currentHandy,
+        [field]: typeof value === "boolean" ? value : typeof value === "number" ? value : parseFloat(value) || 0,
+      },
+    });
+  };
+
+  const firmenhandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
 
   return (
     <div className="space-y-6">
@@ -190,13 +197,68 @@ export function BetriebSection() {
         </div>
       </div>
 
+      {/* Firmenhandy */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Firmenhandy</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Smartphones gelten seit dem BMF-Schreiben vom 26.02.2021 als sofort abschreibungsfähige
+          Digitalgüter (Sofortabschreibung im Anschaffungsjahr). Der Kaufpreis wird im Ersatzjahr
+          vollständig als Betriebsausgabe abgezogen; der Verkaufserlös des Altgeräts mindert ab
+          dem zweiten Zyklus den Nettoaufwand.
+        </p>
+        <div className="flex items-center gap-3 mb-4">
+          <input
+            type="checkbox"
+            id="handyAktiv"
+            checked={firmenhandy.aktiv}
+            onChange={(e) => updateFirmenhandy("aktiv", e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+          />
+          <label htmlFor="handyAktiv" className="text-sm text-gray-700">
+            Firmenhandy-Programm aktiv
+          </label>
+        </div>
+        {firmenhandy.aktiv && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField
+              label="Kaufpreis (€)"
+              value={firmenhandy.anschaffungskosten}
+              onChange={(v) => updateFirmenhandy("anschaffungskosten", v)}
+              suffix="€"
+              hint="Netto-Anschaffungskosten des neuen Geräts"
+            />
+            <InputField
+              label="Restwert bei Verkauf (%)"
+              value={Math.round(firmenhandy.restwertQuote * 100)}
+              onChange={(v) => updateFirmenhandy("restwertQuote", String((parseFloat(v) || 0) / 100))}
+              suffix="%"
+              hint="Anteil des Kaufpreises, der beim Verkauf des Altgeräts erzielt wird"
+            />
+            <InputField
+              label="Ersatzzyklus (Jahre)"
+              value={firmenhandy.ersatzzyklusJahre}
+              onChange={(v) => updateFirmenhandy("ersatzzyklusJahre", v)}
+              suffix="Jahre"
+              hint="Alle wie viele Jahre wird das Gerät ersetzt?"
+            />
+            <InputField
+              label="Erstanschaffung ab Jahr"
+              value={firmenhandy.erstanschaffungJahr ?? 1}
+              onChange={(v) => updateFirmenhandy("erstanschaffungJahr", Math.max(1, parseInt(v) || 1))}
+              suffix="Jahr"
+              hint="In welchem Betriebsjahr wird das erste Handy angeschafft?"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Operating costs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-1">Laufende Betriebskosten (jährlich)</h3>
         <p className="text-xs text-gray-400 mb-4">
           Alle Positionen reduzieren den steuerpflichtigen Gewinn direkt. Das Firmenhandy
-          ({handyAnschaffung} € alle {handyZyklus} Jahre, abzüglich {handyVerkaufsquote}% Verkaufserlös)
-          wird nur im jeweiligen Ersatzjahr als Betriebsausgabe berücksichtigt.
+          wird – sofern aktiv – nur im jeweiligen Ersatzjahr als Betriebsausgabe berücksichtigt
+          (Sofortabschreibung).
         </p>
         <KostenListe
           kosten={betrieb.kosten}

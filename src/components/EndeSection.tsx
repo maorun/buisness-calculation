@@ -14,9 +14,7 @@ import {
 } from "@/lib/calculations/ende";
 import {
   berechneBenefitsSteuerersparnis,
-  HANDY_ANSCHAFFUNGSKOSTEN,
-  HANDY_ERSATZZYKLUS_JAHRE,
-  HANDY_VERKAUFSQUOTE,
+  DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
 
 function InputField({
@@ -124,9 +122,10 @@ export function EndeSection() {
   // Interest on shareholder loans is taxed at progressive Einkommensteuer, not flat Abgeltungssteuer
   const zinsensteuerProJahr = berechneDarlehensZinsenSteuer(zinsertragProJahr, ende.geschaeftsfuehrergehalt);
   const nettoDarlehensauszahlungProJahr = tilgungProJahr + (zinsertragProJahr - zinsensteuerProJahr);
-  const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
-  const handyZyklus = HANDY_ERSATZZYKLUS_JAHRE;
-  const handyVerkaufsquote = (HANDY_VERKAUFSQUOTE * 100).toLocaleString("de-DE");
+  const handyConfig = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
+  const handyAnschaffung = handyConfig.anschaffungskosten.toLocaleString("de-DE");
+  const handyZyklus = handyConfig.ersatzzyklusJahre;
+  const handyVerkaufsquote = (handyConfig.restwertQuote * 100).toLocaleString("de-DE");
 
   const nettoGehalt = berechneNettoGehalt(ende.geschaeftsfuehrergehalt);
   const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung);

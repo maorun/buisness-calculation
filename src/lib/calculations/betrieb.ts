@@ -1,4 +1,4 @@
-import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition } from "../types";
+import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig } from "../types";
 
 // 2024 Basiszins for Vorabpauschale calculation
 export const BASISZINS_2024 = 0.0229;
@@ -29,6 +29,15 @@ export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
 export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
+
+/** Default configuration for the company mobile-phone programme. */
+export const DEFAULT_FIRMENHANDY_CONFIG: FirmenhandyConfig = {
+  aktiv: true,
+  anschaffungskosten: HANDY_ANSCHAFFUNGSKOSTEN,
+  restwertQuote: HANDY_VERKAUFSQUOTE,
+  ersatzzyklusJahre: HANDY_ERSATZZYKLUS_JAHRE,
+  erstanschaffungJahr: 1,
+};
 export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
 export const DARLEHEN_MONATE_PRO_JAHR = 12;
@@ -173,7 +182,8 @@ export function berechneBenefitsKosten(benefits: BenefitConfig): number {
 function berechneBetriebskostenPosten(
   kosten: KostenPosition[],
   benefits: BenefitConfig,
-  handyNettoKosten: number
+  handyNettoKosten: number,
+  handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): { label: string; wert: number }[] {
   const kostenPosten = kosten.map((kostenPosition) => ({
     label: kostenPosition.bezeichnung,
@@ -184,25 +194,46 @@ function berechneBetriebskostenPosten(
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
-    { label: `Firmenhandy (alle ${HANDY_ERSATZZYKLUS_JAHRE} Jahre)`, wert: handyNettoKosten },
+    { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
   ];
 
   return [...kostenPosten, ...benefitsPosten];
 }
 
 /**
- * Firmenhandy als Betriebsausgabe:
- * alle 3 Jahre 1.000 € Anschaffung, gegenläufig 10% Verkaufserlös.
+ * Firmenhandy als Betriebsausgabe.
+ *
+ * In Germany, digital hardware (including smartphones) qualifies for immediate
+ * full write-off (Sofortabschreibung) in the year of purchase per the BMF letter
+ * of 26 Feb 2021 (BStBl I 2021, 298), so the full purchase price is deductible in
+ * the acquisition year – no multi-year linear depreciation is required.
+ *
+ * When an old phone is sold before buying its replacement (from the second cycle
+ * onward), the sale proceeds reduce the net cost.  The very first purchase has no
+ * prior device to sell, so the full acquisition cost applies.
+ *
+ * @param jahr  1-based year within the current phase (Betrieb or Ende).
+ * @param config  Configuration for the phone programme; defaults to DEFAULT_FIRMENHANDY_CONFIG.
  */
 export function berechneHandyNettoKostenProJahr(
   jahr: number,
-  anschaffungskosten: number = HANDY_ANSCHAFFUNGSKOSTEN
+  config: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): number {
-  if (jahr < 1 || (jahr - 1) % HANDY_ERSATZZYKLUS_JAHRE !== 0) {
+  const erstJahr = config.erstanschaffungJahr ?? 1;
+  if (!config.aktiv || jahr < erstJahr) {
     return 0;
   }
-  const verkaufserloes = anschaffungskosten * HANDY_VERKAUFSQUOTE;
-  return anschaffungskosten - verkaufserloes;
+  const jahreNachErstanschaffung = jahr - erstJahr;
+  if (jahreNachErstanschaffung % config.ersatzzyklusJahre !== 0) {
+    return 0;
+  }
+  // First acquisition: no old device to sell – full purchase price is the expense.
+  if (jahreNachErstanschaffung === 0) {
+    return config.anschaffungskosten;
+  }
+  // Replacement purchase: proceeds from selling the old phone offset the new cost.
+  const verkaufserloes = config.anschaffungskosten * config.restwertQuote;
+  return config.anschaffungskosten - verkaufserloes;
 }
 
 function sumEtfWert(lots: EtfLot[]): number {
@@ -331,10 +362,11 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
     // Phone costs are operating expenses (Betriebsausgabe), deducted from taxable profit.
-    const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr);
+    const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
+    const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
-    const betriebskostenPosten = berechneBetriebskostenPosten(state.kosten, state.benefits, handyNettoKosten);
+    const betriebskostenPosten = berechneBetriebskostenPosten(state.kosten, state.benefits, handyNettoKosten, handyConfig);
 
     const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
       offenesDarlehen,

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition } from "@/lib/types";
-import { berechneBetriebsErgebnisse } from "@/lib/calculations/betrieb";
+import { berechneBetriebsErgebnisse, DEFAULT_FIRMENHANDY_CONFIG } from "@/lib/calculations/betrieb";
 import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
 import { berechneGesamtkosten } from "@/lib/calculations/gruendung";
 import { JahresErgebnis } from "@/lib/types";
@@ -47,6 +47,7 @@ const initialState: CalculatorState = {
       tankgutschein: 50,
       strategieessen: 0,
     },
+    firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
   },
   ende: {
     geschaeftsfuehrergehalt: 24000,
@@ -168,7 +169,8 @@ export const useCalculatorStore = create<CalculatorStore>((set, get) => ({
       endfaellig,
       get().betrieb.etfRendite,
       get().betrieb.kosten,
-      get().betrieb.benefits
+      get().betrieb.benefits,
+      get().betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
     );
   },
 }));
