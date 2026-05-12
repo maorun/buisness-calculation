@@ -159,7 +159,7 @@ export function berechneGesetzlicheKrankenversicherungBeitrag(
   beitragsbemessungJahrMax: number = GKV_BEMESSUNG_JAHR_MAX
 ): number {
   const einnahmen = Math.max(0, jahresEinnahmen);
-  const beitragspflichtigeEinnahmen = Math.min(einnahmen, Math.max(0, beitragsbemessungJahrMax));
+  const beitragspflichtigeEinnahmen = Math.min(einnahmen, beitragsbemessungJahrMax);
   return beitragspflichtigeEinnahmen * Math.max(0, beitragssatz);
 }
 

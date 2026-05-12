@@ -238,7 +238,10 @@ export function EndeSection() {
                 <InputField
                   label="GF-Gehalt Bereich 1"
                   value={gehaltBereich1}
-                  onChange={(value) => setEnde({ gehaltBereich1: Math.max(0, parseFloat(value) || 0) })}
+                  onChange={(value) => {
+                    const parsed = parseFloat(value);
+                    setEnde({ gehaltBereich1: Math.max(0, Number.isFinite(parsed) ? parsed : 0) });
+                  }}
                   suffix="€/Jahr"
                   hint="Frei wählbar ohne Unter- und Obergrenze."
                   min={0}
@@ -333,7 +336,7 @@ export function EndeSection() {
               value={ende.geschaeftsfuehrergehalt}
               onChange={(v) => {
                 const parsed = parseFloat(v);
-                const normalized = Number.isFinite(parsed) ? parsed : ende.geschaeftsfuehrergehalt;
+                const normalized = Number.isFinite(parsed) ? parsed : 0;
                 setEnde({ geschaeftsfuehrergehalt: Math.max(0, normalized) });
               }}
               suffix="€/Jahr"
