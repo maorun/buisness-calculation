@@ -22,6 +22,10 @@ const defaultBetriebskosten: KostenPosition[] = [
   { id: generateId(), bezeichnung: "Buchhaltungssoftware", betrag: 50, kategorie: "Software", periode: 'monatlich' },
   { id: generateId(), bezeichnung: "IHK-Beitrag", betrag: 250, kategorie: "Pflichtbeiträge", periode: 'jaehrlich' },
   { id: generateId(), bezeichnung: "Bankgebühren", betrag: 20, kategorie: "Bank", periode: 'monatlich' },
+  { id: generateId(), bezeichnung: "Transparenzregister", betrag: 20, kategorie: "Pflichtbeiträge", periode: 'jaehrlich' },
+  { id: generateId(), bezeichnung: "Bundesanzeiger", betrag: 100, kategorie: "Pflichtbeiträge", periode: 'jaehrlich' },
+  { id: generateId(), bezeichnung: "Berufsgenossenschaft", betrag: 150, kategorie: "Pflichtbeiträge", periode: 'jaehrlich' },
+  { id: generateId(), bezeichnung: "LEI Gebühren", betrag: 60, kategorie: "Pflichtbeiträge", periode: 'jaehrlich' },
 ];
 
 const initialState: CalculatorState = {
@@ -31,8 +35,8 @@ const initialState: CalculatorState = {
   betrieb: {
     startkapital: 12500,
     darlehen: {
-      betrag: 25000,
-      zinssatz: 3.5,
+      betrag: 47500,
+      zinssatz: 3,
       monatlicherZuschuss: 100,
       endfaellig: true,
     },
@@ -41,7 +45,7 @@ const initialState: CalculatorState = {
     kosten: defaultBetriebskosten,
     benefits: {
       tankgutschein: 50,
-      strategieessen: 1500,
+      strategieessen: 0,
     },
   },
   ende: {

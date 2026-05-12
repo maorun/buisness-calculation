@@ -254,6 +254,23 @@ export function EndeSection() {
                   onChange={(value) => setEnde({ teiltilgungBereich1: clamp(value, 0, offeneDarlehensschuld) })}
                   hint="Steuerfreie Darlehensrückzahlung, die direkt privat verfügbar sein soll."
                 />
+                <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1">
+                  <p className="text-xs font-medium text-slate-600">Gesamteinkommen &amp; Steuern (Bereich 1)</p>
+                  <p className="text-xs text-slate-700">
+                    Gesamteinkommen (brutto):{" "}
+                    <span className="font-semibold">
+                      {(gehaltBereich1 + aufgelaufeneZinsen).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                    </span>
+                    <span className="text-slate-400 ml-1">(Gehalt + Zinsen)</span>
+                  </p>
+                  <p className="text-xs text-slate-700">
+                    Gesamtsteuern:{" "}
+                    <span className={`font-semibold ${gesamtSteuerBereich1 > 0 ? "text-red-700" : "text-green-700"}`}>
+                      {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                    </span>
+                    <span className="text-slate-400 ml-1">(Zinsen-ESt + Gehalt-ESt/SolZ)</span>
+                  </p>
+                </div>
                 <div className="rounded-lg border border-slate-200 bg-white p-3">
                   <p className="text-xs font-medium text-slate-600">Bereich-1 Zielabgleich</p>
                   <p className="mt-1 text-lg font-bold text-slate-800">
