@@ -274,10 +274,6 @@ export function berechneEndeErgebnisse(
     );
     const konsumierbaresNettoBereich1VorGkv = nettoGehalt + zinsenNetto + teiltilgungBereich1;
     const konsumierbaresNettoBereich1 = konsumierbaresNettoBereich1VorGkv - gesetzlicheKrankenversicherungBeitrag;
-    // gesamtNetto still tracks the full wealth effect of the year, including
-    // the new shareholder-loan asset that remains invested in the GmbH.
-    const gesamtNettoVorGkv = darlehenNettoAuszahlung + nettoGehalt;
-    const gesamtNetto = gesamtNettoVorGkv - gesetzlicheKrankenversicherungBeitrag;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
     const gesamtSteuer = zinsSteuer + einkommensteuer + soli;
 
@@ -289,14 +285,18 @@ export function berechneEndeErgebnisse(
     const firmenGuVSummeAufwand = firmenGuVGehaltAufwand + firmenGuVZinsaufwand;
     const firmenGuVSaldo = -firmenGuVSummeAufwand;
 
-    restvermoegen += gesamtNetto;
+    // Only the consumable net (salary + net interest + teiltilgung - GKV) accrues to the
+    // shareholder's wealth here. The reinvested principal (reinvestiertesDarlehen) is NOT
+    // a new gain – it is the same loan reorganised into a new 3%-instrument and will be
+    // counted when it is actually repaid in Bereich 2.
+    restvermoegen += konsumierbaresNettoBereich1;
 
     ergebnisse.push({
       jahr: 1,
       gesamtvermoegen: restvermoegen,
       gewinn: gesamtBrutto,
       steuer: gesamtSteuer,
-      nettogewinn: gesamtNetto,
+      nettogewinn: konsumierbaresNettoBereich1,
       details: {
         bereich: 1,
         zielnetto: state.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1,
