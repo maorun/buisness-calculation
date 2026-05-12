@@ -8,9 +8,8 @@ import {
   berechneGewinnausschuettungsteuer,
   berechneDarlehensAuszahlung,
   berechneDarlehensZinsenSteuer,
+  berechneGesetzlicheKrankenversicherungBeitrag,
   DEFAULT_ZIELNETTO_BEREICH1,
-  MIDIJOB_JAHR_MIN,
-  MIDIJOB_JAHR_MAX,
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
 import {
@@ -99,8 +98,6 @@ function SliderField({
   );
 }
 
-const MIDIJOB_HINT = `Midijob-Bereich: ${MIDIJOB_JAHR_MIN.toLocaleString("de-DE")} € bis ${MIDIJOB_JAHR_MAX.toLocaleString("de-DE")} € pro Jahr`;
-
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -142,7 +139,7 @@ export function EndeSection() {
   const bereich2Details = bereich2Ergebnisse[0]?.details;
 
   const gehaltBereich1 = bereich1Details?.bruttoGehalt
-    ?? clamp(ende.gehaltBereich1, MIDIJOB_JAHR_MIN, MIDIJOB_JAHR_MAX);
+    ?? Math.max(0, ende.gehaltBereich1);
   const nettoGehaltBereich1 = bereich1Details?.nettoGehalt ?? berechneNettoGehalt(gehaltBereich1);
   const zinsSteuerBereich1 = bereich1Details?.zinsSteuerBereich1
     ?? berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1);
@@ -154,6 +151,8 @@ export function EndeSection() {
   const konsumierbaresBereich1 = bereich1Details?.konsumierbaresNettoBereich1
     ?? (nettoGehaltBereich1 + zinsenNettoBereich1 + teiltilgungBereich1);
   const gesamtSteuerBereich1 = bereich1Ergebnisse[0]?.steuer ?? (zinsSteuerBereich1 + einkommensteuerBereich1 + soliBereich1);
+  const gkvBereich1 = bereich1Details?.gesetzlicheKrankenversicherungBeitrag
+    ?? berechneGesetzlicheKrankenversicherungBeitrag(gehaltBereich1 + aufgelaufeneZinsen);
   const neuesDarlehenBereich1 = bereich1Details?.neuesDarlehenStart
     ?? Math.max(0, offeneDarlehensschuld - teiltilgungBereich1);
   const zielnettoBereich1 = ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
@@ -164,6 +163,7 @@ export function EndeSection() {
   const bereich2DarlehenZinsenNetto = bereich2Details?.darlehenZinsenNetto ?? 0;
   const bereich2AutoGehalt = bereich2Details?.bruttoGehalt ?? 0;
   const bereich2NettoGehalt = bereich2Details?.nettoGehalt ?? 0;
+  const bereich2Gkv = bereich2Details?.gesetzlicheKrankenversicherungBeitrag ?? 0;
   const bereich2FlexibleTilgung = bereich2Details?.darlehenTilgung ?? 0;
   const bereich2KonsumVorTilgung = bereich2Details?.konsumVorTilgung ?? (bereich2NettoGehalt + bereich2DarlehenZinsenNetto);
 
@@ -171,7 +171,7 @@ export function EndeSection() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Ende / Auszahlungsphase</h2>
-        <p className="text-sm text-slate-600">Gehalt im Midijob-Bereich, Darlehensauszahlung, Ausschüttungen und Gesamtergebnis</p>
+        <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV-Beitrag und Gesamtergebnis</p>
       </div>
 
       {/* Endfällig notice */}
@@ -205,7 +205,7 @@ export function EndeSection() {
               <p className="text-sm font-semibold text-blue-900">Ebene 2 / Bereich 2</p>
             </div>
             <p className="text-xs text-blue-800">
-              Laufende Zinsphase des neuen Gesellschafterdarlehens mit Midijob-Auffüllung und
+              Laufende Zinsphase des neuen Gesellschafterdarlehens mit frei wählbarem GF-Gehalt und
               flexibler Tilgung nur bei Zielnetto-Lücke.
             </p>
           </div>
@@ -235,13 +235,13 @@ export function EndeSection() {
                 min={0}
               />
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-4">
-                <SliderField
+                <InputField
                   label="GF-Gehalt Bereich 1"
                   value={gehaltBereich1}
-                  min={MIDIJOB_JAHR_MIN}
-                  max={MIDIJOB_JAHR_MAX}
-                  onChange={(value) => setEnde({ gehaltBereich1: clamp(value, MIDIJOB_JAHR_MIN, MIDIJOB_JAHR_MAX) })}
-                  hint={MIDIJOB_HINT}
+                  onChange={(value) => setEnde({ gehaltBereich1: Math.max(0, parseFloat(value) || 0) })}
+                  suffix="€/Jahr"
+                  hint="Frei wählbar ohne Unter- und Obergrenze."
+                  min={0}
                 />
                 <SliderField
                   label="Teil-Tilgung Bereich 1"
@@ -272,6 +272,7 @@ export function EndeSection() {
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
               <p className="text-xs text-amber-700">Einkommensteuer auf Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Gesetzliche Krankenversicherung (aus Netto): <span className="font-semibold text-red-700">− {gkvBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Netto-Zinsen für Zielnetto: <span className="font-semibold text-green-700">+ {zinsenNettoBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Neues Gesellschafterdarlehen für Bereich 2: <span className="font-semibold text-blue-700">+ {neuesDarlehenBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
@@ -322,42 +323,41 @@ export function EndeSection() {
         )}
 
         {/* GF Salary */}
-        {!endfaellig && (
-          <div className="mb-4">
-            <h4 className="font-semibold text-gray-600 mb-3">Geschäftsführergehalt</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField
-                label="Brutto-Jahresgehalt (€)"
-                value={ende.geschaeftsfuehrergehalt}
-                onChange={(v) => {
-                  const parsed = parseFloat(v);
-                  const normalized = Number.isFinite(parsed) ? parsed : ende.geschaeftsfuehrergehalt;
-                  setEnde({ geschaeftsfuehrergehalt: clamp(normalized, MIDIJOB_JAHR_MIN, MIDIJOB_JAHR_MAX) });
-                }}
-                suffix="€/Jahr"
-                hint={MIDIJOB_HINT}
-                min={MIDIJOB_JAHR_MIN}
-                max={MIDIJOB_JAHR_MAX}
-              />
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-xs text-green-600 font-medium">Netto-Gehalt (geschätzt)</p>
-                <p className="text-lg font-bold text-green-800">
-                  {nettoGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  {(nettoGehalt / 12).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat
-                </p>
-              </div>
+        <div className="mb-4">
+          <h4 className="font-semibold text-gray-600 mb-3">
+            Geschäftsführergehalt {endfaellig ? "Bereich 2" : ""}
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField
+              label="Brutto-Jahresgehalt (€)"
+              value={ende.geschaeftsfuehrergehalt}
+              onChange={(v) => {
+                const parsed = parseFloat(v);
+                const normalized = Number.isFinite(parsed) ? parsed : ende.geschaeftsfuehrergehalt;
+                setEnde({ geschaeftsfuehrergehalt: Math.max(0, normalized) });
+              }}
+              suffix="€/Jahr"
+              hint="Frei wählbar ohne Unter- und Obergrenze."
+              min={0}
+            />
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-xs text-green-600 font-medium">Netto-Gehalt (geschätzt)</p>
+              <p className="text-lg font-bold text-green-800">
+                {nettoGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                {(nettoGehalt / 12).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat
+              </p>
             </div>
           </div>
-        )}
+        </div>
 
         {endfaellig && (
           <div className="mb-4">
-            <h4 className="font-semibold text-gray-600 mb-3">Automatik Bereich 2 (erstes Jahr)</h4>
+            <h4 className="font-semibold text-gray-600 mb-3">Bereich 2 (erstes Jahr)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-xs text-green-600 font-medium">Auto-GF-Gehalt bis Midijob-Grenze</p>
+                <p className="text-xs text-green-600 font-medium">GF-Gehalt Bereich 2</p>
                 <p className="text-lg font-bold text-green-800">
                   {bereich2AutoGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr
                 </p>
@@ -372,6 +372,9 @@ export function EndeSection() {
                 </p>
                 <p className="text-xs text-amber-600 mt-1">
                   Steuer: {bereich2DarlehenZinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € · Netto: {bereich2DarlehenZinsenNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  GKV-Beitrag: {bereich2Gkv.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -417,6 +420,9 @@ export function EndeSection() {
                 </p>
                 <p className="text-xs text-amber-600 mt-1">
                   Einkommensteuer Zinsanteil: {zinsensteuerProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  GKV-Beitrag (aus Netto): {berechneGesetzlicheKrankenversicherungBeitrag(ende.geschaeftsfuehrergehalt + zinsertragProJahr + ende.gewinnausschuettung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -506,9 +512,10 @@ export function EndeSection() {
         <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
         <div className="text-xs text-gray-600 space-y-1">
           {endfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Progressive Einkommensteuer auf Zinsen + Gehalt (kombiniert, § 32d Abs. 2 Nr. 1b EStG)</p>}
-          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Per Slider im Midijob-Korridor steuerbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
+          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Frei konfigurierbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
           {endfaellig && <p><span className="font-medium">Bereich 2 – Darlehen:</span> Neues Gesellschafterdarlehen mit 3 % Zins; Tilgung wird flexibel nur bei Zielnetto-Lücke ausgezahlt.</p>}
-          <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ{endfaellig ? ", automatisch bis zur Midijob-Grenze ergänzt" : ""}</p>
+          <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
+          <p><span className="font-medium">Gesetzliche Krankenversicherung:</span> Beitrag aus Gehalt + sonstigen Einnahmen (z. B. Zinsen, Ausschüttung) und vollständig aus dem Netto zu zahlen</p>
           <p><span className="font-medium">Darlehen (Zinsen):</span> Progressive Einkommensteuer (Marginalsteuersatz), Tilgungsanteil steuerfrei (§ 32d Abs. 2 Nr. 1b EStG)</p>
           <p><span className="font-medium">Teileinkünfteverfahren:</span> 60% des Betrags × persönlicher Steuersatz</p>
           <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt. Abgeltungssteuer gilt nur für Gewinnausschüttungen.</p>
