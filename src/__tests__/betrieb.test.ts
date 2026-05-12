@@ -474,13 +474,14 @@ describe("berechneBetriebsErgebnisse", () => {
       startkapital: 12500,
       jaehrlicherCashZuschuss: 600,
       etfRendite: 0,
-      laufzeitJahre: 2,
+      laufzeitJahre: 1,
       kosten: [{ id: "1", bezeichnung: "Software", betrag: 600, periode: "jaehrlich" }],
       benefits: { tankgutschein: 0, strategieessen: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
     };
 
-    const result = berechneBetriebsErgebnisse(state)[1];
+    const result = berechneBetriebsErgebnisse(state)[0];
 
     expect(result.details.ausCashZuschussBeglicheneBetriebsausgaben).toBe(600);
     expect(result.details.ausCashReserveBeglicheneBetriebsausgaben).toBe(0);
@@ -494,18 +495,19 @@ describe("berechneBetriebsErgebnisse", () => {
     const state: BetriebState = {
       ...defaultState,
       startkapital: 12500,
-      jaehrlicherCashZuschuss: 400,
+      jaehrlicherCashZuschuss: 900,
       etfRendite: 0,
       laufzeitJahre: 2,
-      kosten: [{ id: "1", bezeichnung: "Software", betrag: 900, periode: "jaehrlich" }],
+      kosten: [{ id: "1", bezeichnung: "Software", betrag: 400, periode: "jaehrlich" }],
       benefits: { tankgutschein: 0, strategieessen: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, erstanschaffungJahr: 2 },
     };
 
     const [erstesJahr, zweitesJahr] = berechneBetriebsErgebnisse(state);
 
     expect(erstesJahr.details.cashReserve).toBe(500);
-    expect(zweitesJahr.details.ausCashZuschussBeglicheneBetriebsausgaben).toBe(400);
+    expect(zweitesJahr.details.ausCashZuschussBeglicheneBetriebsausgaben).toBe(900);
     expect(zweitesJahr.details.ausCashReserveBeglicheneBetriebsausgaben).toBe(500);
     expect(zweitesJahr.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBe(0);
     expect(zweitesJahr.details.cashReserve).toBe(0);
