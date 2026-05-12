@@ -13,6 +13,7 @@ import {
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
+  TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
@@ -91,10 +92,16 @@ describe("berechneVorabpauschalesteuer", () => {
 });
 
 describe("berechneEtfVerkaufssteuer", () => {
-  it("taxes only the taxable part after Teilfreistellung", () => {
+  it("uses GmbH Teilfreistellung (80%) by default", () => {
+    const realisierterGewinn = 1000;
+    const expected = realisierterGewinn * (1 - TEILFREISTELLUNG_AKTIEN_GMBH) * ABGELTUNGSSTEUER_GESAMT;
+    expect(berechneEtfVerkaufssteuer(realisierterGewinn)).toBeCloseTo(expected);
+  });
+
+  it("allows overriding to private-person Teilfreistellung", () => {
     const realisierterGewinn = 1000;
     const expected = realisierterGewinn * (1 - TEILFREISTELLUNG_AKTIEN) * ABGELTUNGSSTEUER_GESAMT;
-    expect(berechneEtfVerkaufssteuer(realisierterGewinn)).toBeCloseTo(expected);
+    expect(berechneEtfVerkaufssteuer(realisierterGewinn, TEILFREISTELLUNG_AKTIEN)).toBeCloseTo(expected);
   });
 
   it("returns 0 for non-positive realized gain", () => {

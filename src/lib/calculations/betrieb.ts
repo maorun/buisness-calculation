@@ -9,8 +9,13 @@ export const SOLI = 0.055;
 // Effective Abgeltungssteuer including Soli
 export const ABGELTUNGSSTEUER_GESAMT = ABGELTUNGSSTEUER * (1 + SOLI); // ~26.375%
 
-// Equity ETF Teilfreistellung: 30% of gains are tax-free
-export const TEILFREISTELLUNG_AKTIEN = 0.3;
+// Equity ETF Teilfreistellung:
+// - Privatperson: 30% tax-free
+// - GmbH/Körperschaft: 80% tax-free
+export const TEILFREISTELLUNG_AKTIEN_PRIVAT = 0.3;
+export const TEILFREISTELLUNG_AKTIEN_GMBH = 0.8;
+// Backward-compatible alias for existing callsites using the private-person default.
+export const TEILFREISTELLUNG_AKTIEN = TEILFREISTELLUNG_AKTIEN_PRIVAT;
 
 // GmbH Körperschaftsteuer + Soli
 export const KST = 0.15;
@@ -41,9 +46,8 @@ interface EtfLot {
 /**
  * Vorabpauschale: German annual pre-tax for accumulating ETFs.
  * = max(0, Basiszins × 0.7 × NAV_start, actualReturn)
- * For GmbH holding ETFs, Teilfreistellung of 20% applies (not 30% individual).
- * Here we use the standard equity fund Teilfreistellung of 30% for simplicity
- * (adjust if needed for institutional/GmbH context).
+ * Tax handling (private vs. GmbH) is controlled by the Teilfreistellung parameter
+ * in the corresponding tax functions.
  */
 export function berechneVorabpauschale(
   navStart: number,
@@ -70,11 +74,11 @@ export function berechneVorabpauschalesteuer(
 
 /**
  * Tax on realized ETF gains when selling units.
- * Uses same Teilfreistellung/Abgeltungssteuer logic as ETF taxation.
+ * In this GmbH simulation, ETF sales default to the Körperschafts-Teilfreistellung (80%).
  */
 export function berechneEtfVerkaufssteuer(
   realisierterEtfErtrag: number,
-  teilfreistellung: number = TEILFREISTELLUNG_AKTIEN
+  teilfreistellung: number = TEILFREISTELLUNG_AKTIEN_GMBH
 ): number {
   if (realisierterEtfErtrag <= 0) {
     return 0;
