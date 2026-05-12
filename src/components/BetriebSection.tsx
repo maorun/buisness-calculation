@@ -4,6 +4,7 @@ import React from "react";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import {
   TEILFREISTELLUNG_AKTIEN_GMBH,
+  DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -77,7 +78,7 @@ export function BetriebSection() {
   };
 
   const updateFirmenhandy = (field: keyof NonNullable<typeof betrieb.firmenhandy>, value: string | boolean) => {
-    const currentHandy = betrieb.firmenhandy ?? { aktiv: true, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3 };
+    const currentHandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     setBetrieb({
       firmenhandy: {
         ...currentHandy,
@@ -86,7 +87,7 @@ export function BetriebSection() {
     });
   };
 
-  const firmenhandy = betrieb.firmenhandy ?? { aktiv: true, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3 };
+  const firmenhandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
 
   return (
     <div className="space-y-6">
