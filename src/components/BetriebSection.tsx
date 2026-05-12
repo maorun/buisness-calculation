@@ -93,7 +93,7 @@ export function BetriebSection() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Betrieb</h2>
-        <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und Überschüssen</p>
+        <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und freien Überschüssen sowie separatem Cash-Puffer</p>
       </div>
 
       {/* Startkapital & ETF */}
@@ -113,6 +113,13 @@ export function BetriebSection() {
             onChange={(v) => setBetrieb({ etfRendite: parseFloat(v) || 0 })}
             suffix="% p.a."
             hint="Durchschnittliche jährliche ETF-Rendite (Default: 5 %)"
+          />
+          <InputField
+            label="Jährlicher Cash-Zuschuss (€)"
+            value={betrieb.jaehrlicherCashZuschuss}
+            onChange={(v) => setBetrieb({ jaehrlicherCashZuschuss: parseFloat(v) || 0 })}
+            suffix="€/Jahr"
+            hint="Bleibt als Cash in der GmbH, gleicht zuerst Betriebskosten aus und wird nicht in ETFs investiert"
           />
           <InputField
             label="Laufzeit (Jahre)"
@@ -272,8 +279,9 @@ export function BetriebSection() {
       {/* Tax info box */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
         <p className="text-xs text-slate-500 mb-3">
-          Verkäufe erfolgen steueroptimiert: Wenn laufende Darlehenszuzahlungen die Betriebsausgaben nicht vollständig decken,
-          werden zuerst die ETF-Positionen mit der geringsten steuerpflichtigen stillen Reserve verkauft.
+          Verkäufe erfolgen steueroptimiert: Betriebsausgaben werden zuerst aus dem jährlichen Cash-Zuschuss,
+          dann aus vorhandenen Cash-Reserven und erst danach aus laufenden Darlehenszuzahlungen gedeckt.
+          Reicht das nicht aus, werden zuerst die ETF-Positionen mit der geringsten steuerpflichtigen stillen Reserve verkauft.
         </p>
         <p className="text-xs font-semibold text-slate-700 mb-2">📊 Steuerparameter (GmbH) – Steuern ans Finanzamt</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">

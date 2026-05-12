@@ -277,6 +277,7 @@ describe("berechneHandyNettoKostenProJahr", () => {
 describe("berechneBetriebsErgebnisse", () => {
   const defaultState: BetriebState = {
     startkapital: 100000,
+    jaehrlicherCashZuschuss: 0,
     darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
     etfRendite: 7,
     laufzeitJahre: 3,
@@ -465,6 +466,50 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.freieDarlehensZuzahlungen).toBe(600);
     expect(result.details.zuzahlungenEtfWert).toBe(600);
     expect(result.details.etfVerkauf).toBe(0);
+  });
+
+  it("uses annual cash for operating expenses before loan top-ups and keeps it out of ETFs", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 12500,
+      jaehrlicherCashZuschuss: 600,
+      etfRendite: 0,
+      laufzeitJahre: 2,
+      kosten: [{ id: "1", bezeichnung: "Software", betrag: 600, periode: "jaehrlich" }],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[1];
+
+    expect(result.details.ausCashZuschussBeglicheneBetriebsausgaben).toBe(600);
+    expect(result.details.ausCashReserveBeglicheneBetriebsausgaben).toBe(0);
+    expect(result.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBe(0);
+    expect(result.details.freieDarlehensZuzahlungen).toBe(1200);
+    expect(result.details.cashReserve).toBe(0);
+    expect(result.details.zuzahlungenEtfWert).toBe(1200);
+  });
+
+  it("uses existing cash reserves before loan top-ups when annual cash is not enough", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 12500,
+      jaehrlicherCashZuschuss: 400,
+      etfRendite: 0,
+      laufzeitJahre: 2,
+      kosten: [{ id: "1", bezeichnung: "Software", betrag: 900, periode: "jaehrlich" }],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
+    };
+
+    const [erstesJahr, zweitesJahr] = berechneBetriebsErgebnisse(state);
+
+    expect(erstesJahr.details.cashReserve).toBe(500);
+    expect(zweitesJahr.details.ausCashZuschussBeglicheneBetriebsausgaben).toBe(400);
+    expect(zweitesJahr.details.ausCashReserveBeglicheneBetriebsausgaben).toBe(500);
+    expect(zweitesJahr.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBe(0);
+    expect(zweitesJahr.details.cashReserve).toBe(0);
+    expect(zweitesJahr.details.freieDarlehensZuzahlungen).toBe(1200);
   });
 
   it("uses loan top-ups before ETF sales when annual outflows are fully covered", () => {
