@@ -281,7 +281,7 @@ export function berechneEndeErgebnisse(
     // The shareholder immediately relends the reinvestiertesDarlehen portion back to the GmbH,
     // so the net ETF outflow is only (teiltilgungBereich1 + interest + salary).
     const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
-    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenGesamtabfluss) + reinvestiertesDarlehen;
+    firmenEtfVermoegen = Math.max(0, firmenEtfVermoegen - firmenGesamtabfluss + reinvestiertesDarlehen);
     const firmenGuVGehaltAufwand = bruttoGehalt;
     const firmenGuVZinsaufwand = aufgelaufeneZinsenNorm;
     const firmenGuVSummeAufwand = firmenGuVGehaltAufwand + firmenGuVZinsaufwand;
