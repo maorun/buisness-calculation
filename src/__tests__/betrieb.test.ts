@@ -258,6 +258,20 @@ describe("berechneHandyNettoKostenProJahr", () => {
     // Year 3 (second cycle): 800 - 160 = 640
     expect(berechneHandyNettoKostenProJahr(3, config)).toBeCloseTo(640);
   });
+
+  it("respects erstanschaffungJahr: no cost before that year", () => {
+    const config = { ...DEFAULT_FIRMENHANDY_CONFIG, erstanschaffungJahr: 3 };
+    // Years 1 and 2: programme not started yet
+    expect(berechneHandyNettoKostenProJahr(1, config)).toBe(0);
+    expect(berechneHandyNettoKostenProJahr(2, config)).toBe(0);
+    // Year 3: first acquisition – full purchase price
+    expect(berechneHandyNettoKostenProJahr(3, config)).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN);
+    // Year 4, 5: no cost
+    expect(berechneHandyNettoKostenProJahr(4, config)).toBe(0);
+    expect(berechneHandyNettoKostenProJahr(5, config)).toBe(0);
+    // Year 6 (= 3 + ersatzzyklusJahre): replacement with trade-in
+    expect(berechneHandyNettoKostenProJahr(6, config)).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE));
+  });
 });
 
 describe("berechneBetriebsErgebnisse", () => {

@@ -39,6 +39,12 @@ export interface FirmenhandyConfig {
   restwertQuote: number;
   /** How many years between phone replacements. */
   ersatzzyklusJahre: number;
+  /**
+   * The operating-phase year in which the very first phone is purchased
+   * (1-based, default 1 = first year of the Betrieb phase).
+   * Years before this are treated as if the phone programme hasn't started yet.
+   */
+  erstanschaffungJahr?: number;
 }
 
 export interface BetriebState {

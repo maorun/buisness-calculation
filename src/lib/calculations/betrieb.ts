@@ -36,6 +36,7 @@ export const DEFAULT_FIRMENHANDY_CONFIG: FirmenhandyConfig = {
   anschaffungskosten: HANDY_ANSCHAFFUNGSKOSTEN,
   restwertQuote: HANDY_VERKAUFSQUOTE,
   ersatzzyklusJahre: HANDY_ERSATZZYKLUS_JAHRE,
+  erstanschaffungJahr: 1,
 };
 export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
@@ -218,11 +219,16 @@ export function berechneHandyNettoKostenProJahr(
   jahr: number,
   config: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): number {
-  if (!config.aktiv || jahr < 1 || (jahr - 1) % config.ersatzzyklusJahre !== 0) {
+  const erstJahr = config.erstanschaffungJahr ?? 1;
+  if (!config.aktiv || jahr < erstJahr) {
+    return 0;
+  }
+  const jahreNachErstanschaffung = jahr - erstJahr;
+  if (jahreNachErstanschaffung % config.ersatzzyklusJahre !== 0) {
     return 0;
   }
   // First acquisition: no old device to sell – full purchase price is the expense.
-  if (jahr === 1) {
+  if (jahreNachErstanschaffung === 0) {
     return config.anschaffungskosten;
   }
   // Replacement purchase: proceeds from selling the old phone offset the new cost.

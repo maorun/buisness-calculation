@@ -241,6 +241,13 @@ export function BetriebSection() {
               suffix="Jahre"
               hint="Alle wie viele Jahre wird das Gerät ersetzt?"
             />
+            <InputField
+              label="Erstanschaffung ab Jahr"
+              value={firmenhandy.erstanschaffungJahr ?? 1}
+              onChange={(v) => updateFirmenhandy("erstanschaffungJahr", String(Math.max(1, parseInt(v) || 1)))}
+              suffix="Jahr"
+              hint="In welchem Betriebsjahr wird das erste Handy angeschafft?"
+            />
           </div>
         )}
       </div>
