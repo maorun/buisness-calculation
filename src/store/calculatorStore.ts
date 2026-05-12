@@ -165,7 +165,10 @@ export const useCalculatorStore = create<CalculatorStore>((set, get) => ({
       offenesDarlehen,
       get().betrieb.darlehen.zinssatz,
       aufgelaufeneZinsen,
-      endfaellig
+      endfaellig,
+      get().betrieb.etfRendite,
+      get().betrieb.kosten,
+      get().betrieb.benefits
     );
   },
 }));

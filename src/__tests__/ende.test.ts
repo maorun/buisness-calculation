@@ -446,7 +446,8 @@ describe("berechneEndeErgebnisse", () => {
       expect(bereich1.details.firmenGuVGehaltAufwand).toBe(bereich1.details.bruttoGehalt);
       expect(bereich1.details.firmenGuVZinsaufwand).toBe(aufgelaufeneZinsen);
       expect(bereich1.details.firmenGuVSaldo).toBeCloseTo(
-        -(bereich1.details.firmenGuVGehaltAufwand + bereich1.details.firmenGuVZinsaufwand)
+        bereich1.details.theoretischerEtfErtrag -
+        (bereich1.details.firmenGuVGehaltAufwand + bereich1.details.firmenGuVZinsaufwand + bereich1.details.betriebsausgabenGesamt)
       );
     });
 
@@ -460,8 +461,11 @@ describe("berechneEndeErgebnisse", () => {
       const bereich1 = results[0];
       const bruttoGehalt = endfaelligState.gehaltBereich1;
       const reinvestiertesDarlehen = principal - teiltilgung;
-      // Net ETF after Bereich 1: pay out full principal + interest + salary, receive new loan back
-      const expectedEtf = etfStart - (principal + aufgelaufeneZinsen + bruttoGehalt) + reinvestiertesDarlehen;
+      // Net ETF after Bereich 1: grow (rendite=0 here), pay out full principal + interest + salary +
+      // Betriebskosten + taxes, receive new loan back
+      const expectedEtf = etfStart
+        - (principal + aufgelaufeneZinsen + bruttoGehalt + bereich1.details.betriebsausgabenGesamt + bereich1.details.vorabpauschalesteuer + bereich1.details.gmbhSteuer)
+        + reinvestiertesDarlehen;
       expect(bereich1.details.firmenEtfVermoegen).toBeCloseTo(expectedEtf);
       // nettovermoegen = ETF - new loan
       expect(bereich1.details.firmenNettovermoegen).toBeCloseTo(expectedEtf - reinvestiertesDarlehen);
@@ -510,6 +514,118 @@ describe("berechneEndeErgebnisse", () => {
     it("endfaellig=false with 0 aufgelaufeneZinsen returns same count as laufzeitJahre", () => {
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 0, false);
       expect(results).toHaveLength(3);
+    });
+  });
+
+  describe("ETF rendite and Betriebskosten in Ende phase", () => {
+    const baseState: EndeState = {
+      geschaeftsfuehrergehalt: 24000,
+      gehaltBereich1: 24000,
+      teiltilgungBereich1: 0,
+      gewinnausschuettung: 0,
+      tilgungsrate: 0,
+      laufzeitJahre: 3,
+      zielnettoBereich1: 17000,
+      zielnettoBereich2: 0,
+    };
+
+    it("Bereich 2: firmenEtfVermoegen grows when etfRenditePercent > 0", () => {
+      const etfStart = 200000;
+      const rendite = 5;
+      const resultsNoRendite = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, 0);
+      const resultsWithRendite = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, rendite);
+      // With rendite the firm ETF decreases more slowly (growth offsets outflows)
+      expect(resultsWithRendite[0].details.firmenEtfVermoegen).toBeGreaterThan(
+        resultsNoRendite[0].details.firmenEtfVermoegen
+      );
+    });
+
+    it("Bereich 2: ETF grows by rendite rate before outflows each year", () => {
+      const etfStart = 100000;
+      const rendite = 7;
+      // No loan, no salary → firm ETF should grow by rendite minus Betriebskosten/taxes
+      const state = { ...baseState, geschaeftsfuehrergehalt: 0 };
+      const results = berechneEndeErgebnisse(state, etfStart, 0, 0, 0, false, rendite);
+      const etfNachWachstum = etfStart * (1 + rendite / 100); // 107000
+      // firmenEtfVermoegen should be lower than grown value (Betriebskosten + taxes paid)
+      expect(results[0].details.firmenEtfVermoegen).toBeLessThan(etfNachWachstum);
+      // But higher than etfStart since growth exceeded costs
+      expect(results[0].details.firmenEtfVermoegen).toBeGreaterThan(etfStart);
+    });
+
+    it("Bereich 2: Betriebskosten are deducted from firmenEtfVermoegen", () => {
+      const etfStart = 200000;
+      const kosten = [{ id: "k1", bezeichnung: "Test", betrag: 500, periode: "monatlich" as const }];
+      const resultsNoKosten = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, 0, []);
+      const resultsWithKosten = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, 0, kosten);
+      // With kosten the firm pays out more → lower firmenEtfVermoegen
+      expect(resultsWithKosten[0].details.firmenEtfVermoegen).toBeLessThan(
+        resultsNoKosten[0].details.firmenEtfVermoegen
+      );
+      // betriebsausgabenGesamt reflects the monthly kosten (500 * 12 = 6000)
+      expect(resultsWithKosten[0].details.jaehrlicheKosten).toBeCloseTo(6000);
+    });
+
+    it("Bereich 2: vorabpauschale and gmbhSteuer are non-zero with positive rendite and ETF", () => {
+      const etfStart = 100000;
+      const rendite = 5;
+      const results = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, rendite);
+      expect(results[0].details.vorabpauschale).toBeGreaterThan(0);
+      expect(results[0].details.vorabpauschalesteuer).toBeGreaterThan(0);
+      expect(results[0].details.gmbhSteuer).toBeGreaterThanOrEqual(0);
+    });
+
+    it("Bereich 2: steuer includes vorabpauschalesteuer and gmbhSteuer", () => {
+      const etfStart = 100000;
+      const rendite = 5;
+      const results = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, rendite);
+      for (const r of results) {
+        const expectedTax =
+          r.details.einkommensteuer +
+          r.details.soli +
+          r.details.kstSteuer +
+          r.details.ausschuettungsteuer +
+          r.details.darlehenZinsenSteuer +
+          r.details.vorabpauschalesteuer +
+          r.details.gmbhSteuer;
+        expect(r.steuer).toBeCloseTo(expectedTax);
+      }
+    });
+
+    it("Bereich 1 (endfällig): Betriebskosten are included in Bereich 1 outflows", () => {
+      const etfStart = 100000;
+      const kosten = [{ id: "k1", bezeichnung: "Buchhaltung", betrag: 100, periode: "monatlich" as const }];
+      const resultsNoKosten = berechneEndeErgebnisse(baseState, etfStart, 10000, 3, 2000, true, 0, []);
+      const resultsWithKosten = berechneEndeErgebnisse(baseState, etfStart, 10000, 3, 2000, true, 0, kosten);
+      // Bereich 1 has kosten: firm ETF decreases more
+      expect(resultsWithKosten[0].details.firmenEtfVermoegen).toBeLessThan(
+        resultsNoKosten[0].details.firmenEtfVermoegen
+      );
+      expect(resultsWithKosten[0].details.betriebsausgabenGesamt).toBeGreaterThan(
+        resultsNoKosten[0].details.betriebsausgabenGesamt
+      );
+    });
+
+    it("Bereich 1 (endfällig): ETF grows before outflows", () => {
+      const etfStart = 100000;
+      const rendite = 5;
+      const resultsNoRendite = berechneEndeErgebnisse(baseState, etfStart, 10000, 3, 2000, true, 0);
+      const resultsWithRendite = berechneEndeErgebnisse(baseState, etfStart, 10000, 3, 2000, true, rendite);
+      // With rendite, Bereich 1 firm ETF is higher
+      expect(resultsWithRendite[0].details.firmenEtfVermoegen).toBeGreaterThan(
+        resultsNoRendite[0].details.firmenEtfVermoegen
+      );
+    });
+
+    it("phone cost (900 €) applies in Ende year 1 and cycles every 3 years", () => {
+      const etfStart = 500000;
+      const results = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, 0, []);
+      // Jahr 1 (endeJahr=1): phone cost = 900 (year 1 of 3-year cycle)
+      // Jahr 2 (endeJahr=2): no phone cost
+      // Jahr 3 (endeJahr=3): no phone cost
+      expect(results[0].details.betriebsausgabenGesamt).toBeCloseTo(900); // handy cost only
+      expect(results[1].details.betriebsausgabenGesamt).toBeCloseTo(0);
+      expect(results[2].details.betriebsausgabenGesamt).toBeCloseTo(0);
     });
   });
 });
