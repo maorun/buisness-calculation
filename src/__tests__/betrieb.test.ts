@@ -17,6 +17,7 @@ import {
   GMBH_STEUER_GESAMT,
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
+  DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -228,12 +229,34 @@ describe("berechneBenefitsKosten", () => {
 });
 
 describe("berechneHandyNettoKostenProJahr", () => {
-  it("applies net phone costs every 3 years", () => {
-    const expected = HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE);
-    expect(berechneHandyNettoKostenProJahr(1)).toBeCloseTo(expected);
+  it("charges full purchase price in the first acquisition year (no trade-in)", () => {
+    expect(berechneHandyNettoKostenProJahr(1)).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN);
+  });
+
+  it("returns 0 in non-replacement years", () => {
     expect(berechneHandyNettoKostenProJahr(2)).toBe(0);
     expect(berechneHandyNettoKostenProJahr(3)).toBe(0);
+  });
+
+  it("applies trade-in offset from the second cycle onward", () => {
+    const expected = HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE);
     expect(berechneHandyNettoKostenProJahr(4)).toBeCloseTo(expected);
+    expect(berechneHandyNettoKostenProJahr(7)).toBeCloseTo(expected);
+  });
+
+  it("returns 0 when aktiv is false", () => {
+    const config = { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false };
+    expect(berechneHandyNettoKostenProJahr(1, config)).toBe(0);
+    expect(berechneHandyNettoKostenProJahr(4, config)).toBe(0);
+  });
+
+  it("respects custom config (purchase price, restwertQuote, cycle)", () => {
+    const config = { aktiv: true, anschaffungskosten: 800, restwertQuote: 0.2, ersatzzyklusJahre: 2 };
+    // Year 1: full purchase, no trade-in
+    expect(berechneHandyNettoKostenProJahr(1, config)).toBeCloseTo(800);
+    expect(berechneHandyNettoKostenProJahr(2, config)).toBe(0);
+    // Year 3 (second cycle): 800 - 160 = 640
+    expect(berechneHandyNettoKostenProJahr(3, config)).toBeCloseTo(640);
   });
 });
 
@@ -541,12 +564,12 @@ describe("berechneBetriebsErgebnisse", () => {
       benefits: { tankgutschein: 0, strategieessen: 0 },
     };
     const results = berechneBetriebsErgebnisse(state);
-    const expectedHandyKosten = HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE);
-    // Phone cost appears in details as handyNettoKosten and reduces profit directly
-    expect(results[0].details.handyNettoKosten).toBeCloseTo(expectedHandyKosten);
+    // Year 1: first acquisition – full purchase price (no trade-in)
+    expect(results[0].details.handyNettoKosten).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN);
     expect(results[1].details.handyNettoKosten).toBeCloseTo(0);
     expect(results[2].details.handyNettoKosten).toBeCloseTo(0);
-    expect(results[3].details.handyNettoKosten).toBeCloseTo(expectedHandyKosten);
+    // Year 4: replacement – net of resale proceeds
+    expect(results[3].details.handyNettoKosten).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE));
   });
 
   it("counts benefits inside operating expenses", () => {
@@ -584,7 +607,7 @@ describe("berechneBetriebsErgebnisse", () => {
         expect.objectContaining({ label: "Strategieessen", wert: 1500 }),
       ])
     );
-    expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE));
+    expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
     expect(firmenhandyJahr2?.wert).toBe(0);
   });
 

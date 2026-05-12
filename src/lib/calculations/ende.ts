@@ -1,10 +1,11 @@
-import { EndeState, JahresErgebnis, KostenPosition, BenefitConfig } from "../types";
+import { EndeState, JahresErgebnis, KostenPosition, BenefitConfig, FirmenhandyConfig } from "../types";
 import {
   berechneVorabpauschale,
   berechneVorabpauschalesteuer,
   berechneBetriebskosten,
   berechneHandyNettoKostenProJahr,
   berechneBenefitsKosten,
+  DEFAULT_FIRMENHANDY_CONFIG,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
 } from "./betrieb";
@@ -246,7 +247,8 @@ export function berechneEndeErgebnisse(
   endfaellig: boolean = false,
   etfRenditePercent: number = 0,
   kosten: KostenPosition[] = [],
-  benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 0 }
+  benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 0 },
+  firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   let restvermoegen = etfWertAnfang;
@@ -276,7 +278,7 @@ export function berechneEndeErgebnisse(
 
     // Betriebskosten for Bereich 1 (running GmbH costs continue in Ende phase)
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
-    const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr);
+    const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKostenB1 = berechneBenefitsKosten(benefits);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
     const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
@@ -399,7 +401,7 @@ export function berechneEndeErgebnisse(
 
     // Betriebskosten for this year (running GmbH costs continue in Ende phase)
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
-    const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr);
+    const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKosten = berechneBenefitsKosten(benefits);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
     endePhaseJahr++;
