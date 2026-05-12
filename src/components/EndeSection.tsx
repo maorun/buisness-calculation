@@ -255,7 +255,7 @@ export function EndeSection() {
                   hint="Steuerfreie Darlehensrückzahlung, die direkt privat verfügbar sein soll."
                 />
                 <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1">
-                  <p className="text-xs font-medium text-slate-600">Gesamteinkommen &amp; Steuern (Bereich 1)</p>
+                  <p className="text-xs font-medium text-slate-600">Gesamteinkommen & Steuern (Bereich 1)</p>
                   <p className="text-xs text-slate-700">
                     Gesamteinkommen (brutto):{" "}
                     <span className="font-semibold">
