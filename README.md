@@ -44,4 +44,5 @@ Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft 
 | Abgeltungsteuer | 25,00 % |
 | Abgeltungsteuer + SolZ | 26,375 % |
 | Basiszins 2024 | 2,29 % |
-| Teilfreistellung (ETF) | 30 % |
+| Teilfreistellung ETF-Verkauf (GmbH) | 80 % |
+| Teilfreistellung ETF (Privatperson) | 30 % |

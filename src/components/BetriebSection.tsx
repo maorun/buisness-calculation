@@ -2,7 +2,12 @@
 
 import React from "react";
 import { useCalculatorStore } from "@/store/calculatorStore";
-import { HANDY_ANSCHAFFUNGSKOSTEN, HANDY_ERSATZZYKLUS_JAHRE, HANDY_VERKAUFSQUOTE } from "@/lib/calculations/betrieb";
+import {
+  HANDY_ANSCHAFFUNGSKOSTEN,
+  HANDY_ERSATZZYKLUS_JAHRE,
+  HANDY_VERKAUFSQUOTE,
+  TEILFREISTELLUNG_AKTIEN_GMBH,
+} from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
 
@@ -51,6 +56,7 @@ export function BetriebSection() {
   const handyAnschaffung = HANDY_ANSCHAFFUNGSKOSTEN.toLocaleString("de-DE");
   const handyZyklus = HANDY_ERSATZZYKLUS_JAHRE;
   const handyVerkaufsquote = (HANDY_VERKAUFSQUOTE * 100).toLocaleString("de-DE");
+  const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
 
@@ -216,7 +222,7 @@ export function BetriebSection() {
           <div><span className="font-medium">Abgeltungsteuer:</span> 25%</div>
           <div><span className="font-medium">Abg. + SolZ:</span> 26,375%</div>
           <div><span className="font-medium">Basiszins 2024:</span> 2,29%</div>
-          <div><span className="font-medium">Teilfreistellung:</span> 30%</div>
+          <div><span className="font-medium">Teilfreistellung ETF-Verkauf:</span> {teilfreistellungGmbh}%</div>
         </div>
         <p className="text-xs text-gray-400 mt-2">
           Der GmbH-Gewinn ergibt sich aus realisiertem ETF-Ertrag (durch Verkäufe) abzüglich Betriebskosten und Darlehenszinsen.
