@@ -430,7 +430,7 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.etfVerkauf).toBe(0);
   });
 
-  it("sells the ETF position with the lowest tax burden first", () => {
+  it("uses loan top-ups before ETF sales when annual outflows are fully covered", () => {
     const state: BetriebState = {
       ...defaultState,
       startkapital: 10000,
@@ -443,18 +443,36 @@ describe("berechneBetriebsErgebnisse", () => {
 
     const [erstesJahr] = berechneBetriebsErgebnisse(state);
     const wachstumsfaktor = 1 + state.etfRendite / 100;
-    expect(erstesJahr.details.zuzahlungenEtfWert).toBeCloseTo(1200);
+    expect(erstesJahr.details.etfVerkauf).toBeCloseTo(0);
 
     const zweitesJahr = berechneBetriebsErgebnisse(state)[1];
 
     expect(zweitesJahr.details.ausZuzahlungenBeglicheneBetriebsausgaben).toBeCloseTo(0);
     expect(zweitesJahr.details.ungedeckteBetriebsausgaben).toBeCloseTo(0);
-    expect(zweitesJahr.details.etfGewinn).toBeGreaterThan(0);
-    expect(zweitesJahr.details.etfGewinn).toBeLessThan(20);
+    expect(zweitesJahr.details.etfVerkauf).toBeCloseTo(0);
+    expect(zweitesJahr.details.etfGewinn).toBeCloseTo(0);
     expect(zweitesJahr.details.startkapitalEtfWert).toBeCloseTo(erstesJahr.details.startkapitalEtfWert * wachstumsfaktor, 4);
     expect(zweitesJahr.details.darlehenEtfWert).toBeCloseTo(erstesJahr.details.darlehenEtfWert * wachstumsfaktor, 4);
     expect(zweitesJahr.details.zuzahlungenEtfWert)
       .toBeLessThan(erstesJahr.details.zuzahlungenEtfWert * wachstumsfaktor + (175 * 12));
+  });
+
+  it("does not invest free loan top-ups in years with ETF sales", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 10000,
+      etfRendite: 7,
+      laufzeitJahre: 1,
+      kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 5000, periode: "jaehrlich" }],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 200, endfaellig: false },
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+
+    expect(result.details.etfVerkauf).toBeGreaterThan(0);
+    expect(result.details.freieDarlehensZuzahlungen).toBeCloseTo(0);
+    expect(result.details.deckungssaldoNachAusgabenUndSteuern).toBeCloseTo(0, 2);
   });
 
   it("cash reserve accumulates only positive annual net profit", () => {
