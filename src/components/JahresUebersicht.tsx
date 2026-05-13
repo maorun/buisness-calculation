@@ -67,9 +67,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       )}
       <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
       <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
-      {betriebskostenPosten.map((posten) => (
+      {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
-          key={posten.label}
+          key={`${posten.label}-${index}`}
           label={`• ${posten.label}`}
           value={posten.wert}
           colorClass="text-gray-500"
@@ -262,9 +262,9 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
       {d.betriebsausgabenGesamt !== undefined && (
         <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       )}
-      {betriebskostenPosten.map((posten) => (
+      {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
-          key={posten.label}
+          key={`${posten.label}-${index}`}
           label={`• ${posten.label}`}
           value={posten.wert}
           colorClass="text-gray-500"
@@ -383,9 +383,9 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
       {d.betriebsausgabenGesamt !== undefined && (
         <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       )}
-      {betriebskostenPosten.map((posten) => (
+      {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
-          key={posten.label}
+          key={`${posten.label}-${index}`}
           label={`• ${posten.label}`}
           value={posten.wert}
           colorClass="text-gray-500"
