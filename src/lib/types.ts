@@ -49,6 +49,8 @@ export interface FirmenhandyConfig {
 
 export interface BetriebState {
   startkapital: number;
+  /** Annual cash inflow that stays liquid and is not invested into ETFs. */
+  jaehrlicherCashZuschuss: number;
   darlehen: DarlehenConfig;
   etfRendite: number; // in percent, e.g. 7 means 7% p.a.
   laufzeitJahre: number;

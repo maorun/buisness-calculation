@@ -34,6 +34,7 @@ const initialState: CalculatorState = {
   },
   betrieb: {
     startkapital: 12500,
+    jaehrlicherCashZuschuss: 0,
     darlehen: {
       betrag: 47500,
       zinssatz: 3,

@@ -22,8 +22,11 @@ describe("JahresUebersicht", () => {
         handyNettoKosten: 900,
         benefitsKosten: 2100,
         betriebsausgabenGesamt: 4200,
+        jaehrlicherCashZuschuss: 1200,
+        ausCashZuschussBeglicheneBetriebsausgaben: 1200,
+        ausCashReserveBeglicheneBetriebsausgaben: 600,
         ausZuzahlungenBeglicheneBetriebsausgaben: 0,
-        ungedeckteBetriebsausgaben: 4200,
+        ungedeckteBetriebsausgaben: 2400,
         freieDarlehensZuzahlungen: 0,
         jaehrlicheZinsen: 0,
         aufgelaufeneZinsen: 0,
@@ -58,5 +61,7 @@ describe("JahresUebersicht", () => {
     expect(screen.getByText("• Tankgutschein")).toBeTruthy();
     expect(screen.getByText("• Strategieessen")).toBeTruthy();
     expect(screen.getByText("• Firmenhandy (alle 3 Jahre)")).toBeTruthy();
+    expect(screen.getByText("Betriebsausgaben aus Cash-Zuschuss")).toBeTruthy();
+    expect(screen.getByText("Betriebsausgaben aus Cash-Reserve")).toBeTruthy();
   });
 });
