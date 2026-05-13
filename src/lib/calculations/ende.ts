@@ -11,6 +11,7 @@ import {
 } from "./betrieb";
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
+export const DEFAULT_ZIELNETTO_BEREICH2 = 17000;
 // Annualized lower bound of the 556 € monthly Übergangsbereich threshold (§ 20 Abs. 2 SGB IV).
 export const MIDIJOB_MONAT_MIN = 556;
 export const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
@@ -264,10 +265,6 @@ export function berechneEndeErgebnisse(
     const firmenEtfVermoegenVorBereich1 = firmenEtfVermoegen;
     const firmenDarlehensverbindlichkeitAlt = darlehensrueckzahlung;
     const bruttoGehalt = Math.max(0, state.gehaltBereich1);
-    const teiltilgungBereich1 = Math.min(
-      darlehensrueckzahlung,
-      Math.max(0, state.teiltilgungBereich1)
-    );
 
     // ETF growth for Bereich 1
     const etfVorWachstumB1 = firmenEtfVermoegen;
@@ -296,7 +293,6 @@ export function berechneEndeErgebnisse(
 
     // Net loan return (principal + after-tax interest)
     const darlehenNettoAuszahlung = darlehensrueckzahlung + zinsenNetto;
-    reinvestiertesDarlehen = Math.max(0, darlehensrueckzahlung - teiltilgungBereich1);
 
     // Bereich 1 target net counts salary, after-tax interest and the configurable
     // partial principal repayment that is not rolled into the new shareholder loan.
@@ -304,6 +300,14 @@ export function berechneEndeErgebnisse(
     const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
       beitragspflichtigeEinnahmenGkv
     );
+    const zielnettoBereich1 = state.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
+    const konsumVorAutomatischerTilgungBereich1 = nettoGehalt + zinsenNetto - gesetzlicheKrankenversicherungBeitrag;
+    const teiltilgungBereich1 = berechneFlexibleTilgung(
+      zielnettoBereich1,
+      konsumVorAutomatischerTilgungBereich1,
+      darlehensrueckzahlung
+    );
+    reinvestiertesDarlehen = Math.max(0, darlehensrueckzahlung - teiltilgungBereich1);
     const konsumierbaresNettoBereich1VorGkv = nettoGehalt + zinsenNetto + teiltilgungBereich1;
     const konsumierbaresNettoBereich1 = konsumierbaresNettoBereich1VorGkv - gesetzlicheKrankenversicherungBeitrag;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
@@ -333,7 +337,7 @@ export function berechneEndeErgebnisse(
       nettogewinn: konsumierbaresNettoBereich1,
       details: {
         bereich: 1,
-        zielnetto: state.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1,
+        zielnetto: zielnettoBereich1,
         bruttoGehalt,
         nettoGehalt,
         einkommensteuer,
@@ -427,7 +431,7 @@ export function berechneEndeErgebnisse(
 
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
-    const zielnetto = endfaellig ? (state.zielnettoBereich2 ?? 0) : 0;
+    const zielnetto = endfaellig ? (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2) : 0;
     const beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + state.gewinnausschuettung;
     const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
       beitragspflichtigeEinnahmenGkv

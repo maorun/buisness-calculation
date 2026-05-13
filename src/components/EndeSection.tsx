@@ -10,6 +10,7 @@ import {
   berechneDarlehensZinsenSteuer,
   berechneGesetzlicheKrankenversicherungBeitrag,
   DEFAULT_ZIELNETTO_BEREICH1,
+  DEFAULT_ZIELNETTO_BEREICH2,
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
 import {
@@ -51,53 +52,6 @@ function InputField({
       {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
     </div>
   );
-}
-
-function SliderField({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  step = 1,
-  hint,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min: number;
-  max: number;
-  step?: number;
-  hint?: string;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <span className="text-sm font-semibold text-slate-800">
-          {value.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
-        </span>
-      </div>
-      <input
-        type="range"
-        className="w-full accent-blue-600"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
-      <div className="flex items-center justify-between text-[11px] text-slate-500">
-        <span>{min.toLocaleString("de-DE")} €</span>
-        <span>{max.toLocaleString("de-DE")} €</span>
-      </div>
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
-    </div>
-  );
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }
 
 export function EndeSection() {
@@ -143,18 +97,24 @@ export function EndeSection() {
   const zinsSteuerBereich1 = bereich1Details?.zinsSteuerBereich1
     ?? berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, gehaltBereich1);
   const zinsenNettoBereich1 = bereich1Details?.zinsenNettoBereich1 ?? (aufgelaufeneZinsen - zinsSteuerBereich1);
+  const zielnettoBereich1 = ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
+  const gkvBereich1 = bereich1Details?.gesetzlicheKrankenversicherungBeitrag
+    ?? berechneGesetzlicheKrankenversicherungBeitrag(gehaltBereich1 + aufgelaufeneZinsen);
   const teiltilgungBereich1 = bereich1Details?.teiltilgungBereich1
-    ?? Math.min(offeneDarlehensschuld, Math.max(0, ende.teiltilgungBereich1));
+    ?? Math.min(
+      offeneDarlehensschuld,
+      Math.max(
+        0,
+        zielnettoBereich1 - (nettoGehaltBereich1 + zinsenNettoBereich1 - gkvBereich1)
+      )
+    );
   const einkommensteuerBereich1 = bereich1Details?.einkommensteuer ?? 0;
   const soliBereich1 = bereich1Details?.soli ?? 0;
   const konsumierbaresBereich1 = bereich1Details?.konsumierbaresNettoBereich1
-    ?? (nettoGehaltBereich1 + zinsenNettoBereich1 + teiltilgungBereich1);
+    ?? (nettoGehaltBereich1 + zinsenNettoBereich1 + teiltilgungBereich1 - gkvBereich1);
   const gesamtSteuerBereich1 = bereich1Ergebnisse[0]?.steuer ?? (zinsSteuerBereich1 + einkommensteuerBereich1 + soliBereich1);
-  const gkvBereich1 = bereich1Details?.gesetzlicheKrankenversicherungBeitrag
-    ?? berechneGesetzlicheKrankenversicherungBeitrag(gehaltBereich1 + aufgelaufeneZinsen);
   const neuesDarlehenBereich1 = bereich1Details?.neuesDarlehenStart
     ?? Math.max(0, offeneDarlehensschuld - teiltilgungBereich1);
-  const zielnettoBereich1 = ende.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
   const bereich1ZielDiff = konsumierbaresBereich1 - zielnettoBereich1;
 
   const bereich2DarlehenZinsen = bereich2Details?.darlehenZinsen ?? 0;
@@ -164,7 +124,10 @@ export function EndeSection() {
   const bereich2NettoGehalt = bereich2Details?.nettoGehalt ?? 0;
   const bereich2Gkv = bereich2Details?.gesetzlicheKrankenversicherungBeitrag ?? 0;
   const bereich2FlexibleTilgung = bereich2Details?.darlehenTilgung ?? 0;
+  const zielnettoBereich2 = ende.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2;
   const bereich2KonsumVorTilgung = bereich2Details?.konsumVorTilgung ?? (bereich2NettoGehalt + bereich2DarlehenZinsenNetto);
+  const bereich2GesamtNetto = bereich2Ergebnisse[0]?.nettogewinn ?? (bereich2KonsumVorTilgung + bereich2FlexibleTilgung);
+  const bereich2ZielDiff = bereich2GesamtNetto - zielnettoBereich2;
 
   return (
     <div className="space-y-6">
@@ -218,9 +181,9 @@ export function EndeSection() {
           <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Rückzahlung & Neustart Gesellschafterdarlehen</h3>
           <p className="text-xs text-slate-500 mb-4">
             Die GmbH zahlt das bisherige Gesellschafterdarlehen steuerfrei zurück. Die aufgelaufenen Zinsen
-            werden mit Einkommensteuer belastet. GF-Gehalt und Teil-Tilgung werden per Schieberegler
-            gesteuert; zusammen mit den netto verbleibenden Darlehenszinsen sollen sie das Zielnetto
-            treffen. Die restliche Darlehenssumme wird anschließend als neues Gesellschafterdarlehen für
+            werden mit Einkommensteuer belastet. Das GF-Gehalt ist frei wählbar; die Teil-Tilgung wird
+            automatisch auf die benötigte Rate gesetzt. Zusammen mit den netto verbleibenden Darlehenszinsen
+            soll so das Zielnetto erreicht werden. Die restliche Darlehenssumme wird anschließend als neues Gesellschafterdarlehen für
             Bereich 2 weitergeführt.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -245,14 +208,15 @@ export function EndeSection() {
                   hint="Frei wählbar ohne Unter- und Obergrenze."
                   min={0}
                 />
-                <SliderField
-                  label="Teil-Tilgung Bereich 1"
-                  value={teiltilgungBereich1}
-                  min={0}
-                  max={offeneDarlehensschuld}
-                  onChange={(value) => setEnde({ teiltilgungBereich1: clamp(value, 0, offeneDarlehensschuld) })}
-                  hint="Steuerfreie Darlehensrückzahlung, die direkt privat verfügbar sein soll."
-                />
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-medium text-slate-600">Automatische Teil-Tilgung Bereich 1</p>
+                  <p className="mt-1 text-lg font-bold text-slate-800">
+                    {teiltilgungBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Wird automatisch auf die benötigte Rate gesetzt, um das Zielnetto möglichst zu erreichen (max. bis zur offenen Darlehenssumme).
+                  </p>
+                </div>
                 <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1">
                   <p className="text-xs font-medium text-slate-600">Gesamteinkommen & Steuern (Bereich 1)</p>
                   <p className="text-xs text-slate-700">
@@ -332,10 +296,10 @@ export function EndeSection() {
           <div className="mb-4 max-w-xs">
             <InputField
               label="Zielnetto Bereich 2 (€/Jahr)"
-              value={ende.zielnettoBereich2 ?? 0}
+              value={zielnettoBereich2}
               onChange={(v) => setEnde({ zielnettoBereich2: Math.max(0, parseFloat(v) || 0) })}
               suffix="€/Jahr"
-              hint="Angestrebtes Netto-Jahreseinkommen für die laufende Auszahlungsphase"
+              hint={`Angestrebtes Netto-Jahreseinkommen für die laufende Auszahlungsphase (Default ${DEFAULT_ZIELNETTO_BEREICH2.toLocaleString("de-DE")} €)`}
               min={0}
             />
           </div>
@@ -405,6 +369,15 @@ export function EndeSection() {
                   Vor Tilgung: {bereich2KonsumVorTilgung.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
                 </p>
               </div>
+            </div>
+            <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+              <p className="text-xs font-medium text-slate-600">Bereich-2 Zielabgleich</p>
+              <p className="mt-1 text-lg font-bold text-slate-800">
+                {bereich2GesamtNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
+              </p>
+              <p className={`text-xs mt-1 ${bereich2ZielDiff >= 0 ? "text-green-700" : "text-red-700"}`}>
+                {bereich2ZielDiff >= 0 ? "Überschuss" : "Fehlbetrag"}: {Math.abs(bereich2ZielDiff).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              </p>
             </div>
           </div>
         )}

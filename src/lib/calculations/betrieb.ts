@@ -348,6 +348,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
   // For regular loans, interest is paid (and deductible) each year.
   let aufgelaufeneZinsen = 0;
+  let kumulierterCashZuschuss = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = sumEtfWert(etfLots);
@@ -374,6 +375,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       state.darlehen.monatlicherZuschuss
     );
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
+    kumulierterCashZuschuss += jaehrlicherCashZuschuss;
     const darlehensZuzahlungenJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const cashReserveVorjahr = cashReserve;
     const ausCashZuschussBeglicheneBetriebsausgaben = Math.min(jaehrlicherCashZuschuss, betriebsausgabenGesamt);
@@ -394,11 +396,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     }
 
     const auszahlungenOhneVerkaufssteuern = ungedeckteBetriebsausgaben + jaehrlicheZinsen + vorabpauschalesteuer;
+    const verfuegbareLiquiditaetVorEtfVerkauf = cashReserve + verbleibendeDarlehensZuzahlungen;
 
     // Solve sale amount iteratively because taxes depend on realized sale gain.
     let etfVerkauf = Math.min(
       etfWertNachWachstum,
-      Math.max(0, auszahlungenOhneVerkaufssteuern - verbleibendeDarlehensZuzahlungen)
+      Math.max(0, auszahlungenOhneVerkaufssteuern - verfuegbareLiquiditaetVorEtfVerkauf)
     );
     for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
       const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
@@ -413,7 +416,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         etfWertNachWachstum,
         Math.max(
           0,
-          auszahlungenOhneVerkaufssteuern + gmbhSteuerIter + etfVerkaufssteuerIter - verbleibendeDarlehensZuzahlungen
+          auszahlungenOhneVerkaufssteuern + gmbhSteuerIter + etfVerkaufssteuerIter - verfuegbareLiquiditaetVorEtfVerkauf
         )
       );
       if (Math.abs(benoetigterVerkauf - etfVerkauf) < SALE_CONVERGENCE_THRESHOLD) {
@@ -438,7 +441,30 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Tax on realized ETF gain due to selling
     const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag);
     const gesamtauszahlungen = ungedeckteBetriebsausgaben + jaehrlicheZinsen + vorabpauschalesteuer + gmbhSteuer + etfVerkaufssteuer;
-    const freieDarlehensZuzahlungen = Math.max(0, verbleibendeDarlehensZuzahlungen - gesamtauszahlungen);
+    const liquiditaetsabflussOhneEtfVerkauf = Math.min(gesamtauszahlungen, verfuegbareLiquiditaetVorEtfVerkauf);
+    const ausCashReserveBeglicheneSonstigeAuszahlungen = Math.min(cashReserve, liquiditaetsabflussOhneEtfVerkauf);
+    cashReserve -= ausCashReserveBeglicheneSonstigeAuszahlungen;
+    const ausDarlehensZuzahlungenBeglicheneSonstigeAuszahlungen = Math.min(
+      verbleibendeDarlehensZuzahlungen,
+      Math.max(0, liquiditaetsabflussOhneEtfVerkauf - ausCashReserveBeglicheneSonstigeAuszahlungen)
+    );
+    const verbleibendeDarlehensZuzahlungenNachAuszahlungen = Math.max(
+      0,
+      verbleibendeDarlehensZuzahlungen - ausDarlehensZuzahlungenBeglicheneSonstigeAuszahlungen
+    );
+    const deckungssaldoNachAusgabenUndSteuern =
+      etfVerkauf + verfuegbareLiquiditaetVorEtfVerkauf - gesamtauszahlungen;
+    const ueberdeckungAusEtfVerkauf = Math.max(
+      0,
+      deckungssaldoNachAusgabenUndSteuern - cashReserve - verbleibendeDarlehensZuzahlungenNachAuszahlungen
+    );
+    const freieDarlehensZuzahlungen = etfVerkauf > 0
+      ? 0
+      : verbleibendeDarlehensZuzahlungenNachAuszahlungen;
+    cashReserve += ueberdeckungAusEtfVerkauf;
+    if (etfVerkauf > 0) {
+      cashReserve += verbleibendeDarlehensZuzahlungenNachAuszahlungen;
+    }
 
     // Additional taxes
     const gesamtSteuer = gmbhSteuer + vorabpauschalesteuer + etfVerkaufssteuer;
@@ -446,8 +472,6 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Net gain after all taxes
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer;
-    const deckungssaldoNachAusgabenUndSteuern =
-      etfVerkauf + verbleibendeDarlehensZuzahlungen - gesamtauszahlungen;
 
     // Positive retained result is held as cash reserve (Aktiva).
     const cashReserveZugang = Math.max(0, nettogewinn);
@@ -467,6 +491,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // The outstanding loan is a liability shown separately; net worth = assets - offenesDarlehen.
     const gesamtvermoegen = etfWert + cashReserve;
     const nettovermoegen = gesamtvermoegen - offenesDarlehen;
+    const haftungskapitalEingeflossen = Math.max(0, state.startkapital) + kumulierterCashZuschuss;
 
     ergebnisse.push({
       jahr,
@@ -488,9 +513,13 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         benefitsKosten,
         betriebsausgabenGesamt,
         jaehrlicherCashZuschuss,
+        kumulierterCashZuschuss,
+        haftungskapitalEingeflossen,
         ausCashZuschussBeglicheneBetriebsausgaben,
         ausCashReserveBeglicheneBetriebsausgaben,
         ausZuzahlungenBeglicheneBetriebsausgaben,
+        ausCashReserveBeglicheneSonstigeAuszahlungen,
+        ausDarlehensZuzahlungenBeglicheneSonstigeAuszahlungen,
         ungedeckteBetriebsausgaben,
         freieDarlehensZuzahlungen,
         jaehrlicheZinsen,

@@ -34,11 +34,11 @@ const initialState: CalculatorState = {
   },
   betrieb: {
     startkapital: 12500,
-    jaehrlicherCashZuschuss: 0,
+    jaehrlicherCashZuschuss: 2400,
     darlehen: {
       betrag: 47500,
       zinssatz: 3,
-      monatlicherZuschuss: 100,
+      monatlicherZuschuss: 0,
       endfaellig: true,
     },
     etfRendite: 5,
@@ -51,14 +51,14 @@ const initialState: CalculatorState = {
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
   },
   ende: {
-    geschaeftsfuehrergehalt: 24000,
-    gehaltBereich1: 24000,
+    geschaeftsfuehrergehalt: 0,
+    gehaltBereich1: 0,
     teiltilgungBereich1: 0,
     gewinnausschuettung: 0,
     tilgungsrate: 0,
     laufzeitJahre: 5,
     zielnettoBereich1: 17000,
-    zielnettoBereich2: 0,
+    zielnettoBereich2: 17000,
   },
 };
 

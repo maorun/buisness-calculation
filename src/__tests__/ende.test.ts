@@ -399,18 +399,26 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.bruttoGehalt).toBe(gehaltBereich1);
     });
 
-    it("Bereich 1: zielnetto-relevant net includes salary, interest and teiltilgung", () => {
+    it("Bereich 1: zielnetto-relevant net includes salary, interest and automatic teiltilgung", () => {
       const aufgelaufeneZinsen = 2000;
       const principal = 10000;
-      const state = { ...endfaelligState, teiltilgungBereich1: 3000 };
+      const state = { ...endfaelligState, zielnettoBereich1: 24000 };
       const results = berechneEndeErgebnisse(state, 0, principal, 3.5, aufgelaufeneZinsen, true);
       const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsen, state.gehaltBereich1);
       const gkv = berechneGesetzlicheKrankenversicherungBeitrag(state.gehaltBereich1 + aufgelaufeneZinsen);
+      const teiltilgung = Math.max(
+        0,
+        Math.min(
+          principal,
+          state.zielnettoBereich1 - (berechneNettoGehalt(state.gehaltBereich1) + (aufgelaufeneZinsen - zinsSteuer) - gkv)
+        )
+      );
       const expectedKonsumierbar =
         berechneNettoGehalt(state.gehaltBereich1) +
         (aufgelaufeneZinsen - zinsSteuer) +
-        state.teiltilgungBereich1 -
+        teiltilgung -
         gkv;
+      expect(results[0].details.teiltilgungBereich1).toBeCloseTo(teiltilgung);
       expect(results[0].details.konsumierbaresNettoBereich1).toBeCloseTo(expectedKonsumierbar);
       // nettogewinn now equals konsumierbaresNettoBereich1 (reinvested principal excluded)
       expect(results[0].nettogewinn).toBeCloseTo(expectedKonsumierbar);
@@ -419,17 +427,17 @@ describe("berechneEndeErgebnisse", () => {
     it("Bereich 1: keeps only the unrepaid principal as the new shareholder loan", () => {
       const principal = 10000;
       const aufgelaufeneZinsen = 2000;
-      const state = { ...endfaelligState, teiltilgungBereich1: 2500 };
-      const expectedNeuesDarlehen = principal - state.teiltilgungBereich1;
+      const state = { ...endfaelligState, zielnettoBereich1: 22000 };
       const results = berechneEndeErgebnisse(state, 0, principal, 3.5, aufgelaufeneZinsen, true);
+      const expectedNeuesDarlehen = principal - results[0].details.teiltilgungBereich1;
       expect(results[0].details.neuesDarlehenStart).toBeCloseTo(expectedNeuesDarlehen);
       expect(results[0].details.restdarlehen).toBeCloseTo(expectedNeuesDarlehen);
       expect(results[0].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
     });
 
-    it("Bereich 1: caps teiltilgung at the repaid principal", () => {
+    it("Bereich 1: caps automatic teiltilgung at the repaid principal", () => {
       const principal = 10000;
-      const state = { ...endfaelligState, teiltilgungBereich1: 15000 };
+      const state = { ...endfaelligState, zielnettoBereich1: 100000 };
       const results = berechneEndeErgebnisse(state, 0, principal, 3.5, 1000, true);
       expect(results[0].details.teiltilgungBereich1).toBe(principal);
       expect(results[0].details.neuesDarlehenStart).toBe(0);
@@ -455,12 +463,11 @@ describe("berechneEndeErgebnisse", () => {
       const etfStart = 50000;
       const principal = 10000;
       const aufgelaufeneZinsen = 1500;
-      const teiltilgung = 2000;
-      const state = { ...endfaelligState, teiltilgungBereich1: teiltilgung };
+      const state = { ...endfaelligState, zielnettoBereich1: 22000 };
       const results = berechneEndeErgebnisse(state, etfStart, principal, 3.5, aufgelaufeneZinsen, true);
       const bereich1 = results[0];
       const bruttoGehalt = endfaelligState.gehaltBereich1;
-      const reinvestiertesDarlehen = principal - teiltilgung;
+      const reinvestiertesDarlehen = principal - bereich1.details.teiltilgungBereich1;
       // Net ETF after Bereich 1: grow (rendite=0 here), pay out full principal + interest + salary +
       // Betriebskosten + taxes, receive new loan back
       const expectedEtf = etfStart
