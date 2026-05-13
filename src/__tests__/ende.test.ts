@@ -302,9 +302,25 @@ describe("berechneEndeErgebnisse", () => {
 
   it("initial ETF value is carried forward", () => {
     const etfStart = 500000;
-    const results = berechneEndeErgebnisse(defaultState, etfStart, 12000, 6);
-    expect(results[0].details.firmenNettovermoegen).toBeLessThanOrEqual(etfStart);
-    expect(results[0].gesamtvermoegen).toBeGreaterThan(0);
+    const state = {
+      ...defaultState,
+      geschaeftsfuehrergehalt: 0,
+      laufzeitJahre: 1,
+    };
+    const results = berechneEndeErgebnisse(
+      state,
+      etfStart,
+      0,
+      0,
+      0,
+      false,
+      0,
+      [],
+      { tankgutschein: 0, strategieessen: 0 },
+      { aktiv: false, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
+    );
+    expect(results[0].details.firmenEtfVermoegen).toBeCloseTo(etfStart);
+    expect(results[0].gesamtvermoegen).toBeCloseTo(etfStart);
   });
 
   it("includes firm balance details in payout phase", () => {
