@@ -64,4 +64,49 @@ describe("JahresUebersicht", () => {
     expect(screen.getByText("Betriebsausgaben aus Cash-Zuschuss")).toBeTruthy();
     expect(screen.getByText("Betriebsausgaben aus Cash-Reserve")).toBeTruthy();
   });
+
+  it("shows Betriebsausgaben details in Ende yearly details", () => {
+    const ergebnisse: JahresErgebnis[] = [{
+      jahr: 1,
+      gesamtvermoegen: 100000,
+      gewinn: 1000,
+      steuer: 100,
+      nettogewinn: 900,
+      details: {
+        bereich: 2,
+        bruttoGehalt: 0,
+        nettoGehalt: 0,
+        einkommensteuer: 0,
+        soli: 0,
+        darlehenZinsen: 0,
+        darlehenZinsenSteuer: 0,
+        darlehenZinsenNetto: 0,
+        darlehenTilgung: 0,
+        darlehenGesamtauszahlungBrutto: 0,
+        darlehenGesamtauszahlungNetto: 0,
+        restdarlehen: 0,
+        firmenEtfVermoegen: 100000,
+        firmenDarlehensverbindlichkeit: 0,
+        firmenNettovermoegen: 100000,
+        theoretischerEtfErtrag: 2000,
+        vorabpauschale: 100,
+        vorabpauschalesteuer: 10,
+        jaehrlicheKosten: 1200,
+        betriebsausgabenGesamt: 4200,
+        gmbhSteuer: 20,
+      },
+      betriebskostenPosten: [
+        { label: "Software", wert: 1200 },
+        { label: "Tankgutschein", wert: 600 },
+      ],
+    }];
+
+    render(<JahresUebersicht ergebnisse={ergebnisse} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+
+    expect(screen.getByText("− Betriebsausgaben")).toBeTruthy();
+    expect(screen.getByText("• Software")).toBeTruthy();
+    expect(screen.getByText("• Tankgutschein")).toBeTruthy();
+  });
 });

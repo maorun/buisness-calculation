@@ -198,6 +198,7 @@ describe("berechneFlexibleTilgung", () => {
 describe("berechneEndeErgebnisse", () => {
   const defaultState: EndeState = {
     geschaeftsfuehrergehalt: 24000,
+    stammkapitalErhoehungEtf: 0,
     gehaltBereich1: 24000,
     teiltilgungBereich1: 0,
     gewinnausschuettung: 0,
@@ -302,8 +303,8 @@ describe("berechneEndeErgebnisse", () => {
   it("initial ETF value is carried forward", () => {
     const etfStart = 500000;
     const results = berechneEndeErgebnisse(defaultState, etfStart, 12000, 6);
-    // gesamtvermoegen starts at etfStart + first year netto
-    expect(results[0].gesamtvermoegen).toBeGreaterThan(etfStart);
+    expect(results[0].details.firmenNettovermoegen).toBeLessThanOrEqual(etfStart);
+    expect(results[0].gesamtvermoegen).toBeGreaterThan(0);
   });
 
   it("includes firm balance details in payout phase", () => {
@@ -316,11 +317,45 @@ describe("berechneEndeErgebnisse", () => {
     );
   });
 
+  it("calculates gesamtvermoegen as private assets + current firm net assets per year", () => {
+    const results = berechneEndeErgebnisse(defaultState, 100000, 12000, 6);
+    let privatvermoegen = 0;
+    for (const r of results) {
+      privatvermoegen += r.nettogewinn;
+      expect(r.gesamtvermoegen).toBeCloseTo(privatvermoegen + r.details.firmenNettovermoegen);
+    }
+  });
+
+  it("adds one-time stammkapital increase to ETF at Ende start", () => {
+    const state: EndeState = {
+      ...defaultState,
+      stammkapitalErhoehungEtf: 10000,
+      geschaeftsfuehrergehalt: 0,
+      laufzeitJahre: 1,
+    };
+    const results = berechneEndeErgebnisse(
+      state,
+      0,
+      0,
+      0,
+      0,
+      false,
+      0,
+      [],
+      { tankgutschein: 0, strategieessen: 0 },
+      { aktiv: false, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
+    );
+    expect(results[0].details.firmenEtfVermoegen).toBeCloseTo(10000);
+    expect(results[0].details.stammkapitalErhoehungEtf).toBe(10000);
+    expect(results[0].gesamtvermoegen).toBeCloseTo(10000);
+  });
+
   // ---- Bereich 1 / endfällig tests ----
 
   describe("endfaellig = true (Bereich 1 + Bereich 2)", () => {
     const endfaelligState: EndeState = {
       geschaeftsfuehrergehalt: 24000,
+      stammkapitalErhoehungEtf: 0,
       gehaltBereich1: 24000,
       teiltilgungBereich1: 0,
       gewinnausschuettung: 0,
@@ -527,6 +562,7 @@ describe("berechneEndeErgebnisse", () => {
   describe("ETF rendite and Betriebskosten in Ende phase", () => {
     const baseState: EndeState = {
       geschaeftsfuehrergehalt: 24000,
+      stammkapitalErhoehungEtf: 0,
       gehaltBereich1: 24000,
       teiltilgungBereich1: 0,
       gewinnausschuettung: 0,
