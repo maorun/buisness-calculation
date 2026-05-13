@@ -56,6 +56,15 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
     <div className="space-y-0.5 text-xs">
       {/* ── GuV ──────────────────────────────────────── */}
       <SectionHeader label="Gewinn- und Verlustrechnung" />
+      {d.jaehrlicherCashZuschuss > 0 && (
+        <BilanzRow
+          label="Cash-Zufluss Gesellschafter (nicht GuV-wirksam)"
+          value={d.jaehrlicherCashZuschuss}
+          prefix="+"
+          colorClass="text-blue-600"
+          indent
+        />
+      )}
       <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
       <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       {betriebskostenPosten.map((posten) => (
@@ -106,6 +115,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
 
       {/* ── Cashflow ─────────────────────────────────── */}
       <SectionHeader label="Cashflow (ETF-Verkauf zur Kostendeckung)" />
+      {d.jaehrlicherCashZuschuss > 0 && (
+        <BilanzRow label="Jährlicher Cash-Zufluss" value={d.jaehrlicherCashZuschuss} prefix="+" colorClass="text-teal-700" indent />
+      )}
       {d.ausCashZuschussBeglicheneBetriebsausgaben > 0 && (
         <BilanzRow label="Betriebsausgaben aus Cash-Zuschuss" value={d.ausCashZuschussBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
       )}
@@ -114,6 +126,12 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       )}
       {d.ausZuzahlungenBeglicheneBetriebsausgaben > 0 && (
         <BilanzRow label="Betriebsausgaben aus Darlehenszuzahlungen" value={d.ausZuzahlungenBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
+      )}
+      {d.ausCashReserveBeglicheneSonstigeAuszahlungen > 0 && (
+        <BilanzRow label="Steuern/Zinsen aus Cash-Reserve" value={d.ausCashReserveBeglicheneSonstigeAuszahlungen} prefix="+" colorClass="text-teal-700" indent />
+      )}
+      {d.ausDarlehensZuzahlungenBeglicheneSonstigeAuszahlungen > 0 && (
+        <BilanzRow label="Steuern/Zinsen aus Darlehenszuzahlungen" value={d.ausDarlehensZuzahlungenBeglicheneSonstigeAuszahlungen} prefix="+" colorClass="text-teal-700" indent />
       )}
       {d.freieDarlehensZuzahlungen > 0 && (
         <BilanzRow label="Freie Darlehenszuzahlungen in ETF investiert" value={d.freieDarlehensZuzahlungen} prefix="+" colorClass="text-blue-700" indent />
@@ -134,10 +152,15 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Cash-Reserve" value={d.cashReserve} prefix="+" colorClass="text-blue-700" bold indent />
       )}
 
-      {d.offenesDarlehen > 0 && (
+      {(d.offenesDarlehen > 0 || d.haftungskapitalEingeflossen > 0) && (
         <>
           <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
-          <BilanzRow label="Offenes Darlehen (Verbindlichkeit)" value={d.offenesDarlehen} prefix="−" colorClass="text-gray-600" indent />
+          {d.haftungskapitalEingeflossen > 0 && (
+            <BilanzRow label="Eingeflossenes Haftungskapital (Startkapital + Cash-Zufluss)" value={d.haftungskapitalEingeflossen} prefix="+" colorClass="text-gray-700" indent />
+          )}
+          {d.offenesDarlehen > 0 && (
+            <BilanzRow label="Offenes Darlehen (Verbindlichkeit)" value={d.offenesDarlehen} prefix="−" colorClass="text-gray-600" indent />
+          )}
         </>
       )}
       <Divider />

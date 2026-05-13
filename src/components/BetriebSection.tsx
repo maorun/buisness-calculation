@@ -119,7 +119,7 @@ export function BetriebSection() {
             value={betrieb.jaehrlicherCashZuschuss}
             onChange={(v) => setBetrieb({ jaehrlicherCashZuschuss: parseFloat(v) || 0 })}
             suffix="€/Jahr"
-            hint="Bleibt als Cash in der GmbH, gleicht zuerst Betriebskosten aus und wird nicht in ETFs investiert"
+            hint="Bleibt als Cash in der GmbH, gleicht zuerst Ausgaben aus und wird nicht in ETFs investiert (Default: 2.400 €). Als zusätzliche Einlage sollte i. d. R. ein Gesellschafterbeschluss dokumentiert werden."
           />
           <InputField
             label="Laufzeit (Jahre)"
@@ -153,7 +153,7 @@ export function BetriebSection() {
             value={betrieb.darlehen.monatlicherZuschuss}
             onChange={(v) => updateDarlehen("monatlicherZuschuss", v)}
             suffix="€/Monat"
-            hint="Deckt zuerst Betriebsausgaben; ein Überschuss wird als zusätzliche ETF-Position investiert"
+            hint="Deckt zuerst Ausgaben; ein Überschuss wird als zusätzliche ETF-Position investiert (Default: 0 €)"
           />
           <div className="flex items-center gap-3">
             <input
