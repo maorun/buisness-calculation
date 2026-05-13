@@ -12,6 +12,7 @@ import { JahresUebersicht } from "./JahresUebersicht";
 const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
 } as const;
+const DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS = 2400;
 
 function InputField({
   label,
@@ -119,7 +120,7 @@ export function BetriebSection() {
             value={betrieb.jaehrlicherCashZuschuss}
             onChange={(v) => setBetrieb({ jaehrlicherCashZuschuss: parseFloat(v) || 0 })}
             suffix="€/Jahr"
-            hint="Bleibt als Cash in der GmbH, gleicht zuerst Ausgaben aus und wird nicht in ETFs investiert (Default: 2.400 €). Als zusätzliche Einlage sollte i. d. R. ein Gesellschafterbeschluss dokumentiert werden."
+            hint={`Bleibt als Cash in der GmbH, gleicht zuerst Ausgaben aus und wird nicht in ETFs investiert (Default: ${DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS.toLocaleString("de-DE")} €). Als zusätzliche Einlage sollte i. d. R. ein Gesellschafterbeschluss dokumentiert werden.`}
           />
           <InputField
             label="Laufzeit (Jahre)"

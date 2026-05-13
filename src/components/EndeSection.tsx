@@ -183,8 +183,7 @@ export function EndeSection() {
             Die GmbH zahlt das bisherige Gesellschafterdarlehen steuerfrei zurück. Die aufgelaufenen Zinsen
             werden mit Einkommensteuer belastet. Das GF-Gehalt ist frei wählbar; die Teil-Tilgung wird
             automatisch auf die benötigte Rate gesetzt. Zusammen mit den netto verbleibenden Darlehenszinsen
-            soll so das Zielnetto
-            treffen. Die restliche Darlehenssumme wird anschließend als neues Gesellschafterdarlehen für
+            soll so das Zielnetto erreicht werden. Die restliche Darlehenssumme wird anschließend als neues Gesellschafterdarlehen für
             Bereich 2 weitergeführt.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
