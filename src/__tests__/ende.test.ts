@@ -463,12 +463,11 @@ describe("berechneEndeErgebnisse", () => {
       const etfStart = 50000;
       const principal = 10000;
       const aufgelaufeneZinsen = 1500;
-      const teiltilgung = 2000;
-      const state = { ...endfaelligState, teiltilgungBereich1: teiltilgung };
+      const state = { ...endfaelligState, zielnettoBereich1: 22000 };
       const results = berechneEndeErgebnisse(state, etfStart, principal, 3.5, aufgelaufeneZinsen, true);
       const bereich1 = results[0];
       const bruttoGehalt = endfaelligState.gehaltBereich1;
-      const reinvestiertesDarlehen = principal - teiltilgung;
+      const reinvestiertesDarlehen = principal - bereich1.details.teiltilgungBereich1;
       // Net ETF after Bereich 1: grow (rendite=0 here), pay out full principal + interest + salary +
       // Betriebskosten + taxes, receive new loan back
       const expectedEtf = etfStart
