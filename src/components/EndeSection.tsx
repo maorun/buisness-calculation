@@ -136,6 +136,20 @@ export function EndeSection() {
         <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV-Beitrag und Gesamtergebnis</p>
       </div>
 
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-3">Einmalige ETF-Aufstockung zum Start</h3>
+        <div className="max-w-sm">
+          <InputField
+            label="Stammkapital-Erhöhung für ETF-Invest (einmalig)"
+            value={ende.stammkapitalErhoehungEtf}
+            onChange={(v) => setEnde({ stammkapitalErhoehungEtf: Math.max(0, parseFloat(v) || 0) })}
+            suffix="€"
+            hint="Wird einmalig zu Beginn der Ende-Phase in den ETF eingebracht. Default: 0 €."
+            min={0}
+          />
+        </div>
+      </div>
+
       {/* Endfällig notice */}
       {endfaellig && (
         <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">

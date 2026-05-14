@@ -62,6 +62,8 @@ export interface BetriebState {
 
 export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary for Bereich 2 (regular payout phase)
+  /** One-time equity increase invested into ETF at the start of the Ende phase. */
+  stammkapitalErhoehungEtf: number;
   /** Annual gross salary for Bereich 1 settlement year (frei konfigurierbar, nur >= 0). */
   gehaltBereich1: number;
   /** Tax-free principal payout consumed in Bereich 1 before the remaining principal becomes the new shareholder loan. */

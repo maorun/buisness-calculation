@@ -67,9 +67,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       )}
       <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
       <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
-      {betriebskostenPosten.map((posten) => (
+      {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
-          key={posten.label}
+          key={`${posten.label}-${index}`}
           label={`• ${posten.label}`}
           value={posten.wert}
           colorClass="text-gray-500"
@@ -193,6 +193,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
 
 function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
+  const betriebskostenPosten = e.betriebskostenPosten ?? [];
   return (
     <div className="space-y-0.5 text-xs">
       <SectionHeader label="Bereich 1 – Gesellschafter" />
@@ -255,6 +256,27 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
       )}
 
       <SectionHeader label="Bereich 1 – Gewinn- und Verlustrechnung der GmbH" />
+      {d.theoretischerEtfErtrag !== undefined && (
+        <BilanzRow label="ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.betriebsausgabenGesamt !== undefined && (
+        <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {betriebskostenPosten.map((posten, index) => (
+        <BilanzRow
+          key={`${posten.label}-${index}`}
+          label={`• ${posten.label}`}
+          value={posten.wert}
+          colorClass="text-gray-500"
+          indent
+        />
+      ))}
+      {d.vorabpauschalesteuer !== undefined && d.vorabpauschalesteuer > 0 && (
+        <BilanzRow label="− Steuer auf Vorabpauschale" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.gmbhSteuer !== undefined && d.gmbhSteuer > 0 && (
+        <BilanzRow label="− Gewinnsteuer (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
       <BilanzRow label="− GF-Gehalt Aufwand" value={d.firmenGuVGehaltAufwand} prefix="−" colorClass="text-gray-600" indent />
       <BilanzRow label="− Zinsaufwand auf Alt-Darlehen" value={d.firmenGuVZinsaufwand} prefix="−" colorClass="text-gray-600" indent />
       <Divider />
@@ -290,6 +312,7 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
 
 function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
+  const betriebskostenPosten = e.betriebskostenPosten ?? [];
   return (
     <div className="space-y-0.5 text-xs">
       <SectionHeader label="Bereich 2 – Gesellschafter" />
@@ -352,6 +375,29 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
         bold
         colorClass="text-green-700"
       />
+
+      <SectionHeader label="Bereich 2 – Gewinn- und Verlustrechnung der GmbH" />
+      {d.theoretischerEtfErtrag !== undefined && (
+        <BilanzRow label="ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.betriebsausgabenGesamt !== undefined && (
+        <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {betriebskostenPosten.map((posten, index) => (
+        <BilanzRow
+          key={`${posten.label}-${index}`}
+          label={`• ${posten.label}`}
+          value={posten.wert}
+          colorClass="text-gray-500"
+          indent
+        />
+      ))}
+      {d.vorabpauschalesteuer !== undefined && d.vorabpauschalesteuer > 0 && (
+        <BilanzRow label="− Steuer auf Vorabpauschale" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.gmbhSteuer !== undefined && d.gmbhSteuer > 0 && (
+        <BilanzRow label="− Gewinnsteuer (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
 
       {(d.firmenEtfVermoegen !== undefined && d.firmenDarlehensverbindlichkeit !== undefined) && (
         <>

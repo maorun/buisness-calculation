@@ -179,7 +179,7 @@ export function berechneBenefitsKosten(benefits: BenefitConfig): number {
   return tankJahr + strategieessen;
 }
 
-function berechneBetriebskostenPosten(
+export function berechneBetriebskostenPosten(
   kosten: KostenPosition[],
   benefits: BenefitConfig,
   handyNettoKosten: number,

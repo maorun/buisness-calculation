@@ -3,6 +3,7 @@ import {
   berechneVorabpauschale,
   berechneVorabpauschalesteuer,
   berechneBetriebskosten,
+  berechneBetriebskostenPosten,
   berechneHandyNettoKostenProJahr,
   berechneBenefitsKosten,
   DEFAULT_FIRMENHANDY_CONFIG,
@@ -252,8 +253,9 @@ export function berechneEndeErgebnisse(
   firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
-  let restvermoegen = etfWertAnfang;
-  let firmenEtfVermoegen = Math.max(0, etfWertAnfang);
+  const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
+  let privatvermoegen = 0;
+  let firmenEtfVermoegen = Math.max(0, etfWertAnfang) + stammkapitalErhoehungEtf;
   let reinvestiertesDarlehen = 0;
   // Tracks the sequential year within the Ende phase for the 3-year phone replacement cycle.
   let endePhaseJahr = 1;
@@ -277,6 +279,7 @@ export function berechneEndeErgebnisse(
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
     const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKostenB1 = berechneBenefitsKosten(benefits);
+    const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
     const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
     const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * GMBH_STEUER_GESAMT : 0;
@@ -327,11 +330,12 @@ export function berechneEndeErgebnisse(
     // shareholder's wealth here. The reinvested principal (reinvestiertesDarlehen) is NOT
     // a new gain – it is the same loan reorganised into a new 3%-instrument and will be
     // counted when it is actually repaid in Bereich 2.
-    restvermoegen += konsumierbaresNettoBereich1;
+    privatvermoegen += konsumierbaresNettoBereich1;
+    const firmenNettovermoegenBereich1 = firmenEtfVermoegen - reinvestiertesDarlehen;
 
     ergebnisse.push({
       jahr: 1,
-      gesamtvermoegen: restvermoegen,
+      gesamtvermoegen: privatvermoegen + firmenNettovermoegenBereich1,
       gewinn: gesamtBrutto,
       steuer: gesamtSteuer,
       nettogewinn: konsumierbaresNettoBereich1,
@@ -372,7 +376,8 @@ export function berechneEndeErgebnisse(
         firmenGesamtabfluss,
         firmenEtfVermoegen,
         firmenDarlehensverbindlichkeit: reinvestiertesDarlehen,
-        firmenNettovermoegen: firmenEtfVermoegen - reinvestiertesDarlehen,
+        firmenNettovermoegen: firmenNettovermoegenBereich1,
+        stammkapitalErhoehungEtf,
         gewinnausschuettung: 0,
         nettoAusschuettung: 0,
         kstSteuer: 0,
@@ -385,6 +390,7 @@ export function berechneEndeErgebnisse(
         betriebsausgabenGesamt: betriebsausgabenGesamtB1,
         gmbhSteuer: gmbhSteuerB1,
       },
+      betriebskostenPosten: betriebskostenPostenB1,
     });
   }
 
@@ -407,6 +413,7 @@ export function berechneEndeErgebnisse(
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
     const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKosten = berechneBenefitsKosten(benefits);
+    const betriebskostenPosten = berechneBetriebskostenPosten(kosten, benefits, handyNettoKosten, firmenhandy);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
     endePhaseJahr++;
 
@@ -454,14 +461,14 @@ export function berechneEndeErgebnisse(
       nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto - gesetzlicheKrankenversicherungBeitrag;
     const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer;
 
-    restvermoegen += gesamtNetto;
+    privatvermoegen += gesamtNetto;
     firmenEtfVermoegen = Math.max(0, etfNachWachstum - firmenGesamtabfluss);
     restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
     const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen;
 
     ergebnisse.push({
       jahr,
-      gesamtvermoegen: restvermoegen,
+      gesamtvermoegen: privatvermoegen + firmenNettovermoegen,
       gewinn: gesamtBrutto,
       steuer: gesamtSteuer,
       nettogewinn: gesamtNetto,
@@ -488,6 +495,7 @@ export function berechneEndeErgebnisse(
         firmenEtfVermoegen,
         firmenDarlehensverbindlichkeit: restdarlehen,
         firmenNettovermoegen,
+        stammkapitalErhoehungEtf,
         gewinnausschuettung: state.gewinnausschuettung,
         nettoAusschuettung,
         kstSteuer,
@@ -500,6 +508,7 @@ export function berechneEndeErgebnisse(
         betriebsausgabenGesamt,
         gmbhSteuer,
       },
+      betriebskostenPosten,
     });
   }
 
