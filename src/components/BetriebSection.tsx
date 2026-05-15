@@ -5,6 +5,7 @@ import { useCalculatorStore } from "@/store/calculatorStore";
 import {
   TEILFREISTELLUNG_AKTIEN_GMBH,
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -55,6 +56,14 @@ export function BetriebSection() {
   const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
+  const erstesJahrDetails = ergebnisse[0]?.details;
+  const zielnettoGesellschafter = Math.max(
+    0,
+    betrieb.zielnettoGesellschafter ?? DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB
+  );
+  const gesellschafterNetto = erstesJahrDetails?.gesellschafterNetto ?? 0;
+  const zielnettoDifferenz = erstesJahrDetails?.zielnettoDifferenz ?? (gesellschafterNetto - zielnettoGesellschafter);
+  const gmbhNettoveraenderung = ergebnisse[0]?.nettogewinn ?? 0;
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -275,6 +284,51 @@ export function BetriebSection() {
           onRemove={removeBetriebskosten}
           showPeriode
         />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Zielnetto Gesellschafter</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Für den Zielabgleich zählen Netto-Darlehenszinsen plus Netto-GF-Gehalt. Das GF-Gehalt wirkt gleichzeitig als Betriebskosten in der GmbH.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <InputField
+            label="Zielnetto Gesellschafter (€/Jahr)"
+            value={zielnettoGesellschafter}
+            onChange={(v) => setBetrieb({ zielnettoGesellschafter: Math.max(0, parseFloat(v) || 0) })}
+            suffix="€/Jahr"
+            hint={`Default: ${DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB.toLocaleString("de-DE")} €`}
+          />
+          <InputField
+            label="GF-Gehalt (brutto, €/Jahr)"
+            value={betrieb.geschaeftsfuehrergehalt ?? 0}
+            onChange={(v) => setBetrieb({ geschaeftsfuehrergehalt: Math.max(0, parseFloat(v) || 0) })}
+            suffix="€/Jahr"
+            hint="Wird als Betriebskosten der GmbH angesetzt (Default: 0 €)"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-medium text-slate-600">Zielabgleich (Jahr 1)</p>
+            <p className="mt-1 text-lg font-bold text-slate-800">
+              {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
+            </p>
+            <p className={`text-xs mt-1 ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}>
+              {zielnettoDifferenz >= 0 ? "Überschuss" : "Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+          </div>
+          <div className={`rounded-lg border p-3 ${gmbhNettoveraenderung >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+            <p className={`text-xs font-medium ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
+              GmbH-Geldentwicklung (Jahr 1)
+            </p>
+            <p className={`mt-1 text-lg font-bold ${gmbhNettoveraenderung >= 0 ? "text-green-800" : "text-red-800"}`}>
+              {gmbhNettoveraenderung >= 0 ? "Mehr" : "Weniger"}
+            </p>
+            <p className={`text-xs mt-1 ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
+              {Math.abs(gmbhNettoveraenderung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Tax info box */}

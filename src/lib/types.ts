@@ -51,6 +51,10 @@ export interface BetriebState {
   startkapital: number;
   /** Annual cash inflow that stays liquid and is not invested into ETFs. */
   jaehrlicherCashZuschuss: number;
+  /** Annual target net amount for the shareholder during Betrieb phase. */
+  zielnettoGesellschafter?: number;
+  /** Annual gross managing-director salary treated as operating expense. */
+  geschaeftsfuehrergehalt?: number;
   darlehen: DarlehenConfig;
   etfRendite: number; // in percent, e.g. 7 means 7% p.a.
   laufzeitJahre: number;

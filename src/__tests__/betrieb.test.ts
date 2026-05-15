@@ -666,10 +666,35 @@ describe("berechneBetriebsErgebnisse", () => {
         expect.objectContaining({ label: "Software", wert: 1200 }),
         expect.objectContaining({ label: "Tankgutschein", wert: 600 }),
         expect.objectContaining({ label: "Strategieessen", wert: 1500 }),
+        expect.objectContaining({ label: "GF-Gehalt", wert: 0 }),
       ])
     );
     expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
     expect(firmenhandyJahr2?.wert).toBe(0);
+  });
+
+  it("counts GF salary as operating expense and computes shareholder target net details", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+      darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
+      geschaeftsfuehrergehalt: 12000,
+      zielnettoGesellschafter: 3000,
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+
+    expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
+    expect(result.details.betriebsausgabenGesamt).toBeCloseTo(12000);
+    expect(result.details.gfGehaltNetto).toBeCloseTo(12000);
+    expect(result.details.darlehenszinsenNetto).toBeCloseTo(875);
+    expect(result.details.gesellschafterNetto).toBeCloseTo(12875);
+    expect(result.details.zielnettoGesellschafter).toBe(3000);
+    expect(result.details.zielnettoDifferenz).toBeCloseTo(9875);
   });
 
   it("increases outstanding loan balance each year for monthly top-ups", () => {
