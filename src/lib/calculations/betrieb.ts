@@ -536,10 +536,15 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Net gain after all taxes
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer;
+    const gesellschafterBruttoEinkommen = geschaeftsfuehrergehalt + darlehenszinsJaehrlich;
+    const gesellschafterEinkommensteuer = berechneEinkommensteuerBetrieb(gesellschafterBruttoEinkommen);
+    const gesellschafterSoli = berechneSoliBetrieb(gesellschafterEinkommensteuer);
+    const gesellschafterSteuerGesamt = gesellschafterEinkommensteuer + gesellschafterSoli;
     const gfGehaltEinkommensteuer = berechneEinkommensteuerBetrieb(geschaeftsfuehrergehalt);
     const gfGehaltSoli = berechneSoliBetrieb(gfGehaltEinkommensteuer);
-    const gfGehaltNetto = berechneNettoGehaltBetrieb(geschaeftsfuehrergehalt);
-    const darlehenszinsenSteuer = berechneDarlehensZinsenSteuerBetrieb(darlehenszinsJaehrlich, geschaeftsfuehrergehalt);
+    const gfGehaltSteuerGesamt = gfGehaltEinkommensteuer + gfGehaltSoli;
+    const gfGehaltNetto = geschaeftsfuehrergehalt - gfGehaltSteuerGesamt;
+    const darlehenszinsenSteuer = Math.max(0, gesellschafterSteuerGesamt - gfGehaltSteuerGesamt);
     const darlehenszinsenNetto = Math.max(0, darlehenszinsJaehrlich - darlehenszinsenSteuer);
     const zielnettoGesellschafter = Math.max(
       0,
@@ -591,6 +596,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         gfGehaltEinkommensteuer,
         gfGehaltSoli,
         gfGehaltNetto,
+        gesellschafterBruttoEinkommen,
+        gesellschafterEinkommensteuer,
+        gesellschafterSoli,
+        gesellschafterSteuerGesamt,
         darlehenszinsenSteuer,
         darlehenszinsenNetto,
         gesellschafterNetto,

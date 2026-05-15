@@ -18,8 +18,8 @@ import {
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
-  berechneNettoGehaltBetrieb,
-  berechneDarlehensZinsenSteuerBetrieb,
+  berechneEinkommensteuerBetrieb,
+  berechneSoliBetrieb,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -689,14 +689,21 @@ describe("berechneBetriebsErgebnisse", () => {
     };
 
     const result = berechneBetriebsErgebnisse(state)[0];
-    const expectedInterestTax = berechneDarlehensZinsenSteuerBetrieb(875, 12000);
+    const expectedTotalIncome = 12000 + 875;
+    const expectedTotalIncomeTax = berechneEinkommensteuerBetrieb(expectedTotalIncome);
+    const expectedTotalTax = expectedTotalIncomeTax + berechneSoliBetrieb(expectedTotalIncomeTax);
+    const expectedSalaryIncomeTax = berechneEinkommensteuerBetrieb(12000);
+    const expectedSalaryTax = expectedSalaryIncomeTax + berechneSoliBetrieb(expectedSalaryIncomeTax);
+    const expectedSalaryNet = 12000 - expectedSalaryTax;
+    const expectedInterestTax = expectedTotalTax - expectedSalaryTax;
     const expectedInterestNet = 875 - expectedInterestTax;
-    const expectedShareholderNet =
-      berechneNettoGehaltBetrieb(12000) + expectedInterestNet;
+    const expectedShareholderNet = expectedSalaryNet + expectedInterestNet;
 
     expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
     expect(result.details.betriebsausgabenGesamt).toBeCloseTo(12000);
-    expect(result.details.gfGehaltNetto).toBeCloseTo(berechneNettoGehaltBetrieb(12000));
+    expect(result.details.gfGehaltNetto).toBeCloseTo(expectedSalaryNet);
+    expect(result.details.gesellschafterBruttoEinkommen).toBeCloseTo(expectedTotalIncome);
+    expect(result.details.gesellschafterSteuerGesamt).toBeCloseTo(expectedTotalTax);
     expect(result.details.darlehenszinsenNetto).toBeCloseTo(expectedInterestNet);
     expect(result.details.gesellschafterNetto).toBeCloseTo(expectedShareholderNet);
     expect(result.details.zielnettoGesellschafter).toBe(36000);

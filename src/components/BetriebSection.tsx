@@ -64,6 +64,8 @@ export function BetriebSection() {
     betrieb.zielnettoGesellschafter ?? DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB
   );
   const geschaeftsfuehrergehalt = erstesJahrDetails?.geschaeftsfuehrergehalt ?? 0;
+  const gesellschafterBruttoEinkommen = erstesJahrDetails?.gesellschafterBruttoEinkommen ?? 0;
+  const gesellschafterSteuerGesamt = erstesJahrDetails?.gesellschafterSteuerGesamt ?? 0;
   const gfGehaltEinkommensteuer = erstesJahrDetails?.gfGehaltEinkommensteuer ?? 0;
   const gfGehaltSoli = erstesJahrDetails?.gfGehaltSoli ?? 0;
   const gfGehaltNetto = erstesJahrDetails?.gfGehaltNetto ?? 0;
@@ -323,10 +325,12 @@ export function BetriebSection() {
             <p className="text-xs font-medium text-slate-600">Zielabgleich (Jahr 1)</p>
             <div className="mt-2 space-y-1 text-xs text-slate-700">
               <p>GF-Gehalt brutto: <span className="font-semibold">{geschaeftsfuehrergehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Gesamteinkommen (GF + Zinsen): <span className="font-semibold">{gesellschafterBruttoEinkommen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>ESt + Soli gesamt (progressiv): <span className="font-semibold text-red-700">− {gesellschafterSteuerGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>ESt + Soli auf GF-Gehalt: <span className="font-semibold text-red-700">− {(gfGehaltEinkommensteuer + gfGehaltSoli).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>GF-Gehalt netto: <span className="font-semibold text-green-700">+ {gfGehaltNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Darlehenszinsen brutto: <span className="font-semibold">{darlehenszinsenBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p>Steuer auf Darlehenszinsen: <span className="font-semibold text-red-700">− {darlehenszinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Zusätzliche Steuer durch Darlehenszinsen: <span className="font-semibold text-red-700">− {darlehenszinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Darlehenszinsen netto: <span className="font-semibold text-green-700">+ {darlehenszinsenNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
             </div>
             <p className="mt-2 text-sm font-bold text-slate-800">
