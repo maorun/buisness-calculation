@@ -19,6 +19,7 @@ import {
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
   berechneNettoGehaltBetrieb,
+  berechneDarlehensZinsenSteuerBetrieb,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -688,14 +689,18 @@ describe("berechneBetriebsErgebnisse", () => {
     };
 
     const result = berechneBetriebsErgebnisse(state)[0];
+    const expectedInterestTax = berechneDarlehensZinsenSteuerBetrieb(875, 12000);
+    const expectedInterestNet = 875 - expectedInterestTax;
+    const expectedShareholderNet =
+      berechneNettoGehaltBetrieb(12000) + expectedInterestNet;
 
     expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
     expect(result.details.betriebsausgabenGesamt).toBeCloseTo(12000);
     expect(result.details.gfGehaltNetto).toBeCloseTo(berechneNettoGehaltBetrieb(12000));
-    expect(result.details.darlehenszinsenNetto).toBeCloseTo(875);
-    expect(result.details.gesellschafterNetto).toBeCloseTo(12875);
+    expect(result.details.darlehenszinsenNetto).toBeCloseTo(expectedInterestNet);
+    expect(result.details.gesellschafterNetto).toBeCloseTo(expectedShareholderNet);
     expect(result.details.zielnettoGesellschafter).toBe(36000);
-    expect(result.details.zielnettoDifferenz).toBeCloseTo(-23125);
+    expect(result.details.zielnettoDifferenz).toBeCloseTo(expectedShareholderNet - 36000);
   });
 
   it("increases outstanding loan balance each year for monthly top-ups", () => {
