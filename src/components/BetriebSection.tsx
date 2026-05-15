@@ -313,16 +313,22 @@ export function BetriebSection() {
             <p className="mt-1 text-lg font-bold text-slate-800">
               {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
             </p>
-            <p className={`text-xs mt-1 ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}>
-              {zielnettoDifferenz >= 0 ? "Überschuss" : "Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            <p
+              className={`text-xs mt-1 ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}
+              aria-label={zielnettoDifferenz >= 0 ? "Zielnetto überschritten" : "Zielnetto unterschritten"}
+            >
+              {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>
           </div>
           <div className={`rounded-lg border p-3 ${gmbhNettoveraenderung >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
             <p className={`text-xs font-medium ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
               GmbH-Geldentwicklung (Jahr 1)
             </p>
-            <p className={`mt-1 text-lg font-bold ${gmbhNettoveraenderung >= 0 ? "text-green-800" : "text-red-800"}`}>
-              {gmbhNettoveraenderung >= 0 ? "Mehr" : "Weniger"}
+            <p
+              className={`mt-1 text-lg font-bold ${gmbhNettoveraenderung >= 0 ? "text-green-800" : "text-red-800"}`}
+              aria-label={gmbhNettoveraenderung >= 0 ? "Geld der GmbH wird mehr" : "Geld der GmbH wird weniger"}
+            >
+              {gmbhNettoveraenderung >= 0 ? "▲ Mehr" : "▼ Weniger"}
             </p>
             <p className={`text-xs mt-1 ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
               {Math.abs(gmbhNettoveraenderung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €

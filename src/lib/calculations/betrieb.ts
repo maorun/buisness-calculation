@@ -30,6 +30,21 @@ export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 3000;
+// Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
+const GRUNDFREIBETRAG_2024 = 11604;
+const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
+const EINKOMMENSTEUER_ZONE_2_MAX = 66760;
+const EINKOMMENSTEUER_SPITZENSTEUER_START = 277825;
+const EINKOMMENSTEUER_ZONE_1_A = 922.98;
+const EINKOMMENSTEUER_ZONE_1_B = 1400;
+const EINKOMMENSTEUER_ZONE_2_A = 181.19;
+const EINKOMMENSTEUER_ZONE_2_B = 2397;
+const EINKOMMENSTEUER_ZONE_2_C = 1025.38;
+const EINKOMMENSTEUER_SATZ_42 = 0.42;
+const EINKOMMENSTEUER_OFFSET_42 = 10602.13;
+const EINKOMMENSTEUER_SATZ_45 = 0.45;
+const EINKOMMENSTEUER_OFFSET_45 = 17374.99;
+const SOLI_FREIGRENZE_EINKOMMENSTEUER_2024 = 16956;
 
 /** Default configuration for the company mobile-phone programme. */
 export const DEFAULT_FIRMENHANDY_CONFIG: FirmenhandyConfig = {
@@ -46,31 +61,32 @@ export const MIN_ETF_LOT_WERT = 0.000001;
 export const ETF_SORT_EPSILON = 0.0000000001;
 
 export function berechneEinkommensteuerBetrieb(zvE: number): number {
-  if (zvE <= 11604) return 0;
+  if (zvE <= GRUNDFREIBETRAG_2024) return 0;
 
-  if (zvE <= 17005) {
-    const y = (zvE - 11604) / 10000;
-    return Math.floor((922.98 * y + 1400) * y);
+  if (zvE <= EINKOMMENSTEUER_ZONE_1_MAX) {
+    const y = (zvE - GRUNDFREIBETRAG_2024) / 10000;
+    return Math.floor((EINKOMMENSTEUER_ZONE_1_A * y + EINKOMMENSTEUER_ZONE_1_B) * y);
   }
 
-  if (zvE <= 66760) {
-    const z = (zvE - 17005) / 10000;
-    return Math.floor((181.19 * z + 2397) * z + 1025.38);
+  if (zvE <= EINKOMMENSTEUER_ZONE_2_MAX) {
+    const z = (zvE - EINKOMMENSTEUER_ZONE_1_MAX) / 10000;
+    return Math.floor((EINKOMMENSTEUER_ZONE_2_A * z + EINKOMMENSTEUER_ZONE_2_B) * z + EINKOMMENSTEUER_ZONE_2_C);
   }
 
-  if (zvE <= 277825) {
-    return Math.floor(0.42 * zvE - 10602.13);
+  if (zvE <= EINKOMMENSTEUER_SPITZENSTEUER_START) {
+    return Math.floor(EINKOMMENSTEUER_SATZ_42 * zvE - EINKOMMENSTEUER_OFFSET_42);
   }
 
-  return Math.floor(0.45 * zvE - 17374.99);
+  return Math.floor(EINKOMMENSTEUER_SATZ_45 * zvE - EINKOMMENSTEUER_OFFSET_45);
 }
 
 export function berechneSoliBetrieb(einkommensteuer: number): number {
-  if (einkommensteuer <= 16956) return 0;
+  if (einkommensteuer <= SOLI_FREIGRENZE_EINKOMMENSTEUER_2024) return 0;
   return Math.floor(einkommensteuer * SOLI);
 }
 
 export function berechneNettoGehaltBetrieb(bruttoGehalt: number): number {
+  // Vereinfachung analog zur Ende-Phase: ohne Sozialversicherungsabzüge.
   const est = berechneEinkommensteuerBetrieb(bruttoGehalt);
   const soli = berechneSoliBetrieb(est);
   return bruttoGehalt - est - soli;

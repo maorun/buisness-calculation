@@ -18,6 +18,7 @@ import {
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
+  berechneNettoGehaltBetrieb,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -690,7 +691,7 @@ describe("berechneBetriebsErgebnisse", () => {
 
     expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
     expect(result.details.betriebsausgabenGesamt).toBeCloseTo(12000);
-    expect(result.details.gfGehaltNetto).toBeCloseTo(12000);
+    expect(result.details.gfGehaltNetto).toBeCloseTo(berechneNettoGehaltBetrieb(12000));
     expect(result.details.darlehenszinsenNetto).toBeCloseTo(875);
     expect(result.details.gesellschafterNetto).toBeCloseTo(12875);
     expect(result.details.zielnettoGesellschafter).toBe(3000);
