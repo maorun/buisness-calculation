@@ -684,7 +684,7 @@ describe("berechneBetriebsErgebnisse", () => {
       firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
       darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
       geschaeftsfuehrergehalt: 12000,
-      zielnettoGesellschafter: 3000,
+      zielnettoGesellschafter: undefined,
     };
 
     const result = berechneBetriebsErgebnisse(state)[0];
@@ -694,8 +694,8 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.gfGehaltNetto).toBeCloseTo(berechneNettoGehaltBetrieb(12000));
     expect(result.details.darlehenszinsenNetto).toBeCloseTo(875);
     expect(result.details.gesellschafterNetto).toBeCloseTo(12875);
-    expect(result.details.zielnettoGesellschafter).toBe(3000);
-    expect(result.details.zielnettoDifferenz).toBeCloseTo(9875);
+    expect(result.details.zielnettoGesellschafter).toBe(36000);
+    expect(result.details.zielnettoDifferenz).toBeCloseTo(-23125);
   });
 
   it("increases outstanding loan balance each year for monthly top-ups", () => {

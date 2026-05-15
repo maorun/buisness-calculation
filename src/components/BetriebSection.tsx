@@ -57,13 +57,24 @@ export function BetriebSection() {
 
   const ergebnisse = getBetriebsErgebnisse();
   const erstesJahrDetails = ergebnisse[0]?.details;
+  const nettovermoegenStart = Math.max(0, betrieb.startkapital);
+  const erstesJahrNettovermoegen = erstesJahrDetails?.nettovermoegen ?? nettovermoegenStart;
   const zielnettoGesellschafter = Math.max(
     0,
     betrieb.zielnettoGesellschafter ?? DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB
   );
+  const geschaeftsfuehrergehalt = erstesJahrDetails?.geschaeftsfuehrergehalt ?? 0;
+  const gfGehaltEinkommensteuer = erstesJahrDetails?.gfGehaltEinkommensteuer ?? 0;
+  const gfGehaltSoli = erstesJahrDetails?.gfGehaltSoli ?? 0;
+  const gfGehaltNetto = erstesJahrDetails?.gfGehaltNetto ?? 0;
+  const darlehenszinsenBrutto = (erstesJahrDetails?.darlehenszinsenNetto ?? 0) + (erstesJahrDetails?.darlehenszinsenSteuer ?? 0);
+  const darlehenszinsenSteuer = erstesJahrDetails?.darlehenszinsenSteuer ?? 0;
+  const darlehenszinsenNetto = erstesJahrDetails?.darlehenszinsenNetto ?? 0;
   const gesellschafterNetto = erstesJahrDetails?.gesellschafterNetto ?? 0;
   const zielnettoDifferenz = erstesJahrDetails?.zielnettoDifferenz ?? (gesellschafterNetto - zielnettoGesellschafter);
-  const gmbhNettoveraenderung = ergebnisse[0]?.nettogewinn ?? 0;
+  const gmbhNettoveraenderung = erstesJahrDetails
+    ? (erstesJahrNettovermoegen - nettovermoegenStart)
+    : 0;
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -310,11 +321,22 @@ export function BetriebSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs font-medium text-slate-600">Zielabgleich (Jahr 1)</p>
-            <p className="mt-1 text-lg font-bold text-slate-800">
-              {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
+            <div className="mt-2 space-y-1 text-xs text-slate-700">
+              <p>GF-Gehalt brutto: <span className="font-semibold">{geschaeftsfuehrergehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>ESt + Soli auf GF-Gehalt: <span className="font-semibold text-red-700">− {(gfGehaltEinkommensteuer + gfGehaltSoli).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>GF-Gehalt netto: <span className="font-semibold text-green-700">+ {gfGehaltNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Darlehenszinsen brutto: <span className="font-semibold">{darlehenszinsenBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Steuer auf Darlehenszinsen: <span className="font-semibold text-red-700">− {darlehenszinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Darlehenszinsen netto: <span className="font-semibold text-green-700">+ {darlehenszinsenNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            </div>
+            <p className="mt-2 text-sm font-bold text-slate-800">
+              Summe Netto: {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p className="text-xs text-slate-700">
+              Zielnetto: {zielnettoGesellschafter.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>
             <p
-              className={`text-xs mt-1 ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}
+              className={`text-xs mt-1 font-semibold ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}
               aria-label={zielnettoDifferenz >= 0 ? "Zielnetto überschritten" : "Zielnetto unterschritten"}
             >
               {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
@@ -332,6 +354,9 @@ export function BetriebSection() {
             </p>
             <p className={`text-xs mt-1 ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
               {Math.abs(gmbhNettoveraenderung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Vergleich: Nettovermögen Start {nettovermoegenStart.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € → Jahr 1 {erstesJahrNettovermoegen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>
           </div>
         </div>
