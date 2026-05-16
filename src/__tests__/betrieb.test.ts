@@ -789,7 +789,7 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(result.verbleibenderEtfWert).toBeCloseTo(15000);
   });
 
-  it("does not subtract tankgutschein from annual private savings plan", () => {
+  it("subtracts tankgutschein from annual private savings plan and tracks it as consumption value", () => {
     const state: BetriebState = {
       ...basisState,
       startkapital: 0,
@@ -800,11 +800,13 @@ describe("berechnePrivatVergleichErgebnis", () => {
     };
 
     const result = berechnePrivatVergleichErgebnis(state);
-    expect(result.kumulierterSparplan).toBe(600);
-    expect(result.verbleibenderEtfWert).toBeCloseTo(600);
+    expect(result.kumulierterSparplan).toBe(0);
+    expect(result.kumulierterKonsumwert).toBe(600);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(600);
+    expect(result.verbleibenderEtfWert).toBeCloseTo(0);
   });
 
-  it("does not subtract active firmenhandy costs from private savings plan", () => {
+  it("subtracts active firmenhandy costs from private savings plan and tracks them as consumption value", () => {
     const state: BetriebState = {
       ...basisState,
       startkapital: 0,
@@ -815,8 +817,10 @@ describe("berechnePrivatVergleichErgebnis", () => {
     };
 
     const result = berechnePrivatVergleichErgebnis(state);
-    expect(result.kumulierterSparplan).toBe(1000);
-    expect(result.verbleibenderEtfWert).toBe(1000);
+    expect(result.kumulierterSparplan).toBe(0);
+    expect(result.kumulierterKonsumwert).toBe(1000);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(1000);
+    expect(result.verbleibenderEtfWert).toBe(0);
   });
 
   it("sells private ETF for non-endfaellige zinsen and GF salary", () => {

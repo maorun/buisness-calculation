@@ -123,6 +123,8 @@ export interface PrivatVergleichErgebnis {
   kumulierterEtfVerkauf: number;
   verbleibenderEtfWert: number;
   endwert: number;
+  kumulierterKonsumwert: number;
+  gesamtwertMitKonsum: number;
   kumulierteSteuern: number;
   kumulierteVorabpauschalesteuer: number;
   kumulierteEtfVerkaufssteuer: number;
@@ -263,11 +265,23 @@ export function berechneBenefitsSteuerersparnis(
  * Benefits are deductible operating expenses and therefore part of annual Betriebsausgaben.
  */
 export function berechneBenefitsKosten(benefits: BenefitConfig): number {
-  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH);
-  const tankJahr = clampedTankMonthly * 12;
+  const tankJahr = berechneTankgutscheinJaehrlich(benefits);
   const strategieessen = benefits.strategieessen;
   const bav = Math.max(0, benefits.bav ?? 0);
   return tankJahr + strategieessen + bav;
+}
+
+export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number {
+  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH);
+  return clampedTankMonthly * DARLEHEN_MONATE_PRO_JAHR;
+}
+
+export function berechneKonsumNutzenwertProJahr(
+  jahr: number,
+  benefits: BenefitConfig,
+  handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
+): number {
+  return berechneTankgutscheinJaehrlich(benefits) + berechneHandyNettoKostenProJahr(jahr, handyConfig);
 }
 
 export function berechneBetriebskostenPosten(
@@ -282,7 +296,7 @@ export function berechneBetriebskostenPosten(
     wert: berechneKostenPositionJahresBetrag(kostenPosition),
   }));
 
-  const tankgutscheinJaehrlich = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH) * DARLEHEN_MONATE_PRO_JAHR;
+  const tankgutscheinJaehrlich = berechneTankgutscheinJaehrlich(benefits);
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
@@ -440,6 +454,7 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
   let kumulierteEtfVerkaufssteuer = 0;
   let kumulierteEntnahmen = 0;
   let kumulierterSparplan = 0;
+  let kumulierterKonsumwert = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnde = sumEtfWert(etfLots);
@@ -456,8 +471,14 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
 
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
-    const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich;
+    const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
+      jahr,
+      state.benefits,
+      state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
+    );
+    const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich - konsumNutzenwert;
     kumulierterSparplan += sparplanNetto;
+    kumulierterKonsumwert += konsumNutzenwert;
 
     const gehaltsEntnahme = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const zinsEntnahme = state.darlehen.endfaellig ? 0 : zinsenJaehrlich;
@@ -516,6 +537,7 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
 
   const verbleibenderEtfWert = sumEtfWert(etfLots);
   const endwert = kumulierterEtfVerkauf + verbleibenderEtfWert;
+  const gesamtwertMitKonsum = endwert + kumulierterKonsumwert;
   const kumulierteSteuern = kumulierteVorabpauschalesteuer + kumulierteEtfVerkaufssteuer;
 
   return {
@@ -523,6 +545,8 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
     kumulierterEtfVerkauf,
     verbleibenderEtfWert,
     endwert,
+    kumulierterKonsumwert,
+    gesamtwertMitKonsum,
     kumulierteSteuern,
     kumulierteVorabpauschalesteuer,
     kumulierteEtfVerkaufssteuer,
