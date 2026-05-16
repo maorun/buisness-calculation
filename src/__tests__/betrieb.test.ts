@@ -456,6 +456,7 @@ describe("berechneBetriebsErgebnisse", () => {
       startkapital: 100000,
       etfRendite: 7,
       laufzeitJahre: 1,
+      // Intentionally large enough to force ETF sales with positive realized gain in year 1.
       kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 120000, periode: "jaehrlich" }],
       benefits: { tankgutschein: 0, strategieessen: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },

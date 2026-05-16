@@ -140,7 +140,7 @@ export function berechneVorabpauschaleNachEtfVerkauf(
   vorabpauschale: number,
   realisierterEtfErtrag: number
 ): number {
-  return Math.max(0, vorabpauschale - Math.max(0, realisierterEtfErtrag));
+  return Math.max(0, vorabpauschale - realisierterEtfErtrag);
 }
 
 /**
