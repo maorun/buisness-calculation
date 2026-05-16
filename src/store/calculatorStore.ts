@@ -49,6 +49,7 @@ const initialState: CalculatorState = {
     benefits: {
       tankgutschein: 50,
       strategieessen: 0,
+      bav: 0,
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
   },
