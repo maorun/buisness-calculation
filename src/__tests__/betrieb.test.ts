@@ -213,24 +213,24 @@ describe("berechneBetriebskosten", () => {
 
 describe("berechneBenefitsSteuerersparnis", () => {
   it("caps fuel voucher at 50€/month", () => {
-    const benefits: BenefitConfig = { tankgutschein: 75, strategieessen: 0 };
+    const benefits: BenefitConfig = { tankgutschein: 75, strategieessen: 0, bav: 0 };
     const expected = 600 * GMBH_STEUER_GESAMT;
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
   });
 
   it("includes full strategieessen", () => {
-    const benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 1500 };
+    const benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 1500, bav: 0 };
     const expected = 1500 * GMBH_STEUER_GESAMT;
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
   });
 
   it("returns 0 for all-zero benefits", () => {
-    const benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 0 };
+    const benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 0, bav: 0 };
     expect(berechneBenefitsSteuerersparnis(benefits)).toBe(0);
   });
 
   it("combines all benefits correctly", () => {
-    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 1500 };
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 1500, bav: 0 };
     const expected = (600 + 1500) * GMBH_STEUER_GESAMT;
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
   });
@@ -238,8 +238,18 @@ describe("berechneBenefitsSteuerersparnis", () => {
 
 describe("berechneBenefitsKosten", () => {
   it("treats benefits as annual deductible operating costs", () => {
-    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 1500 };
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 1500, bav: 0 };
     expect(berechneBenefitsKosten(benefits)).toBe(2100);
+  });
+
+  it("includes bAV contribution in total costs", () => {
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 1500, bav: 3600 };
+    expect(berechneBenefitsKosten(benefits)).toBe(5700);
+  });
+
+  it("treats negative bAV as zero", () => {
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 0, bav: -500 };
+    expect(berechneBenefitsKosten(benefits)).toBe(600);
   });
 });
 
@@ -298,7 +308,7 @@ describe("berechneBetriebsErgebnisse", () => {
     etfRendite: 7,
     laufzeitJahre: 3,
     kosten: [{ id: "1", bezeichnung: "Steuerberater", betrag: 3000 }],
-    benefits: { tankgutschein: 50, strategieessen: 1500 },
+    benefits: { tankgutschein: 50, strategieessen: 1500, bav: 0 },
   };
 
   it("returns one result per year", () => {
@@ -336,7 +346,7 @@ describe("berechneBetriebsErgebnisse", () => {
     const state: BetriebState = {
       ...defaultState,
       kosten: [],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
     };
     const result = berechneBetriebsErgebnisse(state)[0];
@@ -457,7 +467,7 @@ describe("berechneBetriebsErgebnisse", () => {
       laufzeitJahre: 1,
       // Intentionally large enough to force ETF sales with positive realized gain in year 1.
       kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 120000, periode: "jaehrlich" }],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
       firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
     };
@@ -491,7 +501,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 0,
       laufzeitJahre: 2,
       kosten: [{ id: "1", bezeichnung: "Software", betrag: 600, periode: "jaehrlich" }],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
     };
 
@@ -512,7 +522,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 0,
       laufzeitJahre: 1,
       kosten: [{ id: "1", bezeichnung: "Software", betrag: 600, periode: "jaehrlich" }],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
       firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
     };
@@ -535,7 +545,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 0,
       laufzeitJahre: 2,
       kosten: [{ id: "1", bezeichnung: "Software", betrag: 400, periode: "jaehrlich" }],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 100, endfaellig: true },
       firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, erstanschaffungJahr: 2 },
     };
@@ -557,7 +567,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 10,
       laufzeitJahre: 2,
       kosten: [{ id: "1", bezeichnung: "Kosten", betrag: 0, periode: "jaehrlich" }],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 10000, zinssatz: 0, monatlicherZuschuss: 175, endfaellig: true },
     };
 
@@ -584,7 +594,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 7,
       laufzeitJahre: 1,
       kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 5000, periode: "jaehrlich" }],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 200, endfaellig: false },
     };
 
@@ -602,7 +612,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 12,
       laufzeitJahre: 3,
       kosten: [],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
     };
     const results = berechneBetriebsErgebnisse(state);
@@ -658,7 +668,7 @@ describe("berechneBetriebsErgebnisse", () => {
       laufzeitJahre: 4,
       kosten: [],
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
     };
     const results = berechneBetriebsErgebnisse(state);
     // Year 1: first acquisition – full purchase price (no trade-in)
@@ -673,7 +683,7 @@ describe("berechneBetriebsErgebnisse", () => {
     const state: BetriebState = {
       ...defaultState,
       kosten: [],
-      benefits: { tankgutschein: 50, strategieessen: 1500 },
+      benefits: { tankgutschein: 50, strategieessen: 1500, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
     };
     const result = berechneBetriebsErgebnisse(state)[0];
@@ -689,7 +699,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 0,
       laufzeitJahre: 4,
       kosten: [{ id: "1", bezeichnung: "Software", betrag: 100, periode: "monatlich" }],
-      benefits: { tankgutschein: 50, strategieessen: 1500 },
+      benefits: { tankgutschein: 50, strategieessen: 1500, bav: 0 },
       darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
     };
 
@@ -715,7 +725,7 @@ describe("berechneBetriebsErgebnisse", () => {
       etfRendite: 0,
       laufzeitJahre: 1,
       kosten: [],
-      benefits: { tankgutschein: 0, strategieessen: 0 },
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
       firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
       darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
       geschaeftsfuehrergehalt: 12000,

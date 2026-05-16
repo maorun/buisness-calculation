@@ -23,6 +23,10 @@ export interface DarlehenConfig {
 export interface BenefitConfig {
   tankgutschein: number; // monthly fuel voucher (tax-free up to 50€/month)
   strategieessen: number; // annual strategy dinner (deductible)
+  /** Annual employer contribution to company pension scheme (bAV, § 3 Nr. 63 EStG).
+   *  Tax-free for the GF up to 8% of the Beitragsbemessungsgrenze (BBG), fully
+   *  deductible as a business expense for the GmbH. */
+  bav: number;
 }
 
 export interface FirmenhandyConfig {

@@ -316,7 +316,7 @@ describe("berechneEndeErgebnisse", () => {
       false,
       0,
       [],
-      { tankgutschein: 0, strategieessen: 0 },
+      { tankgutschein: 0, strategieessen: 0, bav: 0 },
       { aktiv: false, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
     );
     expect(results[0].details.firmenEtfVermoegen).toBeCloseTo(etfStart);
@@ -358,7 +358,7 @@ describe("berechneEndeErgebnisse", () => {
       false,
       0,
       [],
-      { tankgutschein: 0, strategieessen: 0 },
+      { tankgutschein: 0, strategieessen: 0, bav: 0 },
       { aktiv: false, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
     );
     expect(results[0].details.firmenEtfVermoegen).toBeCloseTo(10000);

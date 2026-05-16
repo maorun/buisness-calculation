@@ -7,6 +7,7 @@ import {
   DEFAULT_FIRMENHANDY_CONFIG,
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
+  BAV_MAX_STEUERFREIER_BEITRAG,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -260,6 +261,13 @@ export function BetriebSection() {
             onChange={(v) => updateBenefits("strategieessen", v)}
             suffix="€/Jahr"
             hint="Voll abzugsfähige Betriebsausgabe"
+          />
+          <InputField
+            label="bAV-Beitrag (€/Jahr)"
+            value={betrieb.benefits.bav}
+            onChange={(v) => updateBenefits("bav", v)}
+            suffix="€/Jahr"
+            hint={`Arbeitgeberbeitrag zur betrieblichen Altersvorsorge (§ 3 Nr. 63 EStG). Voll abzugsfähige Betriebsausgabe; bis zu ${BAV_MAX_STEUERFREIER_BEITRAG.toLocaleString("de-DE")} €/Jahr steuer- und sozialabgabenfrei für den GF.`}
           />
         </div>
       </div>
