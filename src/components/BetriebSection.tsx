@@ -120,9 +120,10 @@ export function BetriebSection() {
   const gmbhNettoveraenderung = erstesJahrDetails
     ? (erstesJahrNettovermoegen - nettovermoegenStart)
     : 0;
+  const gmbhAnfangskapital = Math.max(0, betrieb.startkapital) + Math.max(0, betrieb.darlehen.betrag);
   const gmbhKumulierterEtfVerkauf = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.details.etfVerkauf ?? 0), 0);
   const gmbhVerbleibenderEtfWert = letztesJahrDetails?.etfWert
-    ?? privatVergleich.anfangskapitalPrivat;
+    ?? gmbhAnfangskapital;
   const gmbhEndwert = gmbhKumulierterEtfVerkauf + gmbhVerbleibenderEtfWert;
   const differenzVergleich = gmbhEndwert - privatVergleich.endwert;
   const gmbhSteuernKumuliert = ergebnisse.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
@@ -463,10 +464,15 @@ export function BetriebSection() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Endvergleich Betriebsphase: GmbH vs. Privat-ETF</h3>
-        <p className="text-xs text-slate-500 mb-4">
-          Vergleichslogik: Anfangskapital = Startkapital + Darlehensbetrag. Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss − Tankgutschein − Firmenhandy.
-          Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen. Für privat gelten Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%).
-        </p>
+        <div className="text-xs text-slate-500 mb-4 space-y-1">
+          <p>Vergleichslogik:</p>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>Anfangskapital = Startkapital + Darlehensbetrag</li>
+            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss − Tankgutschein − Firmenhandy</li>
+            <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
+            <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
+          </ul>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1 text-xs">
             <p className="font-semibold text-blue-800">GmbH</p>

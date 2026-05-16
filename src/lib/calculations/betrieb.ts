@@ -29,6 +29,7 @@ export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
 export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
+export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
 // Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
@@ -262,7 +263,7 @@ export function berechneBenefitsSteuerersparnis(
  * Benefits are deductible operating expenses and therefore part of annual Betriebsausgaben.
  */
 export function berechneBenefitsKosten(benefits: BenefitConfig): number {
-  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), 50);
+  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH);
   const tankJahr = clampedTankMonthly * 12;
   const strategieessen = benefits.strategieessen;
   const bav = Math.max(0, benefits.bav ?? 0);
@@ -281,7 +282,7 @@ export function berechneBetriebskostenPosten(
     wert: berechneKostenPositionJahresBetrag(kostenPosition),
   }));
 
-  const tankgutscheinJaehrlich = Math.min(Math.max(benefits.tankgutschein, 0), 50) * DARLEHEN_MONATE_PRO_JAHR;
+  const tankgutscheinJaehrlich = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH) * DARLEHEN_MONATE_PRO_JAHR;
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
@@ -455,7 +456,7 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
 
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
-    const tankgutscheinJaehrlich = Math.min(Math.max(state.benefits.tankgutschein, 0), 50) * DARLEHEN_MONATE_PRO_JAHR;
+    const tankgutscheinJaehrlich = Math.min(Math.max(state.benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH) * DARLEHEN_MONATE_PRO_JAHR;
     const handyKosten = berechneHandyNettoKostenProJahr(jahr, state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG);
     const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich - tankgutscheinJaehrlich - handyKosten;
     kumulierterSparplan += sparplanNetto;
