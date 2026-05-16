@@ -1,5 +1,6 @@
 import {
   berechneVorabpauschale,
+  berechneVorabpauschaleNachEtfVerkauf,
   berechneVorabpauschalesteuer,
   berechneEtfVerkaufssteuer,
   berechneEtfWachstum,
@@ -74,6 +75,16 @@ describe("berechneVorabpauschale", () => {
   });
 });
 
+describe("berechneVorabpauschaleNachEtfVerkauf", () => {
+  it("credits realized ETF gains against Vorabpauschale", () => {
+    expect(berechneVorabpauschaleNachEtfVerkauf(1000, 400)).toBe(600);
+  });
+
+  it("never becomes negative", () => {
+    expect(berechneVorabpauschaleNachEtfVerkauf(1000, 2000)).toBe(0);
+  });
+});
+
 describe("berechneVorabpauschalesteuer", () => {
   it("applies Teilfreistellung correctly", () => {
     const vp = 1000;
@@ -102,16 +113,18 @@ describe("berechneVorabpauschalesteuer", () => {
 });
 
 describe("berechneEtfVerkaufssteuer", () => {
-  it("uses GmbH Teilfreistellung (80%) by default", () => {
+  it("uses GmbH Teilfreistellung (80%) and GmbH tax rate by default", () => {
     const realisierterGewinn = 1000;
-    const expected = realisierterGewinn * (1 - TEILFREISTELLUNG_AKTIEN_GMBH) * ABGELTUNGSSTEUER_GESAMT;
+    const expected = realisierterGewinn * (1 - TEILFREISTELLUNG_AKTIEN_GMBH) * GMBH_STEUER_GESAMT;
     expect(berechneEtfVerkaufssteuer(realisierterGewinn)).toBeCloseTo(expected);
   });
 
   it("allows overriding to private-person Teilfreistellung", () => {
     const realisierterGewinn = 1000;
     const expected = realisierterGewinn * (1 - TEILFREISTELLUNG_AKTIEN) * ABGELTUNGSSTEUER_GESAMT;
-    expect(berechneEtfVerkaufssteuer(realisierterGewinn, TEILFREISTELLUNG_AKTIEN)).toBeCloseTo(expected);
+    expect(
+      berechneEtfVerkaufssteuer(realisierterGewinn, TEILFREISTELLUNG_AKTIEN, ABGELTUNGSSTEUER_GESAMT)
+    ).toBeCloseTo(expected);
   });
 
   it("returns 0 for non-positive realized gain", () => {
@@ -435,6 +448,26 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(r.steuer).toBeCloseTo(
       r.details.gmbhSteuer + r.details.vorabpauschalesteuer + r.details.etfVerkaufssteuer
     );
+  });
+
+  it("reduces Vorabpauschale to zero when realized ETF gain already covers it", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 100000,
+      etfRendite: 7,
+      laufzeitJahre: 1,
+      // Intentionally large enough to force ETF sales with positive realized gain in year 1.
+      kosten: [{ id: "1", bezeichnung: "Hohe Kosten", betrag: 120000, periode: "jaehrlich" }],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+    };
+    const result = berechneBetriebsErgebnisse(state)[0];
+    expect(result.details.etfVerkauf).toBeGreaterThan(0);
+    expect(result.details.etfGewinn).toBeGreaterThan(0);
+    expect(result.details.vorabpauschaleVorAnrechnung).toBeGreaterThan(0);
+    expect(result.details.vorabpauschale).toBe(0);
+    expect(result.details.vorabpauschalesteuer).toBe(0);
   });
 
   it("tracks theoretischer ETF-Ertrag separately from realized sale gain", () => {
