@@ -433,7 +433,8 @@ export function BetriebSection() {
         <p className="text-xs text-gray-400 mt-2">
           Der GmbH-Gewinn ergibt sich aus realisiertem ETF-Ertrag (durch Verkäufe) abzüglich Betriebskosten und Darlehenszinsen.
           Auf diesen Gewinn werden KSt + GewSt ans Finanzamt abgeführt.
-          Zusätzlich fallen Abgeltungssteuer auf die Vorabpauschale und auf realisierte ETF-Verkaufsgewinne an.
+          Vorabpauschale und realisierte ETF-Verkaufsgewinne werden auf konsistenter GmbH-Steuerbasis gerechnet;
+          realisierte ETF-Gewinne werden dabei auf die Vorabpauschale angerechnet.
         </p>
       </div>
 

@@ -133,6 +133,17 @@ export function berechneVorabpauschale(
 }
 
 /**
+ * Already realized ETF gains (through sales in the same year) are credited
+ * against the Vorabpauschale to avoid taxing more than the actual gain basis.
+ */
+export function berechneVorabpauschaleNachEtfVerkauf(
+  vorabpauschale: number,
+  realisierterEtfErtrag: number
+): number {
+  return Math.max(0, vorabpauschale - Math.max(0, realisierterEtfErtrag));
+}
+
+/**
  * Tax on Vorabpauschale with Teilfreistellung.
  * For private investors (equity ETFs): 30% tax-free → Abgeltungssteuer on 70%.
  * For GmbH/Körperschaft (equity ETFs): 80% tax-free → corporate tax (KSt+GewSt) on 20%.
@@ -153,13 +164,14 @@ export function berechneVorabpauschalesteuer(
  */
 export function berechneEtfVerkaufssteuer(
   realisierterEtfErtrag: number,
-  teilfreistellung: number = TEILFREISTELLUNG_AKTIEN_GMBH
+  teilfreistellung: number = TEILFREISTELLUNG_AKTIEN_GMBH,
+  steuersatz: number = GMBH_STEUER_GESAMT
 ): number {
   if (realisierterEtfErtrag <= 0) {
     return 0;
   }
   const steuerpflichtig = realisierterEtfErtrag * (1 - teilfreistellung);
-  return steuerpflichtig * ABGELTUNGSSTEUER_GESAMT;
+  return steuerpflichtig * steuersatz;
 }
 
 /**
@@ -424,8 +436,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const theoretischerEtfErtrag = Math.max(0, etfWertNachWachstum - etfWertVorjahrEnd);
 
     // Vorabpauschale tax – GmbH uses 80% Teilfreistellung and corporate tax rate (KSt + GewSt)
-    const vorabpauschale = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
+    const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum);
     // Recompute costs inside the yearly loop so changed expense inputs are reflected directly.
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
@@ -472,7 +483,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       aufgelaufeneZinsen += darlehenszinsJaehrlich;
     }
 
-    const auszahlungenOhneVerkaufssteuern = ungedeckteBetriebsausgaben + jaehrlicheZinsen + vorabpauschalesteuer;
+    const auszahlungenOhneVerkaufssteuern = ungedeckteBetriebsausgaben + jaehrlicheZinsen;
     const verfuegbareLiquiditaetVorEtfVerkauf = cashReserve + verbleibendeDarlehensZuzahlungen;
 
     // Solve sale amount iteratively because taxes depend on realized sale gain.
@@ -483,6 +494,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
       const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
       const realisierterEtfErtragIter = verkaufIteration.etfGewinn;
+      const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtragIter);
+      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
       const gewinnNachBetriebsausgabenIter =
         realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
@@ -493,7 +506,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         etfWertNachWachstum,
         Math.max(
           0,
-          auszahlungenOhneVerkaufssteuern + gmbhSteuerIter + etfVerkaufssteuerIter - verfuegbareLiquiditaetVorEtfVerkauf
+          auszahlungenOhneVerkaufssteuern + vorabpauschalesteuerIter + gmbhSteuerIter + etfVerkaufssteuerIter - verfuegbareLiquiditaetVorEtfVerkauf
         )
       );
       if (Math.abs(benoetigterVerkauf - etfVerkauf) < SALE_CONVERGENCE_THRESHOLD) {
@@ -506,6 +519,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
     const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
     const realisierterEtfErtrag = verkauf.etfGewinn;
+    const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtrag);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
       realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
@@ -633,6 +648,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         jaehrlicheZinsen,
         aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
         gewinnNachBetriebsausgaben,
+        vorabpauschaleVorAnrechnung: vorabpauschaleBrutto,
         vorabpauschale,
         vorabpauschalesteuer,
         etfVerkaufssteuer,
