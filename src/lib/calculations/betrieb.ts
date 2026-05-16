@@ -32,6 +32,7 @@ export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
+export const MONATE_PRO_JAHR = 12;
 // Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
 const GRUNDFREIBETRAG_2024 = 11604;
 const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
@@ -61,7 +62,7 @@ export const DEFAULT_FIRMENHANDY_CONFIG: FirmenhandyConfig = {
 export const BAV_MAX_STEUERFREIER_BEITRAG = 7248;
 export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
-export const DARLEHEN_MONATE_PRO_JAHR = 12;
+export const DARLEHEN_MONATE_PRO_JAHR = MONATE_PRO_JAHR;
 export const MIN_ETF_LOT_WERT = 0.000001;
 export const ETF_SORT_EPSILON = 0.0000000001;
 
@@ -273,7 +274,7 @@ export function berechneBenefitsKosten(benefits: BenefitConfig): number {
 
 export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number {
   const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH);
-  return clampedTankMonthly * DARLEHEN_MONATE_PRO_JAHR;
+  return clampedTankMonthly * MONATE_PRO_JAHR;
 }
 
 export function berechneKonsumNutzenwertProJahr(
@@ -569,6 +570,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   // For regular loans, interest is paid (and deductible) each year.
   let aufgelaufeneZinsen = 0;
   let kumulierterCashZuschuss = 0;
+  let kumulierterKonsumwert = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = sumEtfWert(etfLots);
@@ -585,6 +587,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
+    const konsumNutzenwert = berechneKonsumNutzenwertProJahr(jahr, state.benefits, handyConfig);
+    kumulierterKonsumwert += konsumNutzenwert;
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const gehaelterGesamt = geschaeftsfuehrergehalt;
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt;
@@ -758,6 +762,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         jaehrlicheKosten,
         handyNettoKosten,
         benefitsKosten,
+        konsumNutzenwert,
+        kumulierterKonsumwert,
         geschaeftsfuehrergehalt,
         gehaelterGesamt,
         betriebsausgabenGesamt,

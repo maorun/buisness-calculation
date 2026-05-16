@@ -718,6 +718,9 @@ describe("berechneBetriebsErgebnisse", () => {
     );
     expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
     expect(firmenhandyJahr2?.wert).toBe(0);
+    expect(jahr1.details.konsumNutzenwert).toBeCloseTo(1600);
+    expect(jahr2.details.konsumNutzenwert).toBeCloseTo(600);
+    expect(jahr2.details.kumulierterKonsumwert).toBeCloseTo(2200);
   });
 
   it("counts GF salary as operating expense and computes total target-net details", () => {

@@ -11,7 +11,6 @@ import {
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
   berechnePrivatVergleichErgebnis,
-  berechneKonsumNutzenwertProJahr,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -129,16 +128,11 @@ export function BetriebSection() {
   const gmbhVerbleibenderEtfWert = letztesJahrDetails?.etfWert
     ?? gmbhAnfangskapital;
   const gmbhEndwert = gmbhKumulierterEtfVerkauf + gmbhVerbleibenderEtfWert;
-  const gmbhKumulierterKonsumwert = React.useMemo(
-    () => Array.from(
-      { length: Math.max(0, betrieb.laufzeitJahre) },
-      (_, index) => berechneKonsumNutzenwertProJahr(index + 1, betrieb.benefits, betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG)
-    ).reduce((sum, wert) => sum + wert, 0),
-    [betrieb]
-  );
+  const gmbhKumulierterKonsumwert = letztesJahrDetails?.kumulierterKonsumwert
+    ?? 0;
   const gmbhGesamtwertMitKonsum = gmbhEndwert + gmbhKumulierterKonsumwert;
   const differenzVergleich = gmbhGesamtwertMitKonsum - privatVergleich.gesamtwertMitKonsum;
-  const endwertDifferenz = gmbhEndwert - privatVergleich.endwert;
+  const endwertDifferenzOhneKonsum = gmbhEndwert - privatVergleich.endwert;
   const gmbhSteuernKumuliert = ergebnisse.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
   const steuerDifferenz = gmbhSteuernKumuliert - privatVergleich.kumulierteSteuern;
   const verkaufsDifferenz = gmbhKumulierterEtfVerkauf - privatVergleich.kumulierterEtfVerkauf;
@@ -482,7 +476,7 @@ export function BetriebSection() {
           <ul className="list-disc pl-4 space-y-1">
             <li>Anfangskapital = Startkapital + Darlehensbetrag</li>
             <li>Tankgutschein und Firmenhandy werden als zusätzlicher Nutzen separat als verkonsumierter Wert ausgewiesen</li>
-            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss − Tankgutschein − Firmenhandy</li>
+            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss minus Tankgutschein minus Firmenhandy</li>
             <li>In der GmbH bleiben Tankgutschein und Firmenhandy steuerlich begünstigte Betriebsausgaben</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
             <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
@@ -522,7 +516,7 @@ export function BetriebSection() {
             Differenz Gesamtwert inkl. Konsum: {Math.abs(differenzVergleich).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
           </p>
           <p className="text-xs text-slate-600 mt-2">
-            Endwert-Differenz vor Konsum: {Math.abs(endwertDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €.
+            Endwert-Differenz vor Konsum: {Math.abs(endwertDifferenzOhneKonsum).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €.
             Begründung: {Math.abs(steuerDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € {steuerDifferenz >= 0 ? "mehr" : "weniger"} Steuerlast in der GmbH gegenüber privat
             sowie {Math.abs(verkaufsDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € {verkaufsDifferenz >= 0 ? "mehr" : "weniger"} kumulierte ETF-Verkäufe.
           </p>
