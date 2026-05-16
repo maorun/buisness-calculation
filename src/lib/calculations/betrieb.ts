@@ -30,6 +30,8 @@ export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
+export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
+export const DEFAULT_JOBBER_GEHALT_BETRIEB = 17000;
 // Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
 const GRUNDFREIBETRAG_2024 = 11604;
 const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
@@ -245,7 +247,8 @@ export function berechneBetriebskostenPosten(
   benefits: BenefitConfig,
   handyNettoKosten: number,
   handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
-  geschaeftsfuehrergehalt: number = 0
+  geschaeftsfuehrergehalt: number = 0,
+  jobberGehalt: number = 0
 ): { label: string; wert: number }[] {
   const kostenPosten = kosten.map((kostenPosition) => ({
     label: kostenPosition.bezeichnung,
@@ -258,6 +261,7 @@ export function berechneBetriebskostenPosten(
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
+    { label: "Jobber-Gehalt", wert: Math.max(0, jobberGehalt) },
   ];
 
   return [...kostenPosten, ...benefitsPosten];
@@ -429,9 +433,18 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
-    const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? 0);
-    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + geschaeftsfuehrergehalt;
-    const betriebskostenPosten = berechneBetriebskostenPosten(state.kosten, state.benefits, handyNettoKosten, handyConfig, geschaeftsfuehrergehalt);
+    const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
+    const jobberGehalt = Math.max(0, state.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB);
+    const gehaelterGesamt = geschaeftsfuehrergehalt + jobberGehalt;
+    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt;
+    const betriebskostenPosten = berechneBetriebskostenPosten(
+      state.kosten,
+      state.benefits,
+      handyNettoKosten,
+      handyConfig,
+      geschaeftsfuehrergehalt,
+      jobberGehalt
+    );
 
     const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
       offenesDarlehen,
@@ -536,21 +549,21 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Net gain after all taxes
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer;
-    const gesellschafterBruttoEinkommen = geschaeftsfuehrergehalt + darlehenszinsJaehrlich;
+    const gesellschafterBruttoEinkommen = gehaelterGesamt + darlehenszinsJaehrlich;
     const gesellschafterEinkommensteuer = berechneEinkommensteuerBetrieb(gesellschafterBruttoEinkommen);
     const gesellschafterSoli = berechneSoliBetrieb(gesellschafterEinkommensteuer);
     const gesellschafterSteuerGesamt = gesellschafterEinkommensteuer + gesellschafterSoli;
-    const gfGehaltEinkommensteuer = berechneEinkommensteuerBetrieb(geschaeftsfuehrergehalt);
-    const gfGehaltSoli = berechneSoliBetrieb(gfGehaltEinkommensteuer);
-    const gfGehaltSteuerGesamt = gfGehaltEinkommensteuer + gfGehaltSoli;
-    const gfGehaltNetto = geschaeftsfuehrergehalt - gfGehaltSteuerGesamt;
-    const darlehenszinsenSteuer = Math.max(0, gesellschafterSteuerGesamt - gfGehaltSteuerGesamt);
+    const gehaelterEinkommensteuer = berechneEinkommensteuerBetrieb(gehaelterGesamt);
+    const gehaelterSoli = berechneSoliBetrieb(gehaelterEinkommensteuer);
+    const gehaelterSteuerGesamt = gehaelterEinkommensteuer + gehaelterSoli;
+    const gehaelterNetto = gehaelterGesamt - gehaelterSteuerGesamt;
+    const darlehenszinsenSteuer = Math.max(0, gesellschafterSteuerGesamt - gehaelterSteuerGesamt);
     const darlehenszinsenNetto = Math.max(0, darlehenszinsJaehrlich - darlehenszinsenSteuer);
     const zielnettoGesellschafter = Math.max(
       0,
       state.zielnettoGesellschafter ?? DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB
     );
-    const gesellschafterNetto = gfGehaltNetto + darlehenszinsenNetto;
+    const gesellschafterNetto = gehaelterNetto + darlehenszinsenNetto;
     const zielnettoDifferenz = gesellschafterNetto - zielnettoGesellschafter;
 
     // Positive retained result is held as cash reserve (Aktiva).
@@ -592,10 +605,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         handyNettoKosten,
         benefitsKosten,
         geschaeftsfuehrergehalt,
+        jobberGehalt,
+        gehaelterGesamt,
         betriebsausgabenGesamt,
-        gfGehaltEinkommensteuer,
-        gfGehaltSoli,
-        gfGehaltNetto,
+        gehaelterEinkommensteuer,
+        gehaelterSoli,
+        gehaelterNetto,
         gesellschafterBruttoEinkommen,
         gesellschafterEinkommensteuer,
         gesellschafterSoli,
