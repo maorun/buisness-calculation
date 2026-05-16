@@ -31,7 +31,6 @@ export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
-export const DEFAULT_JOBBER_GEHALT_BETRIEB = 17000;
 // Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
 const GRUNDFREIBETRAG_2024 = 11604;
 const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
@@ -259,8 +258,7 @@ export function berechneBetriebskostenPosten(
   benefits: BenefitConfig,
   handyNettoKosten: number,
   handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
-  geschaeftsfuehrergehalt: number = 0,
-  jobberGehalt: number = 0
+  geschaeftsfuehrergehalt: number = 0
 ): { label: string; wert: number }[] {
   const kostenPosten = kosten.map((kostenPosition) => ({
     label: kostenPosition.bezeichnung,
@@ -273,7 +271,6 @@ export function berechneBetriebskostenPosten(
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
-    { label: "Jobber-Gehalt", wert: Math.max(0, jobberGehalt) },
   ];
 
   return [...kostenPosten, ...benefitsPosten];
@@ -445,16 +442,14 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
-    const jobberGehalt = Math.max(0, state.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB);
-    const gehaelterGesamt = geschaeftsfuehrergehalt + jobberGehalt;
+    const gehaelterGesamt = geschaeftsfuehrergehalt;
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt;
     const betriebskostenPosten = berechneBetriebskostenPosten(
       state.kosten,
       state.benefits,
       handyNettoKosten,
       handyConfig,
-      geschaeftsfuehrergehalt,
-      jobberGehalt
+      geschaeftsfuehrergehalt
     );
 
     const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
@@ -620,7 +615,6 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         handyNettoKosten,
         benefitsKosten,
         geschaeftsfuehrergehalt,
-        jobberGehalt,
         gehaelterGesamt,
         betriebsausgabenGesamt,
         gehaelterEinkommensteuer,

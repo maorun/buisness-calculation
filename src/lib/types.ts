@@ -55,8 +55,6 @@ export interface BetriebState {
   zielnettoGesellschafter?: number;
   /** Annual gross managing-director salary treated as operating expense. */
   geschaeftsfuehrergehalt?: number;
-  /** Annual gross side-job income (Jobber) included in target-net comparison. */
-  jobberGehalt?: number;
   darlehen: DarlehenConfig;
   etfRendite: number; // in percent, e.g. 7 means 7% p.a.
   laufzeitJahre: number;
