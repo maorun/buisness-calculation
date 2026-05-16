@@ -17,6 +17,8 @@ Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft 
 - Simulation des **ETF-Investments** über eine frei wählbare Laufzeit
 - Konfiguration eines **Gesellschafter-Darlehens** (Betrag, Zinssatz, monatlicher Zuschuss, endfällig oder mit Tilgungsdatum)
 - Verwaltung **laufender Betriebskosten** (monatlich oder jährlich) mit direkter Auswirkung auf den steuerpflichtigen Gewinn
+- **Zielnetto-Abgleich im Betrieb** für den Gesellschafter (Netto-Darlehenszinsen + Netto-GF-Gehalt)
+- Konfigurierbares **GF-Gehalt im Betrieb** als zusätzliche Betriebskostenposition
 - Steuerliche **Benefits**: Tankgutschein (max. 50 €/Monat, steuerfrei gem. § 8 Abs. 2 EStG) und Strategieessen
 - Automatische Berücksichtigung von **Firmenhandy-Kosten** als Betriebsausgabe
 - Transparente Darstellung aller **Steuerparameter** (KSt 15 %, Solidaritätszuschlag, GewSt ca. 14 %, Abgeltungsteuer, Vorabpauschale, Teilfreistellung)

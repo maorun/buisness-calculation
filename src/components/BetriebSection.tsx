@@ -5,6 +5,9 @@ import { useCalculatorStore } from "@/store/calculatorStore";
 import {
   TEILFREISTELLUNG_AKTIEN_GMBH,
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
+  DEFAULT_GF_GEHALT_BETRIEB,
+  DEFAULT_JOBBER_GEHALT_BETRIEB,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -49,12 +52,70 @@ function InputField({
   );
 }
 
+function SliderField({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = 100000,
+  step = 500,
+  hint,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}: <span className="font-semibold">{value.toLocaleString("de-DE")} €</span>
+      </label>
+      <input
+        type="range"
+        className="w-full"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
 export function BetriebSection() {
   const { betrieb, setBetrieb, addBetriebskosten, updateBetriebskosten, removeBetriebskosten, getBetriebsErgebnisse } =
     useCalculatorStore();
   const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
+  const erstesJahrDetails = ergebnisse[0]?.details;
+  const nettovermoegenStart = Math.max(0, betrieb.startkapital);
+  const erstesJahrNettovermoegen = erstesJahrDetails?.nettovermoegen ?? nettovermoegenStart;
+  const zielnettoInsgesamt = Math.max(
+    0,
+    betrieb.zielnettoGesellschafter ?? DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB
+  );
+  const geschaeftsfuehrergehalt = erstesJahrDetails?.geschaeftsfuehrergehalt ?? 0;
+  const jobberGehalt = erstesJahrDetails?.jobberGehalt ?? 0;
+  const gehaelterGesamt = erstesJahrDetails?.gehaelterGesamt ?? 0;
+  const gesellschafterBruttoEinkommen = erstesJahrDetails?.gesellschafterBruttoEinkommen ?? 0;
+  const gesellschafterSteuerGesamt = erstesJahrDetails?.gesellschafterSteuerGesamt ?? 0;
+  const gehaelterSteuerGesamt = (erstesJahrDetails?.gehaelterEinkommensteuer ?? 0) + (erstesJahrDetails?.gehaelterSoli ?? 0);
+  const gehaelterNetto = erstesJahrDetails?.gehaelterNetto ?? 0;
+  const darlehenszinsenBrutto = (erstesJahrDetails?.darlehenszinsenNetto ?? 0) + (erstesJahrDetails?.darlehenszinsenSteuer ?? 0);
+  const darlehenszinsenSteuer = erstesJahrDetails?.darlehenszinsenSteuer ?? 0;
+  const darlehenszinsenNetto = erstesJahrDetails?.darlehenszinsenNetto ?? 0;
+  const gesellschafterNetto = erstesJahrDetails?.gesellschafterNetto ?? 0;
+  const zielnettoDifferenz = erstesJahrDetails?.zielnettoDifferenz ?? (gesellschafterNetto - zielnettoInsgesamt);
+  const gmbhNettoveraenderung = erstesJahrDetails
+    ? (erstesJahrNettovermoegen - nettovermoegenStart)
+    : 0;
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -275,6 +336,80 @@ export function BetriebSection() {
           onRemove={removeBetriebskosten}
           showPeriode
         />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Zielnetto insgesamt</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Für den Zielabgleich zählen Netto-Darlehenszinsen plus Netto-GF-Gehalt plus Netto-Jobber-Gehalt. Beide Gehälter wirken als Betriebskosten in der GmbH.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <InputField
+            label="Zielnetto insgesamt (€/Jahr)"
+            value={zielnettoInsgesamt}
+            onChange={(v) => setBetrieb({ zielnettoGesellschafter: Math.max(0, parseFloat(v) || 0) })}
+            suffix="€/Jahr"
+            hint={`Default: ${DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB.toLocaleString("de-DE")} €`}
+          />
+          <SliderField
+            label="GF-Gehalt (brutto, €/Jahr)"
+            value={Math.max(0, betrieb.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB)}
+            onChange={(v) => setBetrieb({ geschaeftsfuehrergehalt: v })}
+            hint={`Wird als Betriebskosten der GmbH angesetzt (Default: ${DEFAULT_GF_GEHALT_BETRIEB.toLocaleString("de-DE")} €)`}
+          />
+          <SliderField
+            label="Jobber-Gehalt (brutto, €/Jahr)"
+            value={Math.max(0, betrieb.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB)}
+            onChange={(v) => setBetrieb({ jobberGehalt: v })}
+            hint={`Wird als Betriebskosten angesetzt und im Zielabgleich berücksichtigt (Default: ${DEFAULT_JOBBER_GEHALT_BETRIEB.toLocaleString("de-DE")} €)`}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-medium text-slate-600">Zielabgleich (Jahr 1)</p>
+            <div className="mt-2 space-y-1 text-xs text-slate-700">
+              <p>GF-Gehalt brutto: <span className="font-semibold">{geschaeftsfuehrergehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Jobber-Gehalt brutto: <span className="font-semibold">{jobberGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Gehälter gesamt brutto: <span className="font-semibold">{gehaelterGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Gesamteinkommen (GF + Jobber + Zinsen): <span className="font-semibold">{gesellschafterBruttoEinkommen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>ESt + Soli gesamt (progressiv): <span className="font-semibold text-red-700">− {gesellschafterSteuerGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>ESt + Soli auf Gehälter: <span className="font-semibold text-red-700">− {gehaelterSteuerGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Gehälter netto: <span className="font-semibold text-green-700">+ {gehaelterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Darlehenszinsen brutto: <span className="font-semibold">{darlehenszinsenBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Zusätzliche Steuer durch Darlehenszinsen: <span className="font-semibold text-red-700">− {darlehenszinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Darlehenszinsen netto: <span className="font-semibold text-green-700">+ {darlehenszinsenNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            </div>
+            <p className="mt-2 text-sm font-bold text-slate-800">
+              Summe Netto: {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p className="text-xs text-slate-700">
+              Zielnetto insgesamt: {zielnettoInsgesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p
+              className={`text-xs mt-1 font-semibold ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}
+              aria-label={zielnettoDifferenz >= 0 ? "Zielnetto überschritten" : "Zielnetto unterschritten"}
+            >
+              {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+          </div>
+          <div className={`rounded-lg border p-3 ${gmbhNettoveraenderung >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+            <p className={`text-xs font-medium ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
+              GmbH-Geldentwicklung (Jahr 1)
+            </p>
+            <p
+              className={`mt-1 text-lg font-bold ${gmbhNettoveraenderung >= 0 ? "text-green-800" : "text-red-800"}`}
+              aria-label={gmbhNettoveraenderung >= 0 ? "Geld der GmbH wird mehr" : "Geld der GmbH wird weniger"}
+            >
+              {gmbhNettoveraenderung >= 0 ? "▲ Mehr" : "▼ Weniger"}
+            </p>
+            <p className={`text-xs mt-1 ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
+              {Math.abs(gmbhNettoveraenderung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Vergleich: Nettovermögen Start {nettovermoegenStart.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € → Jahr 1 {erstesJahrNettovermoegen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Tax info box */}
