@@ -122,17 +122,18 @@ export function BetriebSection() {
     : 0;
   const gmbhKumulierterEtfVerkauf = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.details.etfVerkauf ?? 0), 0);
   const gmbhVerbleibenderEtfWert = letztesJahrDetails?.etfWert
-    ?? (Math.max(0, betrieb.startkapital) + Math.max(0, betrieb.darlehen.betrag));
+    ?? privatVergleich.anfangskapitalPrivat;
   const gmbhEndwert = gmbhKumulierterEtfVerkauf + gmbhVerbleibenderEtfWert;
   const differenzVergleich = gmbhEndwert - privatVergleich.endwert;
   const gmbhSteuernKumuliert = ergebnisse.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
   const steuerDifferenz = gmbhSteuernKumuliert - privatVergleich.kumulierteSteuern;
   const verkaufsDifferenz = gmbhKumulierterEtfVerkauf - privatVergleich.kumulierterEtfVerkauf;
-  const gewinnerText = differenzVergleich > 0
-    ? "GmbH gewinnt"
-    : differenzVergleich < 0
-      ? "Privat gewinnt"
-      : "Unentschieden";
+  let gewinnerText = "Unentschieden";
+  if (differenzVergleich > 0) {
+    gewinnerText = "GmbH gewinnt";
+  } else if (differenzVergleich < 0) {
+    gewinnerText = "Privat gewinnt";
+  }
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({

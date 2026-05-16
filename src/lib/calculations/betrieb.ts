@@ -118,7 +118,7 @@ interface EtfLot {
 }
 
 export interface PrivatVergleichErgebnis {
-  startkapitalGesamt: number;
+  anfangskapitalPrivat: number;
   kumulierterEtfVerkauf: number;
   verbleibenderEtfWert: number;
   endwert: number;
@@ -430,8 +430,8 @@ function verkaufeEtfLotsSteueroptimal(
 
 export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVergleichErgebnis {
   let etfLots: EtfLot[] = [];
-  const startkapitalGesamt = Math.max(0, state.startkapital) + Math.max(0, state.darlehen.betrag);
-  etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", startkapitalGesamt);
+  const anfangskapitalPrivat = Math.max(0, state.startkapital) + Math.max(0, state.darlehen.betrag);
+  etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", anfangskapitalPrivat);
 
   let offenesDarlehen = Math.max(0, state.darlehen.betrag);
   let kumulierterEtfVerkauf = 0;
@@ -520,7 +520,7 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
   const kumulierteSteuern = kumulierteVorabpauschalesteuer + kumulierteEtfVerkaufssteuer;
 
   return {
-    startkapitalGesamt,
+    anfangskapitalPrivat,
     kumulierterEtfVerkauf,
     verbleibenderEtfWert,
     endwert,

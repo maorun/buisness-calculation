@@ -785,7 +785,7 @@ describe("berechnePrivatVergleichErgebnis", () => {
 
   it("uses startkapital + darlehen as private initial ETF capital", () => {
     const result = berechnePrivatVergleichErgebnis(basisState);
-    expect(result.startkapitalGesamt).toBe(15000);
+    expect(result.anfangskapitalPrivat).toBe(15000);
     expect(result.verbleibenderEtfWert).toBeCloseTo(15000);
   });
 
@@ -802,6 +802,21 @@ describe("berechnePrivatVergleichErgebnis", () => {
     const result = berechnePrivatVergleichErgebnis(state);
     expect(result.kumulierterSparplan).toBe(0);
     expect(result.verbleibenderEtfWert).toBeCloseTo(0);
+  });
+
+  it("subtracts active firmenhandy costs from private savings plan", () => {
+    const state: BetriebState = {
+      ...basisState,
+      startkapital: 0,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      jaehrlicherCashZuschuss: 1000,
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: true, anschaffungskosten: 1000, erstanschaffungJahr: 1 },
+    };
+
+    const result = berechnePrivatVergleichErgebnis(state);
+    expect(result.kumulierterSparplan).toBe(0);
+    expect(result.verbleibenderEtfWert).toBe(0);
   });
 
   it("sells private ETF for non-endfaellige zinsen and GF salary", () => {
