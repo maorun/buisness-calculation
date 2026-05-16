@@ -393,8 +393,8 @@ export function BetriebSection() {
                 {jobberSVDetails.agAV > 0 && (
                   <p className="pl-2 text-slate-600">+ AV-Anteil AG (1,3 %): <span className="font-semibold text-red-700">{jobberSVDetails.agAV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
                 )}
-                <p className="pl-2 text-slate-600">+ UV AG (~1,3 % Schätzw.): <span className="font-semibold text-red-700">{jobberSVDetails.agUV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-                <p className="pl-2 text-slate-600">+ Umlagen AG (~2,1 % Schätzw.): <span className="font-semibold text-red-700">{jobberSVDetails.agUmlage.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">+ UV AG (~1,3 % Schätzwert): <span className="font-semibold text-red-700">{jobberSVDetails.agUV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">+ Umlagen AG ({jobberSVDetails.typ === "mini" ? "~2,1 % Pausch." : "~0,9 %"} Schätzwert): <span className="font-semibold text-red-700">{jobberSVDetails.agUmlage.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
                 <p className="font-semibold text-slate-800 border-t border-blue-200 pt-1">
                   = AG-Gesamtkosten: <span className="text-red-800">{jobberSVDetails.agGesamtkostenBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>
                 </p>

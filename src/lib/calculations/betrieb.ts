@@ -180,6 +180,8 @@ export function berechneJobberSozialabgaben(bruttoJahresgehalt: number): JobberS
     agAV = bruttoRVCapped * SV_AV_AG;
     agUV = brutto * SV_UV_AG;
     agUmlage = brutto * SV_UMLAGE_AG;
+    // AN-Anteil: vereinfachte lineare Annäherung (0 % bei 556 €/Monat → voller Satz bei 2.000 €/Monat).
+    // Die exakte Formel nach § 20 Abs. 2 SGB IV (Faktor F) liefert leicht abweichende Werte.
     const anFaktor = (bruttoMonatlich - MINIJOB_GRENZE_MONATLICH) / (MIDIJOB_GRENZE_MONATLICH - MINIJOB_GRENZE_MONATLICH);
     anRV = bruttoRVCapped * SV_RV_AN * anFaktor;
     anKV = bruttoKVCapped * SV_KV_AN * anFaktor;
