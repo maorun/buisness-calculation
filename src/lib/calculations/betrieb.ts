@@ -456,9 +456,7 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
 
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
-    const tankgutscheinJaehrlich = Math.min(Math.max(state.benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH) * DARLEHEN_MONATE_PRO_JAHR;
-    const handyKosten = berechneHandyNettoKostenProJahr(jahr, state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG);
-    const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich - tankgutscheinJaehrlich - handyKosten;
+    const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich;
     kumulierterSparplan += sparplanNetto;
 
     const gehaltsEntnahme = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);

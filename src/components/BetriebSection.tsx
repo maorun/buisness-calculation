@@ -11,7 +11,9 @@ import {
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
   berechnePrivatVergleichErgebnis,
+  berechneBetriebsErgebnisse,
 } from "@/lib/calculations/betrieb";
+import type { BetriebState } from "@/lib/types";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
 
@@ -19,6 +21,20 @@ const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
 } as const;
 const DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS = 2400;
+
+function bereinigtFuerVergleich(state: BetriebState): BetriebState {
+  return {
+    ...state,
+    benefits: {
+      ...state.benefits,
+      tankgutschein: 0,
+    },
+    firmenhandy: {
+      ...(state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG),
+      aktiv: false,
+    },
+  };
+}
 
 function InputField({
   label,
@@ -97,9 +113,17 @@ export function BetriebSection() {
   const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
-  const privatVergleich = berechnePrivatVergleichErgebnis(betrieb);
+  const betriebVergleichState = React.useMemo(() => bereinigtFuerVergleich(betrieb), [betrieb]);
+  const ergebnisseVergleich = React.useMemo(
+    () => berechneBetriebsErgebnisse(betriebVergleichState),
+    [betriebVergleichState]
+  );
+  const privatVergleich = React.useMemo(
+    () => berechnePrivatVergleichErgebnis(betriebVergleichState),
+    [betriebVergleichState]
+  );
   const erstesJahrDetails = ergebnisse[0]?.details;
-  const letztesJahrDetails = ergebnisse[ergebnisse.length - 1]?.details;
+  const letztesJahrDetailsVergleich = ergebnisseVergleich[ergebnisseVergleich.length - 1]?.details;
   const nettovermoegenStart = Math.max(0, betrieb.startkapital);
   const erstesJahrNettovermoegen = erstesJahrDetails?.nettovermoegen ?? nettovermoegenStart;
   const zielnettoInsgesamt = Math.max(
@@ -121,12 +145,12 @@ export function BetriebSection() {
     ? (erstesJahrNettovermoegen - nettovermoegenStart)
     : 0;
   const gmbhAnfangskapital = Math.max(0, betrieb.startkapital) + Math.max(0, betrieb.darlehen.betrag);
-  const gmbhKumulierterEtfVerkauf = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.details.etfVerkauf ?? 0), 0);
-  const gmbhVerbleibenderEtfWert = letztesJahrDetails?.etfWert
+  const gmbhKumulierterEtfVerkauf = ergebnisseVergleich.reduce((sum, ergebnis) => sum + (ergebnis.details.etfVerkauf ?? 0), 0);
+  const gmbhVerbleibenderEtfWert = letztesJahrDetailsVergleich?.etfWert
     ?? gmbhAnfangskapital;
   const gmbhEndwert = gmbhKumulierterEtfVerkauf + gmbhVerbleibenderEtfWert;
   const differenzVergleich = gmbhEndwert - privatVergleich.endwert;
-  const gmbhSteuernKumuliert = ergebnisse.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
+  const gmbhSteuernKumuliert = ergebnisseVergleich.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
   const steuerDifferenz = gmbhSteuernKumuliert - privatVergleich.kumulierteSteuern;
   const verkaufsDifferenz = gmbhKumulierterEtfVerkauf - privatVergleich.kumulierterEtfVerkauf;
   let gewinnerText = "Unentschieden";
@@ -468,7 +492,8 @@ export function BetriebSection() {
           <p>Vergleichslogik:</p>
           <ul className="list-disc pl-4 space-y-1">
             <li>Anfangskapital = Startkapital + Darlehensbetrag</li>
-            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss − Tankgutschein − Firmenhandy</li>
+            <li>Für den Vergleich werden Tankgutschein und Firmenhandy in beiden Pfaden neutralisiert (Konsum entfernt)</li>
+            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
             <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
           </ul>
