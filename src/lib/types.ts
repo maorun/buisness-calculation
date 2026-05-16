@@ -89,6 +89,32 @@ export interface CalculatorState {
   ende: EndeState;
 }
 
+export interface JobberSozialabgaben {
+  /** 'mini' = Geringfügige Beschäftigung (≤ 556 €/Monat), 'midi' = Übergangsbereich (≤ 2.000 €/Monat), 'normal' = reguläre Beschäftigung */
+  typ: 'mini' | 'midi' | 'normal';
+  bruttoJahresgehalt: number;
+  // AG-Anteile (Arbeitgeber-Kosten on top of Brutto)
+  agRV: number;
+  agKV: number;
+  agPV: number;
+  agAV: number;
+  /** Unfallversicherung (Berufsgenossenschaft) – AG only, Schätzwert */
+  agUV: number;
+  /** Umlagen U1/U2/Insolvenzgeldumlage – AG only, Schätzwert */
+  agUmlage: number;
+  agSozialabgabenGesamt: number;
+  /** Brutto-Gehalt + AG-Sozialabgaben = tatsächliche GmbH-Kosten */
+  agGesamtkostenBrutto: number;
+  // AN-Anteile (Arbeitnehmer-Abzüge vom Brutto)
+  anRV: number;
+  anKV: number;
+  anPV: number;
+  anAV: number;
+  anSozialabgabenGesamt: number;
+  /** Brutto minus AN-Sozialabgaben (vor Einkommensteuer) */
+  anNettoVorSteuer: number;
+}
+
 export interface JahresErgebnis {
   jahr: number;
   gesamtvermoegen: number;

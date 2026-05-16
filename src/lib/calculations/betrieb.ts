@@ -1,4 +1,4 @@
-import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig } from "../types";
+import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, JobberSozialabgaben, KostenPosition, FirmenhandyConfig } from "../types";
 
 // 2024 Basiszins for Vorabpauschale calculation
 export const BASISZINS_2024 = 0.0229;
@@ -32,6 +32,50 @@ export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
 export const DEFAULT_JOBBER_GEHALT_BETRIEB = 17000;
+export const MAX_JOBBER_GEHALT = 50000;
+
+// ---------------------------------------------------------------------------
+// 2024 Sozialversicherungs-Beitragssätze
+// ---------------------------------------------------------------------------
+// Rentenversicherung (RV)
+export const SV_RV_AG = 0.093;            // 9,3 % AG-Anteil
+export const SV_RV_AN = 0.093;            // 9,3 % AN-Anteil
+
+// Krankenversicherung (KV): allgemeiner Beitrag 14,6 % + Ø-Zusatzbeitrag 1,7 % = 16,3 %
+export const SV_KV_BASIS = 0.146;         // 14,6 % allgemeiner Beitragssatz
+export const SV_KV_ZUSATZ = 0.017;        // Ø 1,7 % Zusatzbeitrag 2024
+export const SV_KV_GESAMT = SV_KV_BASIS + SV_KV_ZUSATZ;  // 16,3 %
+export const SV_KV_AG = SV_KV_GESAMT / 2; // 8,15 %
+export const SV_KV_AN = SV_KV_GESAMT / 2; // 8,15 %
+
+// Pflegeversicherung (PV): 3,4 % (ohne Kinderlosenzuschlag; gleiche BBG wie KV)
+export const SV_PV_AG = 0.017;            // 1,7 % AG-Anteil
+export const SV_PV_AN = 0.017;            // 1,7 % AN-Anteil (ohne Kinderlosenzuschlag)
+
+// Arbeitslosenversicherung (AV)
+export const SV_AV_AG = 0.013;            // 1,3 % AG-Anteil
+export const SV_AV_AN = 0.013;            // 1,3 % AN-Anteil
+
+// Zusätzliche AG-only-Abgaben (Schätzwerte)
+export const SV_UV_AG = 0.013;            // ~1,3 % Unfallversicherung (Berufsgenossenschaft, variiert)
+export const SV_UMLAGE_AG = 0.009;        // ~0,9 % Umlagen U1/U2/Insolvenzgeldumlage (variiert)
+
+// Mini-Job-Grenzen 2024
+export const MINIJOB_GRENZE_MONATLICH = 556;                              // 556 €/Monat
+export const MINIJOB_GRENZE_JAEHRLICH = MINIJOB_GRENZE_MONATLICH * 12;   // 6.672 €/Jahr
+
+// Midi-Job / Übergangsbereich 2024
+export const MIDIJOB_GRENZE_MONATLICH = 2000;                             // 2.000 €/Monat
+export const MIDIJOB_GRENZE_JAEHRLICH = MIDIJOB_GRENZE_MONATLICH * 12;   // 24.000 €/Jahr
+
+// Mini-Job AG-Pauschalbeiträge
+export const MINIJOB_KV_PAUSCHAL_AG = 0.13;     // 13 % KV-Pauschalbeitrag AG
+export const MINIJOB_RV_PAUSCHAL_AG = 0.15;     // 15 % RV-Pauschalbeitrag AG
+export const MINIJOB_UMLAGE_PAUSCHAL_AG = 0.021; // ~2,1 % U1/U2/Insolvenz (Schätzwert)
+
+// Beitragsbemessungsgrenzen 2024 (West)
+export const BBG_KV_JAEHRLICH = 62100;   // KV + PV
+export const BBG_RV_JAEHRLICH = 90600;   // RV + AV
 // Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
 const GRUNDFREIBETRAG_2024 = 11604;
 const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
@@ -92,6 +136,83 @@ export function berechneNettoGehaltBetrieb(bruttoGehalt: number): number {
   const est = berechneEinkommensteuerBetrieb(bruttoGehalt);
   const soli = berechneSoliBetrieb(est);
   return bruttoGehalt - est - soli;
+}
+
+/**
+ * Berechnet die Sozialabgaben-Aufteilung für einen Jobber (Arbeitnehmer).
+ *
+ * Je nach Jahresbrutto werden drei Beschäftigungsarten unterschieden:
+ * - Mini-Job (≤ 6.672 €/Jahr): AG zahlt Pauschalabgaben, AN zahlt nichts.
+ * - Midi-Job / Übergangsbereich (6.672 – 24.000 €/Jahr): AG zahlt volle Sätze,
+ *   AN zahlt reduzierte Sätze (lineare Annäherung an den Normalarbeitnehmer-Satz).
+ * - Normale Beschäftigung (> 24.000 €/Jahr): Beide zahlen volle Hälften
+ *   bis zur jeweiligen Beitragsbemessungsgrenze (BBG).
+ *
+ * Hinweis: UV und Umlagen sind Schätzwerte – sie variieren je nach
+ * Berufsgenossenschaft und Krankenkasse.
+ */
+export function berechneJobberSozialabgaben(bruttoJahresgehalt: number): JobberSozialabgaben {
+  const brutto = Math.max(0, bruttoJahresgehalt);
+  const bruttoMonatlich = brutto / 12;
+
+  // Brutto gedeckelt an den Beitragsbemessungsgrenzen
+  const bruttoKVCapped = Math.min(brutto, BBG_KV_JAEHRLICH);
+  const bruttoRVCapped = Math.min(brutto, BBG_RV_JAEHRLICH);
+
+  let typ: 'mini' | 'midi' | 'normal';
+  let agRV = 0, agKV = 0, agPV = 0, agAV = 0, agUV = 0, agUmlage = 0;
+  let anRV = 0, anKV = 0, anPV = 0, anAV = 0;
+
+  if (brutto <= MINIJOB_GRENZE_JAEHRLICH) {
+    // Mini-Job: AG zahlt Pauschalbeiträge, AN zahlt keine Pflichtbeiträge
+    typ = 'mini';
+    agKV = brutto * MINIJOB_KV_PAUSCHAL_AG;
+    agRV = brutto * MINIJOB_RV_PAUSCHAL_AG;
+    agUmlage = brutto * MINIJOB_UMLAGE_PAUSCHAL_AG;
+    agUV = brutto * SV_UV_AG;
+  } else if (brutto <= MIDIJOB_GRENZE_JAEHRLICH) {
+    // Midi-Job / Übergangsbereich: AG zahlt volle Sätze; AN zahlt reduzierten Anteil
+    // (vereinfachte lineare Annäherung: 0 % bei 556 €/Monat → voller Satz bei 2.000 €/Monat)
+    typ = 'midi';
+    agRV = bruttoRVCapped * SV_RV_AG;
+    agKV = bruttoKVCapped * SV_KV_AG;
+    agPV = bruttoKVCapped * SV_PV_AG;
+    agAV = bruttoRVCapped * SV_AV_AG;
+    agUV = brutto * SV_UV_AG;
+    agUmlage = brutto * SV_UMLAGE_AG;
+    const anFaktor = (bruttoMonatlich - MINIJOB_GRENZE_MONATLICH) / (MIDIJOB_GRENZE_MONATLICH - MINIJOB_GRENZE_MONATLICH);
+    anRV = bruttoRVCapped * SV_RV_AN * anFaktor;
+    anKV = bruttoKVCapped * SV_KV_AN * anFaktor;
+    anPV = bruttoKVCapped * SV_PV_AN * anFaktor;
+    anAV = bruttoRVCapped * SV_AV_AN * anFaktor;
+  } else {
+    // Normale Beschäftigung: AG und AN zahlen je die volle Hälfte bis zur BBG
+    typ = 'normal';
+    agRV = bruttoRVCapped * SV_RV_AG;
+    agKV = bruttoKVCapped * SV_KV_AG;
+    agPV = bruttoKVCapped * SV_PV_AG;
+    agAV = bruttoRVCapped * SV_AV_AG;
+    agUV = brutto * SV_UV_AG;
+    agUmlage = brutto * SV_UMLAGE_AG;
+    anRV = bruttoRVCapped * SV_RV_AN;
+    anKV = bruttoKVCapped * SV_KV_AN;
+    anPV = bruttoKVCapped * SV_PV_AN;
+    anAV = bruttoRVCapped * SV_AV_AN;
+  }
+
+  const agSozialabgabenGesamt = agRV + agKV + agPV + agAV + agUV + agUmlage;
+  const agGesamtkostenBrutto = brutto + agSozialabgabenGesamt;
+  const anSozialabgabenGesamt = anRV + anKV + anPV + anAV;
+  const anNettoVorSteuer = brutto - anSozialabgabenGesamt;
+
+  return {
+    typ,
+    bruttoJahresgehalt: brutto,
+    agRV, agKV, agPV, agAV, agUV, agUmlage,
+    agSozialabgabenGesamt, agGesamtkostenBrutto,
+    anRV, anKV, anPV, anAV,
+    anSozialabgabenGesamt, anNettoVorSteuer,
+  };
 }
 
 export function berechneDarlehensZinsenSteuerBetrieb(
@@ -256,12 +377,14 @@ export function berechneBetriebskostenPosten(
   }));
 
   const tankgutscheinJaehrlich = Math.min(Math.max(benefits.tankgutschein, 0), 50) * DARLEHEN_MONATE_PRO_JAHR;
+  const jobberSV = berechneJobberSozialabgaben(jobberGehalt);
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
-    { label: "Jobber-Gehalt", wert: Math.max(0, jobberGehalt) },
+    { label: "Jobber (Brutto)", wert: Math.max(0, jobberGehalt) },
+    { label: "Jobber (AG-Sozialabgaben)", wert: jobberSV.agSozialabgabenGesamt },
   ];
 
   return [...kostenPosten, ...benefitsPosten];
@@ -435,8 +558,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const jobberGehalt = Math.max(0, state.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB);
+    const jobberSV = berechneJobberSozialabgaben(jobberGehalt);
+    const jobberAgGesamtkosten = jobberSV.agGesamtkostenBrutto;
     const gehaelterGesamt = geschaeftsfuehrergehalt + jobberGehalt;
-    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt;
+    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + geschaeftsfuehrergehalt + jobberAgGesamtkosten;
     const betriebskostenPosten = berechneBetriebskostenPosten(
       state.kosten,
       state.benefits,
@@ -606,6 +731,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         benefitsKosten,
         geschaeftsfuehrergehalt,
         jobberGehalt,
+        jobberAgSozialabgaben: jobberSV.agSozialabgabenGesamt,
+        jobberAgGesamtkosten,
+        jobberTyp: jobberSV.typ === 'mini' ? 0 : jobberSV.typ === 'midi' ? 1 : 2,
         gehaelterGesamt,
         betriebsausgabenGesamt,
         gehaelterEinkommensteuer,

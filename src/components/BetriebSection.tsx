@@ -8,6 +8,8 @@ import {
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
   DEFAULT_JOBBER_GEHALT_BETRIEB,
+  MAX_JOBBER_GEHALT,
+  berechneJobberSozialabgaben,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -103,6 +105,9 @@ export function BetriebSection() {
   );
   const geschaeftsfuehrergehalt = erstesJahrDetails?.geschaeftsfuehrergehalt ?? 0;
   const jobberGehalt = erstesJahrDetails?.jobberGehalt ?? 0;
+  const jobberAgSozialabgaben = erstesJahrDetails?.jobberAgSozialabgaben ?? 0;
+  const jobberAgGesamtkosten = erstesJahrDetails?.jobberAgGesamtkosten ?? 0;
+  const jobberSVDetails = berechneJobberSozialabgaben(Math.max(0, betrieb.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB));
   const gehaelterGesamt = erstesJahrDetails?.gehaelterGesamt ?? 0;
   const gesellschafterBruttoEinkommen = erstesJahrDetails?.gesellschafterBruttoEinkommen ?? 0;
   const gesellschafterSteuerGesamt = erstesJahrDetails?.gesellschafterSteuerGesamt ?? 0;
@@ -361,10 +366,68 @@ export function BetriebSection() {
             label="Jobber-Gehalt (brutto, €/Jahr)"
             value={Math.max(0, betrieb.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB)}
             onChange={(v) => setBetrieb({ jobberGehalt: v })}
-            hint={`Wird als Betriebskosten angesetzt und im Zielabgleich berücksichtigt (Default: ${DEFAULT_JOBBER_GEHALT_BETRIEB.toLocaleString("de-DE")} €)`}
+            max={MAX_JOBBER_GEHALT}
+            hint={`Wird als Betriebskosten angesetzt und im Zielabgleich berücksichtigt (Default: ${DEFAULT_JOBBER_GEHALT_BETRIEB.toLocaleString("de-DE")} €, Max: ${MAX_JOBBER_GEHALT.toLocaleString("de-DE")} €)`}
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Jobber Sozialabgaben Breakdown */}
+        {(betrieb.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB) > 0 && (
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 mt-4">
+            <p className="text-xs font-semibold text-blue-800 mb-2">
+              👷 Jobber Sozialabgaben 2024 – Beschäftigungsart:{" "}
+              <span className="uppercase">
+                {jobberSVDetails.typ === "mini" ? "Mini-Job (≤ 556 €/Monat)" : jobberSVDetails.typ === "midi" ? "Midi-Job / Übergangsbereich" : "Normalbeschäftigung"}
+              </span>
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {/* AG-Seite */}
+              <div className="space-y-1 text-slate-700">
+                <p className="font-semibold text-slate-800">AG-Kosten (GmbH)</p>
+                <p>Brutto-Gehalt: <span className="font-semibold">{jobberSVDetails.bruttoJahresgehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">+ RV-Anteil AG ({jobberSVDetails.typ === "mini" ? "15,0 % Pausch." : "9,3 %"}): <span className="font-semibold text-red-700">{jobberSVDetails.agRV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">+ KV-Anteil AG ({jobberSVDetails.typ === "mini" ? "13,0 % Pausch." : "8,15 %"}): <span className="font-semibold text-red-700">{jobberSVDetails.agKV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                {jobberSVDetails.agPV > 0 && (
+                  <p className="pl-2 text-slate-600">+ PV-Anteil AG (1,7 %): <span className="font-semibold text-red-700">{jobberSVDetails.agPV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                )}
+                {jobberSVDetails.agAV > 0 && (
+                  <p className="pl-2 text-slate-600">+ AV-Anteil AG (1,3 %): <span className="font-semibold text-red-700">{jobberSVDetails.agAV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                )}
+                <p className="pl-2 text-slate-600">+ UV AG (~1,3 % Schätzw.): <span className="font-semibold text-red-700">{jobberSVDetails.agUV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">+ Umlagen AG (~2,1 % Schätzw.): <span className="font-semibold text-red-700">{jobberSVDetails.agUmlage.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="font-semibold text-slate-800 border-t border-blue-200 pt-1">
+                  = AG-Gesamtkosten: <span className="text-red-800">{jobberSVDetails.agGesamtkostenBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>
+                </p>
+                <p className="text-slate-500">davon SV-Aufwand AG: <span className="font-semibold text-red-700">{jobberAgSozialabgaben.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              </div>
+              {/* AN-Seite */}
+              <div className="space-y-1 text-slate-700">
+                <p className="font-semibold text-slate-800">AN-Seite (Jobber)</p>
+                <p>Brutto-Gehalt: <span className="font-semibold">{jobberSVDetails.bruttoJahresgehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">− RV-Anteil AN (9,3 %): <span className="font-semibold text-red-700">{jobberSVDetails.anRV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">− KV-Anteil AN (8,15 %): <span className="font-semibold text-red-700">{jobberSVDetails.anKV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">− PV-Anteil AN (1,7 %): <span className="font-semibold text-red-700">{jobberSVDetails.anPV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="pl-2 text-slate-600">− AV-Anteil AN (1,3 %): <span className="font-semibold text-red-700">{jobberSVDetails.anAV.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                <p className="font-semibold text-slate-800 border-t border-blue-200 pt-1">
+                  = Netto vor ESt: <span className="text-green-700">{jobberSVDetails.anNettoVorSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>
+                </p>
+                {jobberSVDetails.typ === "mini" && (
+                  <p className="text-slate-500 italic">Mini-Job: AN zahlt keine Pflicht-SV-Beiträge. Freiwilliger RV-Beitrag möglich.</p>
+                )}
+                {jobberSVDetails.typ === "midi" && (
+                  <p className="text-slate-500 italic">Midi-Job: AN-Beitrag steigt gleitend mit dem Gehalt (vereinfacht linear).</p>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-blue-700 mt-2 font-medium">
+              ℹ️ GmbH-Betriebsausgabe Jobber gesamt: <span className="font-bold">{jobberAgGesamtkosten.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr</span>
+              {" "}(Brutto + AG-Sozialabgaben)
+            </p>
+            <p className="text-[10px] text-slate-500 mt-1">Schätzwerte: UV und Umlagen variieren je nach Berufsgenossenschaft und Krankenkasse. KV-Zusatzbeitrag: Ø 1,7 % (2024). Beitragsbemessungsgrenzen West 2024: KV 62.100 €, RV 90.600 €.</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs font-medium text-slate-600">Zielabgleich (Jahr 1)</p>
             <div className="mt-2 space-y-1 text-xs text-slate-700">

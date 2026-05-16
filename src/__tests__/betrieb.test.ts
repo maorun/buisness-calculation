@@ -10,6 +10,7 @@ import {
   berechneBenefitsSteuerersparnis,
   berechneHandyNettoKostenProJahr,
   berechneBetriebsErgebnisse,
+  berechneJobberSozialabgaben,
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
@@ -20,6 +21,20 @@ import {
   DEFAULT_FIRMENHANDY_CONFIG,
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
+  MINIJOB_GRENZE_JAEHRLICH,
+  MIDIJOB_GRENZE_JAEHRLICH,
+  SV_RV_AG,
+  SV_KV_AG,
+  SV_PV_AG,
+  SV_AV_AG,
+  SV_RV_AN,
+  SV_KV_AN,
+  SV_PV_AN,
+  SV_AV_AN,
+  SV_UV_AG,
+  MINIJOB_KV_PAUSCHAL_AG,
+  MINIJOB_RV_PAUSCHAL_AG,
+  MINIJOB_UMLAGE_PAUSCHAL_AG,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -671,7 +686,8 @@ describe("berechneBetriebsErgebnisse", () => {
         expect.objectContaining({ label: "Tankgutschein", wert: 600 }),
         expect.objectContaining({ label: "Strategieessen", wert: 1500 }),
         expect.objectContaining({ label: "GF-Gehalt", wert: 0 }),
-        expect.objectContaining({ label: "Jobber-Gehalt", wert: 0 }),
+        expect.objectContaining({ label: "Jobber (Brutto)", wert: 0 }),
+        expect.objectContaining({ label: "Jobber (AG-Sozialabgaben)", wert: 0 }),
       ])
     );
     expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
@@ -704,10 +720,14 @@ describe("berechneBetriebsErgebnisse", () => {
     const expectedInterestNet = 875 - expectedInterestTax;
     const expectedShareholderNet = expectedSalaryNet + expectedInterestNet;
 
+    // Jobber AG Sozialabgaben for 12000 € (midi-job range): included in betriebsausgabenGesamt
+    const jobberSV = berechneJobberSozialabgaben(12000);
+    const expectedBetriebsausgaben = 12000 + jobberSV.agGesamtkostenBrutto; // GF + Jobber AG total
+
     expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
     expect(result.details.jobberGehalt).toBe(12000);
     expect(result.details.gehaelterGesamt).toBe(24000);
-    expect(result.details.betriebsausgabenGesamt).toBeCloseTo(24000);
+    expect(result.details.betriebsausgabenGesamt).toBeCloseTo(expectedBetriebsausgaben);
     expect(result.details.gehaelterNetto).toBeCloseTo(expectedSalaryNet);
     expect(result.details.gesellschafterBruttoEinkommen).toBeCloseTo(expectedTotalIncome);
     expect(result.details.gesellschafterSteuerGesamt).toBeCloseTo(expectedTotalTax);
@@ -727,5 +747,134 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[0].details.offenesDarlehen).toBeCloseTo(26200);
     expect(results[1].details.offenesDarlehen).toBeCloseTo(27400);
     expect(results[0].details.jaehrlicheZinsen).toBeGreaterThan(875);
+  });
+});
+
+describe("berechneJobberSozialabgaben", () => {
+  it("returns typ 'mini' for salary at or below mini-job threshold", () => {
+    const result = berechneJobberSozialabgaben(MINIJOB_GRENZE_JAEHRLICH);
+    expect(result.typ).toBe("mini");
+  });
+
+  it("returns typ 'midi' for salary in the Übergangsbereich", () => {
+    const result = berechneJobberSozialabgaben(12000);
+    expect(result.typ).toBe("midi");
+  });
+
+  it("returns typ 'normal' for salary above midi threshold", () => {
+    const result = berechneJobberSozialabgaben(MIDIJOB_GRENZE_JAEHRLICH + 1);
+    expect(result.typ).toBe("normal");
+  });
+
+  it("returns zero AN contributions for mini-job", () => {
+    const result = berechneJobberSozialabgaben(MINIJOB_GRENZE_JAEHRLICH);
+    expect(result.anRV).toBe(0);
+    expect(result.anKV).toBe(0);
+    expect(result.anPV).toBe(0);
+    expect(result.anAV).toBe(0);
+    expect(result.anSozialabgabenGesamt).toBe(0);
+    expect(result.anNettoVorSteuer).toBe(MINIJOB_GRENZE_JAEHRLICH);
+  });
+
+  it("calculates mini-job AG contributions using pauschal rates", () => {
+    const brutto = MINIJOB_GRENZE_JAEHRLICH;
+    const result = berechneJobberSozialabgaben(brutto);
+    expect(result.agKV).toBeCloseTo(brutto * MINIJOB_KV_PAUSCHAL_AG);
+    expect(result.agRV).toBeCloseTo(brutto * MINIJOB_RV_PAUSCHAL_AG);
+    expect(result.agPV).toBe(0);
+    expect(result.agAV).toBe(0);
+    expect(result.agUV).toBeCloseTo(brutto * SV_UV_AG);
+    expect(result.agUmlage).toBeCloseTo(brutto * MINIJOB_UMLAGE_PAUSCHAL_AG);
+  });
+
+  it("calculates midi-job AG contributions using full regular rates", () => {
+    const brutto = 12000; // midi-job range
+    const result = berechneJobberSozialabgaben(brutto);
+    expect(result.agRV).toBeCloseTo(brutto * SV_RV_AG);
+    expect(result.agKV).toBeCloseTo(brutto * SV_KV_AG);
+    expect(result.agPV).toBeCloseTo(brutto * SV_PV_AG);
+    expect(result.agAV).toBeCloseTo(brutto * SV_AV_AG);
+  });
+
+  it("calculates midi-job AN contributions as reduced (proportional) rate", () => {
+    const brutto = 12000;
+    const result = berechneJobberSozialabgaben(brutto);
+    // At 1000 €/month, factor = (1000 - 556) / (2000 - 556) ≈ 0.3075
+    expect(result.anRV).toBeGreaterThan(0);
+    expect(result.anRV).toBeLessThan(brutto * SV_RV_AN);
+    expect(result.anKV).toBeGreaterThan(0);
+    expect(result.anKV).toBeLessThan(brutto * SV_KV_AN);
+  });
+
+  it("calculates normal employment with full rates for both AG and AN", () => {
+    const brutto = 36000; // normal employment
+    const result = berechneJobberSozialabgaben(brutto);
+    expect(result.agRV).toBeCloseTo(brutto * SV_RV_AG);
+    expect(result.agKV).toBeCloseTo(brutto * SV_KV_AG);
+    expect(result.agPV).toBeCloseTo(brutto * SV_PV_AG);
+    expect(result.agAV).toBeCloseTo(brutto * SV_AV_AG);
+    expect(result.anRV).toBeCloseTo(brutto * SV_RV_AN);
+    expect(result.anKV).toBeCloseTo(brutto * SV_KV_AN);
+    expect(result.anPV).toBeCloseTo(brutto * SV_PV_AN);
+    expect(result.anAV).toBeCloseTo(brutto * SV_AV_AN);
+  });
+
+  it("caps KV/PV contributions at BBG_KV (62100 €/year) for high salaries", () => {
+    const brutto = 80000; // above KV BBG
+    const result = berechneJobberSozialabgaben(brutto);
+    const cappedKV = 62100 * SV_KV_AG;
+    expect(result.agKV).toBeCloseTo(cappedKV);
+    expect(result.agKV).toBeLessThan(brutto * SV_KV_AG);
+  });
+
+  it("caps RV/AV contributions at BBG_RV (90600 €/year) for high salaries", () => {
+    const brutto = 100000; // above RV BBG
+    const result = berechneJobberSozialabgaben(brutto);
+    const cappedRV = 90600 * SV_RV_AG;
+    expect(result.agRV).toBeCloseTo(cappedRV);
+    expect(result.agRV).toBeLessThan(brutto * SV_RV_AG);
+  });
+
+  it("agGesamtkostenBrutto equals bruttoJahresgehalt + agSozialabgabenGesamt", () => {
+    for (const brutto of [0, 6000, 15000, 36000, 70000]) {
+      const result = berechneJobberSozialabgaben(brutto);
+      expect(result.agGesamtkostenBrutto).toBeCloseTo(result.bruttoJahresgehalt + result.agSozialabgabenGesamt);
+    }
+  });
+
+  it("anNettoVorSteuer equals bruttoJahresgehalt minus anSozialabgabenGesamt", () => {
+    for (const brutto of [0, 6000, 15000, 36000]) {
+      const result = berechneJobberSozialabgaben(brutto);
+      expect(result.anNettoVorSteuer).toBeCloseTo(result.bruttoJahresgehalt - result.anSozialabgabenGesamt);
+    }
+  });
+
+  it("returns all-zero contributions for salary of 0", () => {
+    const result = berechneJobberSozialabgaben(0);
+    expect(result.agSozialabgabenGesamt).toBe(0);
+    expect(result.anSozialabgabenGesamt).toBe(0);
+    expect(result.agGesamtkostenBrutto).toBe(0);
+    expect(result.anNettoVorSteuer).toBe(0);
+  });
+
+  it("includes AG Sozialabgaben in berechneBetriebsErgebnisse betriebsausgaben", () => {
+    const state: BetriebState = {
+      ...({} as BetriebState),
+      startkapital: 50000,
+      jaehrlicherCashZuschuss: 0,
+      geschaeftsfuehrergehalt: 0,
+      jobberGehalt: 30000,
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+    };
+    const result = berechneBetriebsErgebnisse(state)[0];
+    const sv = berechneJobberSozialabgaben(30000);
+    expect(result.details.betriebsausgabenGesamt).toBeCloseTo(sv.agGesamtkostenBrutto);
+    expect(result.details.jobberAgSozialabgaben).toBeCloseTo(sv.agSozialabgabenGesamt);
+    expect(result.details.jobberAgGesamtkosten).toBeCloseTo(sv.agGesamtkostenBrutto);
   });
 });
