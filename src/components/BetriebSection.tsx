@@ -7,7 +7,6 @@ import {
   DEFAULT_FIRMENHANDY_CONFIG,
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
-  DEFAULT_JOBBER_GEHALT_BETRIEB,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -102,7 +101,6 @@ export function BetriebSection() {
     betrieb.zielnettoGesellschafter ?? DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB
   );
   const geschaeftsfuehrergehalt = erstesJahrDetails?.geschaeftsfuehrergehalt ?? 0;
-  const jobberGehalt = erstesJahrDetails?.jobberGehalt ?? 0;
   const gehaelterGesamt = erstesJahrDetails?.gehaelterGesamt ?? 0;
   const gesellschafterBruttoEinkommen = erstesJahrDetails?.gesellschafterBruttoEinkommen ?? 0;
   const gesellschafterSteuerGesamt = erstesJahrDetails?.gesellschafterSteuerGesamt ?? 0;
@@ -341,7 +339,7 @@ export function BetriebSection() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Zielnetto insgesamt</h3>
         <p className="text-xs text-slate-500 mb-4">
-          Für den Zielabgleich zählen Netto-Darlehenszinsen plus Netto-GF-Gehalt plus Netto-Jobber-Gehalt. Beide Gehälter wirken als Betriebskosten in der GmbH.
+          Für den Zielabgleich zählen Netto-Darlehenszinsen plus Netto-GF-Gehalt. Das Gehalt wirkt als Betriebskosten in der GmbH.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <InputField
@@ -357,21 +355,14 @@ export function BetriebSection() {
             onChange={(v) => setBetrieb({ geschaeftsfuehrergehalt: v })}
             hint={`Wird als Betriebskosten der GmbH angesetzt (Default: ${DEFAULT_GF_GEHALT_BETRIEB.toLocaleString("de-DE")} €)`}
           />
-          <SliderField
-            label="Jobber-Gehalt (brutto, €/Jahr)"
-            value={Math.max(0, betrieb.jobberGehalt ?? DEFAULT_JOBBER_GEHALT_BETRIEB)}
-            onChange={(v) => setBetrieb({ jobberGehalt: v })}
-            hint={`Wird als Betriebskosten angesetzt und im Zielabgleich berücksichtigt (Default: ${DEFAULT_JOBBER_GEHALT_BETRIEB.toLocaleString("de-DE")} €)`}
-          />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs font-medium text-slate-600">Zielabgleich (Jahr 1)</p>
             <div className="mt-2 space-y-1 text-xs text-slate-700">
               <p>GF-Gehalt brutto: <span className="font-semibold">{geschaeftsfuehrergehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p>Jobber-Gehalt brutto: <span className="font-semibold">{jobberGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Gehälter gesamt brutto: <span className="font-semibold">{gehaelterGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p>Gesamteinkommen (GF + Jobber + Zinsen): <span className="font-semibold">{gesellschafterBruttoEinkommen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p>Gesamteinkommen (GF + Zinsen): <span className="font-semibold">{gesellschafterBruttoEinkommen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>ESt + Soli gesamt (progressiv): <span className="font-semibold text-red-700">− {gesellschafterSteuerGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>ESt + Soli auf Gehälter: <span className="font-semibold text-red-700">− {gehaelterSteuerGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Gehälter netto: <span className="font-semibold text-green-700">+ {gehaelterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>

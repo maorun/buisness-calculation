@@ -37,7 +37,6 @@ const initialState: CalculatorState = {
     jaehrlicherCashZuschuss: 2400,
     zielnettoGesellschafter: 36000,
     geschaeftsfuehrergehalt: 17000,
-    jobberGehalt: 17000,
     darlehen: {
       betrag: 47500,
       zinssatz: 3,

@@ -294,7 +294,6 @@ describe("berechneBetriebsErgebnisse", () => {
     startkapital: 100000,
     jaehrlicherCashZuschuss: 0,
     geschaeftsfuehrergehalt: 0,
-    jobberGehalt: 0,
     darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
     etfRendite: 7,
     laufzeitJahre: 3,
@@ -704,14 +703,13 @@ describe("berechneBetriebsErgebnisse", () => {
         expect.objectContaining({ label: "Tankgutschein", wert: 600 }),
         expect.objectContaining({ label: "Strategieessen", wert: 1500 }),
         expect.objectContaining({ label: "GF-Gehalt", wert: 0 }),
-        expect.objectContaining({ label: "Jobber-Gehalt", wert: 0 }),
       ])
     );
     expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
     expect(firmenhandyJahr2?.wert).toBe(0);
   });
 
-  it("counts GF + jobber salary as operating expense and computes total target-net details", () => {
+  it("counts GF salary as operating expense and computes total target-net details", () => {
     const state: BetriebState = {
       ...defaultState,
       etfRendite: 0,
@@ -721,12 +719,11 @@ describe("berechneBetriebsErgebnisse", () => {
       firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
       darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
       geschaeftsfuehrergehalt: 12000,
-      jobberGehalt: 12000,
       zielnettoGesellschafter: undefined,
     };
 
     const result = berechneBetriebsErgebnisse(state)[0];
-    const expectedSalaryTotal = 12000 + 12000;
+    const expectedSalaryTotal = 12000;
     const expectedTotalIncome = expectedSalaryTotal + 875;
     const expectedTotalIncomeTax = berechneEinkommensteuerBetrieb(expectedTotalIncome);
     const expectedTotalTax = expectedTotalIncomeTax + berechneSoliBetrieb(expectedTotalIncomeTax);
@@ -738,9 +735,8 @@ describe("berechneBetriebsErgebnisse", () => {
     const expectedShareholderNet = expectedSalaryNet + expectedInterestNet;
 
     expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
-    expect(result.details.jobberGehalt).toBe(12000);
-    expect(result.details.gehaelterGesamt).toBe(24000);
-    expect(result.details.betriebsausgabenGesamt).toBeCloseTo(24000);
+    expect(result.details.gehaelterGesamt).toBe(12000);
+    expect(result.details.betriebsausgabenGesamt).toBeCloseTo(12000);
     expect(result.details.gehaelterNetto).toBeCloseTo(expectedSalaryNet);
     expect(result.details.gesellschafterBruttoEinkommen).toBeCloseTo(expectedTotalIncome);
     expect(result.details.gesellschafterSteuerGesamt).toBeCloseTo(expectedTotalTax);
