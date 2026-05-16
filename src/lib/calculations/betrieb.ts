@@ -117,6 +117,18 @@ interface EtfLot {
   einstandswert: number;
 }
 
+export interface PrivatVergleichErgebnis {
+  startkapitalGesamt: number;
+  kumulierterEtfVerkauf: number;
+  verbleibenderEtfWert: number;
+  endwert: number;
+  kumulierteSteuern: number;
+  kumulierteVorabpauschalesteuer: number;
+  kumulierteEtfVerkaufssteuer: number;
+  kumulierteEntnahmen: number;
+  kumulierterSparplan: number;
+}
+
 /**
  * Vorabpauschale: German annual pre-tax for accumulating ETFs.
  * = max(0, Basiszins × 0.7 × NAV_start, actualReturn)
@@ -413,6 +425,110 @@ function verkaufeEtfLotsSteueroptimal(
     etfVerkauf,
     etfEinstandswertVerkauft,
     etfGewinn: Math.max(0, etfVerkauf - etfEinstandswertVerkauft),
+  };
+}
+
+export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVergleichErgebnis {
+  let etfLots: EtfLot[] = [];
+  const startkapitalGesamt = Math.max(0, state.startkapital) + Math.max(0, state.darlehen.betrag);
+  etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", startkapitalGesamt);
+
+  let offenesDarlehen = Math.max(0, state.darlehen.betrag);
+  let kumulierterEtfVerkauf = 0;
+  let kumulierteVorabpauschalesteuer = 0;
+  let kumulierteEtfVerkaufssteuer = 0;
+  let kumulierteEntnahmen = 0;
+  let kumulierterSparplan = 0;
+
+  for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
+    const etfWertVorjahrEnde = sumEtfWert(etfLots);
+    const etfLotsNachWachstum = wachseEtfLots(etfLots, state.etfRendite);
+    const etfWertNachWachstum = sumEtfWert(etfLotsNachWachstum);
+    const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnde, etfWertNachWachstum);
+
+    const { zinsenJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
+      offenesDarlehen,
+      state.darlehen.zinssatz,
+      state.darlehen.monatlicherZuschuss
+    );
+    offenesDarlehen = darlehenBetragEnde;
+
+    const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
+    const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
+    const tankgutscheinJaehrlich = Math.min(Math.max(state.benefits.tankgutschein, 0), 50) * DARLEHEN_MONATE_PRO_JAHR;
+    const handyKosten = berechneHandyNettoKostenProJahr(jahr, state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG);
+    const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich - tankgutscheinJaehrlich - handyKosten;
+    kumulierterSparplan += sparplanNetto;
+
+    const gehaltsEntnahme = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
+    const zinsEntnahme = state.darlehen.endfaellig ? 0 : zinsenJaehrlich;
+    const entnahmeAusSparplanDefizit = Math.max(0, -sparplanNetto);
+    const entnahmenVorSteuern = gehaltsEntnahme + zinsEntnahme + entnahmeAusSparplanDefizit;
+    kumulierteEntnahmen += entnahmenVorSteuern;
+
+    const sortierteLotIndizes = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstum);
+    let etfVerkauf = Math.min(etfWertNachWachstum, Math.max(0, entnahmenVorSteuern));
+    for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
+      const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
+      const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, verkaufIteration.etfGewinn);
+      const vorabpauschalesteuer = berechneVorabpauschalesteuer(
+        vorabpauschale,
+        TEILFREISTELLUNG_AKTIEN_PRIVAT,
+        ABGELTUNGSSTEUER_GESAMT
+      );
+      const etfVerkaufssteuer = berechneEtfVerkaufssteuer(
+        verkaufIteration.etfGewinn,
+        TEILFREISTELLUNG_AKTIEN_PRIVAT,
+        ABGELTUNGSSTEUER_GESAMT
+      );
+      const benoetigterVerkauf = Math.min(
+        etfWertNachWachstum,
+        Math.max(0, entnahmenVorSteuern + vorabpauschalesteuer + etfVerkaufssteuer)
+      );
+      if (Math.abs(benoetigterVerkauf - etfVerkauf) < SALE_CONVERGENCE_THRESHOLD) {
+        etfVerkauf = benoetigterVerkauf;
+        break;
+      }
+      etfVerkauf = benoetigterVerkauf;
+    }
+
+    const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
+    const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, verkauf.etfGewinn);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(
+      vorabpauschale,
+      TEILFREISTELLUNG_AKTIEN_PRIVAT,
+      ABGELTUNGSSTEUER_GESAMT
+    );
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(
+      verkauf.etfGewinn,
+      TEILFREISTELLUNG_AKTIEN_PRIVAT,
+      ABGELTUNGSSTEUER_GESAMT
+    );
+
+    kumulierterEtfVerkauf += verkauf.etfVerkauf;
+    kumulierteVorabpauschalesteuer += vorabpauschalesteuer;
+    kumulierteEtfVerkaufssteuer += etfVerkaufssteuer;
+
+    etfLots = verkauf.lots;
+    if (sparplanNetto > 0) {
+      etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", sparplanNetto);
+    }
+  }
+
+  const verbleibenderEtfWert = sumEtfWert(etfLots);
+  const endwert = kumulierterEtfVerkauf + verbleibenderEtfWert;
+  const kumulierteSteuern = kumulierteVorabpauschalesteuer + kumulierteEtfVerkaufssteuer;
+
+  return {
+    startkapitalGesamt,
+    kumulierterEtfVerkauf,
+    verbleibenderEtfWert,
+    endwert,
+    kumulierteSteuern,
+    kumulierteVorabpauschalesteuer,
+    kumulierteEtfVerkaufssteuer,
+    kumulierteEntnahmen,
+    kumulierterSparplan,
   };
 }
 
