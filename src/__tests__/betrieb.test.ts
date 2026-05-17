@@ -316,6 +316,7 @@ describe("berechneBetriebsErgebnisse", () => {
   const defaultState: BetriebState = {
     startkapital: 100000,
     jaehrlicherCashZuschuss: 0,
+    simulierterGewinn: 0,
     geschaeftsfuehrergehalt: 0,
     darlehen: { betrag: 25000, zinssatz: 3.5, monatlicherZuschuss: 0, endfaellig: false },
     etfRendite: 7,
@@ -548,6 +549,48 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.freieDarlehensZuzahlungen).toBe(1200);
     expect(result.details.cashReserve).toBe(0);
     expect(result.details.zuzahlungenEtfWert).toBe(1200);
+  });
+
+  it("uses simulated profit before annual cash to cover operating expenses", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 0,
+      jaehrlicherCashZuschuss: 500,
+      simulierterGewinn: 1000,
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [{ id: "1", bezeichnung: "Kosten", betrag: 1200, periode: "jaehrlich" }],
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: true },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+    expect(result.details.ausGewinnBeglicheneBetriebsausgaben).toBe(1000);
+    expect(result.details.ausCashZuschussBeglicheneBetriebsausgaben).toBe(200);
+  });
+
+  it("invests remaining simulated profit after taxes as new ETF allocation", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 0,
+      jaehrlicherCashZuschuss: 0,
+      simulierterGewinn: 1000,
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: true },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+    const expectedGmbhSteuer = 1000 * GMBH_STEUER_GESAMT;
+    const expectedEtfZufluss = 1000 - expectedGmbhSteuer;
+
+    expect(result.details.gmbhSteuer).toBeCloseTo(expectedGmbhSteuer);
+    expect(result.details.gewinnNachSteuernEtfZufluss).toBeCloseTo(expectedEtfZufluss);
+    expect(result.details.zuzahlungenEtfWert).toBeCloseTo(expectedEtfZufluss);
   });
 
   it("uses existing cash reserves before loan top-ups when annual cash is not enough", () => {
@@ -791,6 +834,7 @@ describe("berechnePrivatVergleichErgebnis", () => {
   const basisState: BetriebState = {
     startkapital: 10000,
     jaehrlicherCashZuschuss: 0,
+    simulierterGewinn: 0,
     geschaeftsfuehrergehalt: 0,
     darlehen: { betrag: 5000, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: true },
     etfRendite: 0,
@@ -873,5 +917,18 @@ describe("berechnePrivatVergleichErgebnis", () => {
     });
 
     expect(result.endwert).toBeCloseTo(result.kumulierterEtfVerkauf + result.verbleibenderEtfWert);
+  });
+
+  it("treats simulated profit as additional private income", () => {
+    const result = berechnePrivatVergleichErgebnis({
+      ...basisState,
+      startkapital: 0,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      simulierterGewinn: 1000,
+      laufzeitJahre: 1,
+    });
+
+    expect(result.kumulierterSparplan).toBe(1000);
+    expect(result.verbleibenderEtfWert).toBeCloseTo(1000);
   });
 });

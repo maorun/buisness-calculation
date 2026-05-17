@@ -210,6 +210,13 @@ export function BetriebSection() {
             hint={`Bleibt als Cash in der GmbH, gleicht zuerst Ausgaben aus und wird nicht in ETFs investiert (Default: ${DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS.toLocaleString("de-DE")} €). Als zusätzliche Einlage sollte i. d. R. ein Gesellschafterbeschluss dokumentiert werden.`}
           />
           <InputField
+            label="Simulierter Gewinn (€/Jahr)"
+            value={betrieb.simulierterGewinn ?? 0}
+            onChange={(v) => setBetrieb({ simulierterGewinn: parseFloat(v) || 0 })}
+            suffix="€/Jahr"
+            hint="Wird zuerst mit Betriebskosten verrechnet; ein verbleibender Überschuss wird nach Steuern als zusätzlicher ETF-Zufluss angelegt."
+          />
+          <InputField
             label="Laufzeit (Jahre)"
             value={betrieb.laufzeitJahre}
             onChange={(v) => setBetrieb({ laufzeitJahre: parseInt(v) || 1 })}

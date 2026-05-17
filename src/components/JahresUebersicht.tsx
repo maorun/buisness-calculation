@@ -65,6 +65,15 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       )}
+      {d.simulierterGewinn > 0 && (
+        <BilanzRow
+          label="Simulierter Betriebsgewinn"
+          value={d.simulierterGewinn}
+          prefix="+"
+          colorClass="text-gray-700"
+          indent
+        />
+      )}
       <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
       <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       {betriebskostenPosten.map((posten, index) => (
@@ -118,6 +127,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       {d.jaehrlicherCashZuschuss > 0 && (
         <BilanzRow label="Jährlicher Cash-Zufluss" value={d.jaehrlicherCashZuschuss} prefix="+" colorClass="text-teal-700" indent />
       )}
+      {d.ausGewinnBeglicheneBetriebsausgaben > 0 && (
+        <BilanzRow label="Betriebsausgaben aus simuliertem Gewinn" value={d.ausGewinnBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
+      )}
       {d.ausCashZuschussBeglicheneBetriebsausgaben > 0 && (
         <BilanzRow label="Betriebsausgaben aus Cash-Zuschuss" value={d.ausCashZuschussBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
       )}
@@ -135,6 +147,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       )}
       {d.freieDarlehensZuzahlungen > 0 && (
         <BilanzRow label="Freie Darlehenszuzahlungen in ETF investiert" value={d.freieDarlehensZuzahlungen} prefix="+" colorClass="text-blue-700" indent />
+      )}
+      {d.gewinnNachSteuernEtfZufluss > 0 && (
+        <BilanzRow label="Gewinnüberschuss nach Steuern in ETF investiert" value={d.gewinnNachSteuernEtfZufluss} prefix="+" colorClass="text-blue-700" indent />
       )}
       <BilanzRow label="ETF-Verkauf für ungedeckte Ausgaben + Steuern" value={d.etfVerkauf} prefix="−" colorClass="text-orange-600" bold indent />
 
