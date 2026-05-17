@@ -13,6 +13,7 @@ import {
   berechneGmbhKonsumwertProJahr,
   berechneBetriebsErgebnisse,
   berechnePrivatVergleichErgebnis,
+  berechnePrivatVergleichZeitreihe,
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
@@ -932,5 +933,45 @@ describe("berechnePrivatVergleichErgebnis", () => {
 
     expect(result.kumulierterSparplan).toBe(1000);
     expect(result.verbleibenderEtfWert).toBeCloseTo(1000);
+  });
+});
+
+describe("berechnePrivatVergleichZeitreihe", () => {
+  const basisState: BetriebState = {
+    startkapital: 10000,
+    jaehrlicherCashZuschuss: 0,
+    simulierterGewinn: 0,
+    geschaeftsfuehrergehalt: 0,
+    darlehen: { betrag: 5000, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: true },
+    etfRendite: 0,
+    laufzeitJahre: 3,
+    kosten: [],
+    benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+    firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+  };
+
+  it("returns one yearly value per simulation year", () => {
+    const zeitreihe = berechnePrivatVergleichZeitreihe(basisState);
+    expect(zeitreihe).toHaveLength(3);
+    expect(zeitreihe.map((item) => item.jahr)).toEqual([1, 2, 3]);
+  });
+
+  it("matches final yearly value with final private comparison result", () => {
+    const state: BetriebState = {
+      ...basisState,
+      etfRendite: 5,
+      jaehrlicherCashZuschuss: 1200,
+      benefits: { tankgutschein: 50, strategieessen: 0, bav: 0 },
+    };
+
+    const zeitreihe = berechnePrivatVergleichZeitreihe(state);
+    const endwert = berechnePrivatVergleichErgebnis(state);
+    const letztesJahr = zeitreihe[zeitreihe.length - 1];
+
+    expect(letztesJahr.kumulierterEtfVerkauf).toBeCloseTo(endwert.kumulierterEtfVerkauf);
+    expect(letztesJahr.verbleibenderEtfWert).toBeCloseTo(endwert.verbleibenderEtfWert);
+    expect(letztesJahr.endwert).toBeCloseTo(endwert.endwert);
+    expect(letztesJahr.kumulierterKonsumwert).toBeCloseTo(endwert.kumulierterKonsumwert);
+    expect(letztesJahr.gesamtwertMitKonsum).toBeCloseTo(endwert.gesamtwertMitKonsum);
   });
 });

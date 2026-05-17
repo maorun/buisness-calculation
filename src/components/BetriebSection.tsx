@@ -11,6 +11,7 @@ import {
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
   berechnePrivatVergleichErgebnis,
+  berechnePrivatVergleichZeitreihe,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -19,6 +20,10 @@ const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
 } as const;
 const DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS = 2400;
+const RECOMMENDED_MIN_LAUFZEIT_JAHRE = 12;
+const HIGH_ZINSSATZ_THRESHOLD = 3;
+const DEFAULT_GMBH_VORSCHLAG =
+  "Laufzeit verlängern, Kostenstruktur straffen und Entnahmen reduzieren, um den ETF-Bestand länger wachsen zu lassen.";
 
 function InputField({
   label,
@@ -101,6 +106,10 @@ export function BetriebSection() {
     () => berechnePrivatVergleichErgebnis(betrieb),
     [betrieb]
   );
+  const privatZeitreihe = React.useMemo(
+    () => berechnePrivatVergleichZeitreihe(betrieb),
+    [betrieb]
+  );
   const erstesJahrDetails = ergebnisse[0]?.details;
   const letztesJahrDetails = ergebnisse[ergebnisse.length - 1]?.details;
   const nettovermoegenStart = Math.max(0, betrieb.startkapital);
@@ -136,6 +145,87 @@ export function BetriebSection() {
   const gmbhSteuernKumuliert = ergebnisse.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
   const steuerDifferenz = gmbhSteuernKumuliert - privatVergleich.kumulierteSteuern;
   const verkaufsDifferenz = gmbhKumulierterEtfVerkauf - privatVergleich.kumulierterEtfVerkauf;
+  const konsumDifferenz = gmbhKumulierterKonsumwert - privatVergleich.kumulierterKonsumwert;
+  const restEtfDifferenz = gmbhVerbleibenderEtfWert - privatVergleich.verbleibenderEtfWert;
+  const gmbhZeitreihe = ergebnisse.reduce<{
+    jahr: number;
+    kumulierterEtfVerkauf: number;
+    gesamtwertMitKonsum: number;
+  }[]>((acc, ergebnis) => {
+    const kumulierterEtfVerkauf =
+      (acc[acc.length - 1]?.kumulierterEtfVerkauf ?? 0) + (ergebnis.details.etfVerkauf ?? 0);
+    const verbleibenderEtfWert = ergebnis.details.etfWert ?? 0;
+    const endwert = kumulierterEtfVerkauf + verbleibenderEtfWert;
+    const kumulierterKonsumwert = ergebnis.details.kumulierterKonsumwert ?? 0;
+    return [
+      ...acc,
+      {
+        jahr: ergebnis.jahr,
+        kumulierterEtfVerkauf,
+        gesamtwertMitKonsum: endwert + kumulierterKonsumwert,
+      },
+    ];
+  }, []);
+  const breakEvenBerechenbar =
+    gmbhZeitreihe.length > 0 && gmbhZeitreihe.length === privatZeitreihe.length;
+  const breakEvenJahr = (() => {
+    if (!breakEvenBerechenbar) {
+      return null;
+    }
+    const index = gmbhZeitreihe.findIndex((gmbhJahr, i) => {
+      return gmbhJahr.gesamtwertMitKonsum >= privatZeitreihe[i].gesamtwertMitKonsum;
+    });
+    return index >= 0 ? gmbhZeitreihe[index].jahr : null;
+  })();
+  const lohntSichGmbH = differenzVergleich > 0;
+  const kennzahlProzent = privatVergleich.gesamtwertMitKonsum !== 0
+    ? (differenzVergleich / privatVergleich.gesamtwertMitKonsum) * 100
+    : null;
+  const topTreiber = [
+    {
+      id: "steuer",
+      label: "Steuerlast",
+      impact: -steuerDifferenz,
+      description: steuerDifferenz <= 0 ? "GmbH zahlt weniger Gesamtsteuer" : "GmbH zahlt mehr Gesamtsteuer",
+    },
+    {
+      id: "verkauf",
+      label: "ETF-Verkäufe",
+      impact: -verkaufsDifferenz,
+      description: verkaufsDifferenz <= 0 ? "GmbH muss weniger ETF verkaufen" : "GmbH muss mehr ETF verkaufen",
+    },
+    {
+      id: "rest",
+      label: "Verbleibender ETF-Bestand",
+      impact: restEtfDifferenz,
+      description: restEtfDifferenz >= 0 ? "GmbH hält mehr Restvermögen im ETF" : "Privat hält mehr Restvermögen im ETF",
+    },
+    {
+      id: "konsum",
+      label: "Konsum-/Benefit-Wert",
+      impact: konsumDifferenz,
+      description: konsumDifferenz >= 0 ? "GmbH liefert höheren Konsumwert" : "Privat liefert höheren Konsumwert",
+    },
+  ]
+    .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
+    .slice(0, 4);
+  const gmbhVorschlaege = [
+    ...(betrieb.laufzeitJahre < RECOMMENDED_MIN_LAUFZEIT_JAHRE
+      ? ["Längere Laufzeit prüfen: Mit mehr Jahren kann der Steuer- und Zinseszinseffekt der GmbH stärker wirken."]
+      : []),
+    ...((betrieb.simulierterGewinn ?? 0) < (erstesJahrDetails?.betriebsausgabenGesamt ?? 0)
+      ? ["Operativen Gewinn steigern oder fixe Kosten senken, damit weniger ETF-Verkäufe zur Kostendeckung nötig sind."]
+      : []),
+    ...((betrieb.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB) > 0
+      ? ["GF-Gehalt und Entnahmen prüfen: Mehr Kapital in der GmbH belassen verbessert oft den Endwert."]
+      : []),
+    ...(betrieb.darlehen.zinssatz > HIGH_ZINSSATZ_THRESHOLD
+      ? ["Darlehenskonditionen optimieren (insb. Zinssatz), um laufende Liquiditäts- und Steuerbelastung zu reduzieren."]
+      : []),
+    ...(gmbhKumulierterEtfVerkauf > privatVergleich.kumulierterEtfVerkauf
+      ? ["Liquiditätsplanung schärfen (Cash-Zuschuss, Kostenstruktur), damit die GmbH seltener ETF-Anteile verkaufen muss."]
+      : []),
+  ].slice(0, 4);
   let gewinnerText = "Unentschieden";
   if (differenzVergleich > 0) {
     gewinnerText = "GmbH gewinnt";
@@ -474,6 +564,56 @@ export function BetriebSection() {
       {/* Results */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <JahresUebersicht ergebnisse={ergebnisse} title="Jahresergebnisse Betriebsphase" />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-3">Entscheidungsfläche: Lohnt sich die GmbH?</h3>
+        <div className={`rounded-lg border p-3 ${lohntSichGmbH ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
+          <p className={`text-sm font-bold ${lohntSichGmbH ? "text-green-800" : "text-orange-800"}`}>
+            {lohntSichGmbH ? "Ja – die GmbH liegt vorne" : "Noch nicht – aktuell liegt Privat vorne"}
+          </p>
+          <p className={`text-xs mt-1 ${lohntSichGmbH ? "text-green-700" : "text-orange-700"}`}>
+            Kennzahl „Lohnt sich die GmbH?“: {kennzahlProzent === null
+              ? "Nicht berechenbar (Privat-Gesamtwert = 0 €)"
+              : `${kennzahlProzent >= 0 ? "+" : ""}${kennzahlProzent.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% gegenüber Privat`}
+          </p>
+          <p className="text-xs text-slate-700 mt-1">
+            Break-even: {!breakEvenBerechenbar
+              ? "nicht berechenbar (Zeitreihen nicht vergleichbar)"
+              : breakEvenJahr
+                ? `ab Jahr ${breakEvenJahr}`
+                : "innerhalb der gewählten Laufzeit nicht erreicht"}
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-slate-700 mb-2">Wichtigste Treiber</p>
+          <div className="space-y-2">
+            {topTreiber.map((treiber) => (
+              <div key={treiber.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <p className="text-xs font-semibold text-slate-800">{treiber.label}</p>
+                <p className={`text-xs mt-0.5 ${treiber.impact >= 0 ? "text-green-700" : "text-red-700"}`}>
+                  {treiber.impact >= 0 ? "+" : "-"} {Math.abs(treiber.impact).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                </p>
+                <p className="text-[11px] text-slate-600 mt-0.5">{treiber.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {!lohntSichGmbH && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-semibold text-amber-800 mb-2">Wie die GmbH gewinnen kann</p>
+            <ul className="list-disc pl-4 space-y-1">
+              {(gmbhVorschlaege.length > 0
+                ? gmbhVorschlaege
+                : [DEFAULT_GMBH_VORSCHLAG])
+                .map((vorschlag) => (
+                  <li key={vorschlag} className="text-xs text-amber-800">{vorschlag}</li>
+                ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">

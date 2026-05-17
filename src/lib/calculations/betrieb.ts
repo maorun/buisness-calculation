@@ -134,6 +134,15 @@ export interface PrivatVergleichErgebnis {
   kumulierterSparplan: number;
 }
 
+export interface PrivatVergleichJahreswert {
+  jahr: number;
+  kumulierterEtfVerkauf: number;
+  verbleibenderEtfWert: number;
+  endwert: number;
+  kumulierterKonsumwert: number;
+  gesamtwertMitKonsum: number;
+}
+
 /**
  * Vorabpauschale: German annual pre-tax for accumulating ETFs.
  * = max(0, Basiszins × 0.7 × NAV_start, actualReturn)
@@ -459,7 +468,10 @@ function verkaufeEtfLotsSteueroptimal(
   };
 }
 
-export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVergleichErgebnis {
+function simulierePrivatVergleich(state: BetriebState): {
+  ergebnis: PrivatVergleichErgebnis;
+  jahreswerte: PrivatVergleichJahreswert[];
+} {
   let etfLots: EtfLot[] = [];
   const anfangskapitalPrivat = Math.max(0, state.startkapital) + Math.max(0, state.darlehen.betrag);
   etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", anfangskapitalPrivat);
@@ -471,6 +483,7 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
   let kumulierteEntnahmen = 0;
   let kumulierterSparplan = 0;
   let kumulierterKonsumwert = 0;
+  const jahreswerte: PrivatVergleichJahreswert[] = [];
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnde = sumEtfWert(etfLots);
@@ -550,6 +563,17 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
     if (sparplanNetto > 0) {
       etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", sparplanNetto);
     }
+
+    const verbleibenderEtfWertJahr = sumEtfWert(etfLots);
+    const endwertJahr = kumulierterEtfVerkauf + verbleibenderEtfWertJahr;
+    jahreswerte.push({
+      jahr,
+      kumulierterEtfVerkauf,
+      verbleibenderEtfWert: verbleibenderEtfWertJahr,
+      endwert: endwertJahr,
+      kumulierterKonsumwert,
+      gesamtwertMitKonsum: endwertJahr + kumulierterKonsumwert,
+    });
   }
 
   const verbleibenderEtfWert = sumEtfWert(etfLots);
@@ -558,18 +582,29 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
   const kumulierteSteuern = kumulierteVorabpauschalesteuer + kumulierteEtfVerkaufssteuer;
 
   return {
-    anfangskapitalPrivat,
-    kumulierterEtfVerkauf,
-    verbleibenderEtfWert,
-    endwert,
-    kumulierterKonsumwert,
-    gesamtwertMitKonsum,
-    kumulierteSteuern,
-    kumulierteVorabpauschalesteuer,
-    kumulierteEtfVerkaufssteuer,
-    kumulierteEntnahmen,
-    kumulierterSparplan,
+    ergebnis: {
+      anfangskapitalPrivat,
+      kumulierterEtfVerkauf,
+      verbleibenderEtfWert,
+      endwert,
+      kumulierterKonsumwert,
+      gesamtwertMitKonsum,
+      kumulierteSteuern,
+      kumulierteVorabpauschalesteuer,
+      kumulierteEtfVerkaufssteuer,
+      kumulierteEntnahmen,
+      kumulierterSparplan,
+    },
+    jahreswerte,
   };
+}
+
+export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVergleichErgebnis {
+  return simulierePrivatVergleich(state).ergebnis;
+}
+
+export function berechnePrivatVergleichZeitreihe(state: BetriebState): PrivatVergleichJahreswert[] {
+  return simulierePrivatVergleich(state).jahreswerte;
 }
 
 /**
