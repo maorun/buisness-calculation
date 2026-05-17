@@ -214,7 +214,7 @@ export function BetriebSection() {
             value={betrieb.simulierterGewinn ?? 0}
             onChange={(v) => setBetrieb({ simulierterGewinn: parseFloat(v) || 0 })}
             suffix="€/Jahr"
-            hint="Wird zuerst mit Betriebskosten verrechnet; ein verbleibender Überschuss wird nach Steuern als zusätzlicher ETF-Zufluss angelegt."
+            hint="Wird zuerst mit Betriebsausgaben verrechnet; ein verbleibender Überschuss wird nach Steuern als zusätzlicher ETF-Zufluss angelegt."
           />
           <InputField
             label="Laufzeit (Jahre)"
