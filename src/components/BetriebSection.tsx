@@ -4,10 +4,13 @@ import React from "react";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import {
   TEILFREISTELLUNG_AKTIEN_GMBH,
+  TEILFREISTELLUNG_AKTIEN_PRIVAT,
+  ABGELTUNGSSTEUER_GESAMT,
   DEFAULT_FIRMENHANDY_CONFIG,
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
+  berechnePrivatVergleichErgebnis,
 } from "@/lib/calculations/betrieb";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
@@ -94,7 +97,12 @@ export function BetriebSection() {
   const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
+  const privatVergleich = React.useMemo(
+    () => berechnePrivatVergleichErgebnis(betrieb),
+    [betrieb]
+  );
   const erstesJahrDetails = ergebnisse[0]?.details;
+  const letztesJahrDetails = ergebnisse[ergebnisse.length - 1]?.details;
   const nettovermoegenStart = Math.max(0, betrieb.startkapital);
   const erstesJahrNettovermoegen = erstesJahrDetails?.nettovermoegen ?? nettovermoegenStart;
   const zielnettoInsgesamt = Math.max(
@@ -115,6 +123,25 @@ export function BetriebSection() {
   const gmbhNettoveraenderung = erstesJahrDetails
     ? (erstesJahrNettovermoegen - nettovermoegenStart)
     : 0;
+  const gmbhAnfangskapital = Math.max(0, betrieb.startkapital) + Math.max(0, betrieb.darlehen.betrag);
+  const gmbhKumulierterEtfVerkauf = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.details.etfVerkauf ?? 0), 0);
+  const gmbhVerbleibenderEtfWert = letztesJahrDetails?.etfWert
+    ?? gmbhAnfangskapital;
+  const gmbhEndwert = gmbhKumulierterEtfVerkauf + gmbhVerbleibenderEtfWert;
+  const gmbhKumulierterKonsumwert = letztesJahrDetails?.kumulierterKonsumwert
+    ?? 0;
+  const gmbhGesamtwertMitKonsum = gmbhEndwert + gmbhKumulierterKonsumwert;
+  const differenzVergleich = gmbhGesamtwertMitKonsum - privatVergleich.gesamtwertMitKonsum;
+  const endwertDifferenzOhneKonsum = gmbhEndwert - privatVergleich.endwert;
+  const gmbhSteuernKumuliert = ergebnisse.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
+  const steuerDifferenz = gmbhSteuernKumuliert - privatVergleich.kumulierteSteuern;
+  const verkaufsDifferenz = gmbhKumulierterEtfVerkauf - privatVergleich.kumulierterEtfVerkauf;
+  let gewinnerText = "Unentschieden";
+  if (differenzVergleich > 0) {
+    gewinnerText = "GmbH gewinnt";
+  } else if (differenzVergleich < 0) {
+    gewinnerText = "Privat gewinnt";
+  }
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -440,6 +467,60 @@ export function BetriebSection() {
       {/* Results */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <JahresUebersicht ergebnisse={ergebnisse} title="Jahresergebnisse Betriebsphase" />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Endvergleich Betriebsphase: GmbH vs. Privat-ETF</h3>
+        <div className="text-xs text-slate-500 mb-4 space-y-1">
+          <p>Vergleichslogik:</p>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>Anfangskapital = Startkapital + Darlehensbetrag</li>
+            <li>Tankgutschein und Firmenhandy werden separat als verkonsumierter Wert ausgewiesen</li>
+            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss minus Tankgutschein minus Firmenhandy</li>
+            <li>In der GmbH wird der Konsumwert steuerbereinigt gezeigt (inkl. Vorsteuerabzug beim Firmenhandy)</li>
+            <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
+            <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
+          </ul>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1 text-xs">
+            <p className="font-semibold text-blue-800">GmbH</p>
+            <p className="text-blue-700">ETF-Verkäufe kumuliert: <span className="font-semibold">{gmbhKumulierterEtfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-blue-700">Verbleibender ETF-Wert: <span className="font-semibold">{gmbhVerbleibenderEtfWert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-blue-700">Steuern kumuliert: <span className="font-semibold">{gmbhSteuernKumuliert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-blue-700">Verkonsumierter Wert (steuerbereinigt): <span className="font-semibold">{gmbhKumulierterKonsumwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-sm font-bold text-blue-900 border-t border-blue-300 pt-1 mt-1">
+              Endwert (Verkäufe + Rest-ETF): {gmbhEndwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p className="text-sm font-bold text-blue-900">
+              Gesamtwert inkl. Konsum: {gmbhGesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+          </div>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-1 text-xs">
+            <p className="font-semibold text-emerald-800">Privat-ETF</p>
+            <p className="text-emerald-700">ETF-Verkäufe kumuliert: <span className="font-semibold">{privatVergleich.kumulierterEtfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-emerald-700">Verbleibender ETF-Wert: <span className="font-semibold">{privatVergleich.verbleibenderEtfWert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-emerald-700">Steuern kumuliert: <span className="font-semibold">{privatVergleich.kumulierteSteuern.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-emerald-700">Verkonsumierter Wert: <span className="font-semibold">{privatVergleich.kumulierterKonsumwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-sm font-bold text-emerald-900 border-t border-emerald-300 pt-1 mt-1">
+              Endwert (Verkäufe + Rest-ETF): {privatVergleich.endwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+            <p className="text-sm font-bold text-emerald-900">
+              Gesamtwert inkl. Konsum: {privatVergleich.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
+          </div>
+        </div>
+        <div className={`mt-4 rounded-lg border p-3 ${differenzVergleich >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
+          <p className={`text-sm font-bold ${differenzVergleich >= 0 ? "text-green-800" : "text-orange-800"}`}>{gewinnerText}</p>
+          <p className={`text-xs mt-1 ${differenzVergleich >= 0 ? "text-green-700" : "text-orange-700"}`}>
+            Differenz Gesamtwert inkl. Konsum: {Math.abs(differenzVergleich).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+          </p>
+          <p className="text-xs text-slate-600 mt-2">
+            Endwert-Differenz vor Konsum: {Math.abs(endwertDifferenzOhneKonsum).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €.
+            Begründung: {Math.abs(steuerDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € {steuerDifferenz >= 0 ? "mehr" : "weniger"} Steuerlast in der GmbH gegenüber privat
+            sowie {Math.abs(verkaufsDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € {verkaufsDifferenz >= 0 ? "mehr" : "weniger"} kumulierte ETF-Verkäufe.
+          </p>
+        </div>
       </div>
     </div>
   );

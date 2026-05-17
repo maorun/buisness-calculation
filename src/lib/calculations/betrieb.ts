@@ -29,8 +29,11 @@ export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
 export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
+export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
+export const MONATE_PRO_JAHR = 12;
+export const UMSATZSTEUER_SATZ = 0.19;
 // Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
 const GRUNDFREIBETRAG_2024 = 11604;
 const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
@@ -60,7 +63,7 @@ export const DEFAULT_FIRMENHANDY_CONFIG: FirmenhandyConfig = {
 export const BAV_MAX_STEUERFREIER_BEITRAG = 7248;
 export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
-export const DARLEHEN_MONATE_PRO_JAHR = 12;
+export const DARLEHEN_MONATE_PRO_JAHR = MONATE_PRO_JAHR;
 export const MIN_ETF_LOT_WERT = 0.000001;
 export const ETF_SORT_EPSILON = 0.0000000001;
 
@@ -115,6 +118,20 @@ interface EtfLot {
   typ: EtfLotTyp;
   wert: number;
   einstandswert: number;
+}
+
+export interface PrivatVergleichErgebnis {
+  anfangskapitalPrivat: number;
+  kumulierterEtfVerkauf: number;
+  verbleibenderEtfWert: number;
+  endwert: number;
+  kumulierterKonsumwert: number;
+  gesamtwertMitKonsum: number;
+  kumulierteSteuern: number;
+  kumulierteVorabpauschalesteuer: number;
+  kumulierteEtfVerkaufssteuer: number;
+  kumulierteEntnahmen: number;
+  kumulierterSparplan: number;
 }
 
 /**
@@ -250,11 +267,37 @@ export function berechneBenefitsSteuerersparnis(
  * Benefits are deductible operating expenses and therefore part of annual Betriebsausgaben.
  */
 export function berechneBenefitsKosten(benefits: BenefitConfig): number {
-  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), 50);
-  const tankJahr = clampedTankMonthly * 12;
+  const tankJahr = berechneTankgutscheinJaehrlich(benefits);
   const strategieessen = benefits.strategieessen;
   const bav = Math.max(0, benefits.bav ?? 0);
   return tankJahr + strategieessen + bav;
+}
+
+export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number {
+  const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH);
+  return clampedTankMonthly * MONATE_PRO_JAHR;
+}
+
+export function berechneKonsumNutzenwertProJahr(
+  jahr: number,
+  benefits: BenefitConfig,
+  handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
+): number {
+  return berechneTankgutscheinJaehrlich(benefits) + berechneHandyNettoKostenProJahr(jahr, handyConfig);
+}
+
+export function berechneGmbhKonsumwertProJahr(
+  jahr: number,
+  benefits: BenefitConfig,
+  handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
+  steuerRate: number = GMBH_STEUER_GESAMT,
+  umsatzsteuerSatz: number = UMSATZSTEUER_SATZ
+): number {
+  const tankgutscheinEffektiv = berechneTankgutscheinJaehrlich(benefits) * (1 - steuerRate);
+  const handyKostenNominal = berechneHandyNettoKostenProJahr(jahr, handyConfig);
+  const handyKostenNachVorsteuer = handyKostenNominal / (1 + umsatzsteuerSatz);
+  const handyEffektiv = handyKostenNachVorsteuer * (1 - steuerRate);
+  return tankgutscheinEffektiv + handyEffektiv;
 }
 
 export function berechneBetriebskostenPosten(
@@ -269,7 +312,7 @@ export function berechneBetriebskostenPosten(
     wert: berechneKostenPositionJahresBetrag(kostenPosition),
   }));
 
-  const tankgutscheinJaehrlich = Math.min(Math.max(benefits.tankgutschein, 0), 50) * DARLEHEN_MONATE_PRO_JAHR;
+  const tankgutscheinJaehrlich = berechneTankgutscheinJaehrlich(benefits);
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
@@ -416,6 +459,118 @@ function verkaufeEtfLotsSteueroptimal(
   };
 }
 
+export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVergleichErgebnis {
+  let etfLots: EtfLot[] = [];
+  const anfangskapitalPrivat = Math.max(0, state.startkapital) + Math.max(0, state.darlehen.betrag);
+  etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", anfangskapitalPrivat);
+
+  let offenesDarlehen = Math.max(0, state.darlehen.betrag);
+  let kumulierterEtfVerkauf = 0;
+  let kumulierteVorabpauschalesteuer = 0;
+  let kumulierteEtfVerkaufssteuer = 0;
+  let kumulierteEntnahmen = 0;
+  let kumulierterSparplan = 0;
+  let kumulierterKonsumwert = 0;
+
+  for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
+    const etfWertVorjahrEnde = sumEtfWert(etfLots);
+    const etfLotsNachWachstum = wachseEtfLots(etfLots, state.etfRendite);
+    const etfWertNachWachstum = sumEtfWert(etfLotsNachWachstum);
+    const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnde, etfWertNachWachstum);
+
+    const { zinsenJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
+      offenesDarlehen,
+      state.darlehen.zinssatz,
+      state.darlehen.monatlicherZuschuss
+    );
+    offenesDarlehen = darlehenBetragEnde;
+
+    const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
+    const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
+    const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
+      jahr,
+      state.benefits,
+      state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
+    );
+    const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich - konsumNutzenwert;
+    kumulierterSparplan += sparplanNetto;
+    kumulierterKonsumwert += konsumNutzenwert;
+
+    const gehaltsEntnahme = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
+    const zinsEntnahme = state.darlehen.endfaellig ? 0 : zinsenJaehrlich;
+    const entnahmeAusSparplanDefizit = Math.max(0, -sparplanNetto);
+    const entnahmenVorSteuern = gehaltsEntnahme + zinsEntnahme + entnahmeAusSparplanDefizit;
+    kumulierteEntnahmen += entnahmenVorSteuern;
+
+    const sortierteLotIndizes = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstum);
+    let etfVerkauf = Math.min(etfWertNachWachstum, Math.max(0, entnahmenVorSteuern));
+    for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
+      const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
+      const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, verkaufIteration.etfGewinn);
+      const vorabpauschalesteuer = berechneVorabpauschalesteuer(
+        vorabpauschale,
+        TEILFREISTELLUNG_AKTIEN_PRIVAT,
+        ABGELTUNGSSTEUER_GESAMT
+      );
+      const etfVerkaufssteuer = berechneEtfVerkaufssteuer(
+        verkaufIteration.etfGewinn,
+        TEILFREISTELLUNG_AKTIEN_PRIVAT,
+        ABGELTUNGSSTEUER_GESAMT
+      );
+      const benoetigterVerkauf = Math.min(
+        etfWertNachWachstum,
+        Math.max(0, entnahmenVorSteuern + vorabpauschalesteuer + etfVerkaufssteuer)
+      );
+      if (Math.abs(benoetigterVerkauf - etfVerkauf) < SALE_CONVERGENCE_THRESHOLD) {
+        etfVerkauf = benoetigterVerkauf;
+        break;
+      }
+      etfVerkauf = benoetigterVerkauf;
+    }
+
+    const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
+    const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, verkauf.etfGewinn);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(
+      vorabpauschale,
+      TEILFREISTELLUNG_AKTIEN_PRIVAT,
+      ABGELTUNGSSTEUER_GESAMT
+    );
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(
+      verkauf.etfGewinn,
+      TEILFREISTELLUNG_AKTIEN_PRIVAT,
+      ABGELTUNGSSTEUER_GESAMT
+    );
+
+    kumulierterEtfVerkauf += verkauf.etfVerkauf;
+    kumulierteVorabpauschalesteuer += vorabpauschalesteuer;
+    kumulierteEtfVerkaufssteuer += etfVerkaufssteuer;
+
+    etfLots = verkauf.lots;
+    if (sparplanNetto > 0) {
+      etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", sparplanNetto);
+    }
+  }
+
+  const verbleibenderEtfWert = sumEtfWert(etfLots);
+  const endwert = kumulierterEtfVerkauf + verbleibenderEtfWert;
+  const gesamtwertMitKonsum = endwert + kumulierterKonsumwert;
+  const kumulierteSteuern = kumulierteVorabpauschalesteuer + kumulierteEtfVerkaufssteuer;
+
+  return {
+    anfangskapitalPrivat,
+    kumulierterEtfVerkauf,
+    verbleibenderEtfWert,
+    endwert,
+    kumulierterKonsumwert,
+    gesamtwertMitKonsum,
+    kumulierteSteuern,
+    kumulierteVorabpauschalesteuer,
+    kumulierteEtfVerkaufssteuer,
+    kumulierteEntnahmen,
+    kumulierterSparplan,
+  };
+}
+
 /**
  * Calculate yearly Betrieb results for each year of the operating phase.
  */
@@ -430,6 +585,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   // For regular loans, interest is paid (and deductible) each year.
   let aufgelaufeneZinsen = 0;
   let kumulierterCashZuschuss = 0;
+  let kumulierterKonsumwert = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = sumEtfWert(etfLots);
@@ -446,6 +602,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
+    const konsumNutzenwert = berechneGmbhKonsumwertProJahr(jahr, state.benefits, handyConfig);
+    kumulierterKonsumwert += konsumNutzenwert;
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const gehaelterGesamt = geschaeftsfuehrergehalt;
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt;
@@ -619,6 +777,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         jaehrlicheKosten,
         handyNettoKosten,
         benefitsKosten,
+        konsumNutzenwert,
+        kumulierterKonsumwert,
         geschaeftsfuehrergehalt,
         gehaelterGesamt,
         betriebsausgabenGesamt,

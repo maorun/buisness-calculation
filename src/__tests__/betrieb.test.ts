@@ -10,7 +10,9 @@ import {
   berechneBenefitsKosten,
   berechneBenefitsSteuerersparnis,
   berechneHandyNettoKostenProJahr,
+  berechneGmbhKonsumwertProJahr,
   berechneBetriebsErgebnisse,
+  berechnePrivatVergleichErgebnis,
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
@@ -19,6 +21,7 @@ import {
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
+  UMSATZSTEUER_SATZ,
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
 } from "@/lib/calculations/betrieb";
@@ -296,6 +299,16 @@ describe("berechneHandyNettoKostenProJahr", () => {
     expect(berechneHandyNettoKostenProJahr(5, config)).toBe(0);
     // Year 6 (= 3 + ersatzzyklusJahre): replacement with trade-in
     expect(berechneHandyNettoKostenProJahr(6, config)).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE));
+  });
+});
+
+describe("berechneGmbhKonsumwertProJahr", () => {
+  it("reduces the GmbH consumption value by tax shield and input VAT for company phones", () => {
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 0, bav: 0 };
+    const expectedTankEffektiv = 600 * (1 - GMBH_STEUER_GESAMT);
+    const expectedHandyEffektiv = (HANDY_ANSCHAFFUNGSKOSTEN / (1 + UMSATZSTEUER_SATZ)) * (1 - GMBH_STEUER_GESAMT);
+
+    expect(berechneGmbhKonsumwertProJahr(1, benefits)).toBeCloseTo(expectedTankEffektiv + expectedHandyEffektiv);
   });
 });
 
@@ -717,6 +730,11 @@ describe("berechneBetriebsErgebnisse", () => {
     );
     expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
     expect(firmenhandyJahr2?.wert).toBe(0);
+    const erwarteterKonsumwertJahr1 = berechneGmbhKonsumwertProJahr(1, state.benefits, state.firmenhandy);
+    const erwarteterKonsumwertJahr2 = berechneGmbhKonsumwertProJahr(2, state.benefits, state.firmenhandy);
+    expect(jahr1.details.konsumNutzenwert).toBeCloseTo(erwarteterKonsumwertJahr1);
+    expect(jahr2.details.konsumNutzenwert).toBeCloseTo(erwarteterKonsumwertJahr2);
+    expect(jahr2.details.kumulierterKonsumwert).toBeCloseTo(erwarteterKonsumwertJahr1 + erwarteterKonsumwertJahr2);
   });
 
   it("counts GF salary as operating expense and computes total target-net details", () => {
@@ -766,5 +784,94 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[0].details.offenesDarlehen).toBeCloseTo(26200);
     expect(results[1].details.offenesDarlehen).toBeCloseTo(27400);
     expect(results[0].details.jaehrlicheZinsen).toBeGreaterThan(875);
+  });
+});
+
+describe("berechnePrivatVergleichErgebnis", () => {
+  const basisState: BetriebState = {
+    startkapital: 10000,
+    jaehrlicherCashZuschuss: 0,
+    geschaeftsfuehrergehalt: 0,
+    darlehen: { betrag: 5000, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: true },
+    etfRendite: 0,
+    laufzeitJahre: 1,
+    kosten: [],
+    benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+    firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+  };
+
+  it("uses startkapital + darlehen as private initial ETF capital", () => {
+    const result = berechnePrivatVergleichErgebnis(basisState);
+    expect(result.anfangskapitalPrivat).toBe(15000);
+    expect(result.verbleibenderEtfWert).toBeCloseTo(15000);
+  });
+
+  it("subtracts tankgutschein from annual private savings plan and tracks it as consumption value", () => {
+    const state: BetriebState = {
+      ...basisState,
+      startkapital: 0,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      jaehrlicherCashZuschuss: 600,
+      benefits: { tankgutschein: 50, strategieessen: 0, bav: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+    };
+
+    const result = berechnePrivatVergleichErgebnis(state);
+    expect(result.kumulierterSparplan).toBe(0);
+    expect(result.kumulierterKonsumwert).toBe(600);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(600);
+    expect(result.verbleibenderEtfWert).toBeCloseTo(0);
+  });
+
+  it("subtracts active firmenhandy costs from private savings plan and tracks them as consumption value", () => {
+    const state: BetriebState = {
+      ...basisState,
+      startkapital: 0,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      jaehrlicherCashZuschuss: 1000,
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: true, anschaffungskosten: 1000, erstanschaffungJahr: 1 },
+    };
+
+    const result = berechnePrivatVergleichErgebnis(state);
+    expect(result.kumulierterSparplan).toBe(0);
+    expect(result.kumulierterKonsumwert).toBe(1000);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(1000);
+    expect(result.verbleibenderEtfWert).toBe(0);
+  });
+
+  it("sells private ETF for non-endfaellige zinsen and GF salary", () => {
+    const stateMitEntnahmen: BetriebState = {
+      ...basisState,
+      startkapital: 20000,
+      etfRendite: 0,
+      geschaeftsfuehrergehalt: 1000,
+      darlehen: { betrag: 10000, zinssatz: 6, monatlicherZuschuss: 0, endfaellig: false },
+      laufzeitJahre: 1,
+    };
+
+    const stateOhneEntnahmen: BetriebState = {
+      ...stateMitEntnahmen,
+      geschaeftsfuehrergehalt: 0,
+      darlehen: { ...stateMitEntnahmen.darlehen, zinssatz: 0 },
+    };
+
+    const mitEntnahmen = berechnePrivatVergleichErgebnis(stateMitEntnahmen);
+    const ohneEntnahmen = berechnePrivatVergleichErgebnis(stateOhneEntnahmen);
+
+    expect(mitEntnahmen.kumulierterEtfVerkauf).toBeGreaterThan(ohneEntnahmen.kumulierterEtfVerkauf);
+    expect(mitEntnahmen.kumulierteEntnahmen).toBeGreaterThan(0);
+  });
+
+  it("calculates endwert as cumulative ETF sales plus remaining ETF", () => {
+    const result = berechnePrivatVergleichErgebnis({
+      ...basisState,
+      startkapital: 25000,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      etfRendite: 7,
+      laufzeitJahre: 2,
+    });
+
+    expect(result.endwert).toBeCloseTo(result.kumulierterEtfVerkauf + result.verbleibenderEtfWert);
   });
 });
