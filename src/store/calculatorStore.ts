@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition } from "@/lib/types";
 import { berechneBetriebsErgebnisse, DEFAULT_FIRMENHANDY_CONFIG } from "@/lib/calculations/betrieb";
 import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
@@ -88,7 +89,9 @@ interface CalculatorStore extends CalculatorState {
   getEndeErgebnisse: () => JahresErgebnis[];
 }
 
-export const useCalculatorStore = create<CalculatorStore>((set, get) => ({
+export const useCalculatorStore = create<CalculatorStore>()(
+  persist(
+    (set, get) => ({
   ...initialState,
 
   setGruendung: (partial) =>
@@ -179,4 +182,15 @@ export const useCalculatorStore = create<CalculatorStore>((set, get) => ({
       get().betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
     );
   },
-}));
+    }),
+    {
+      name: "gmbh-kalkulator",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        gruendung: state.gruendung,
+        betrieb: state.betrieb,
+        ende: state.ende,
+      }),
+    }
+  )
+);
