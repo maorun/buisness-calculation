@@ -591,6 +591,8 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.gmbhSteuer).toBeCloseTo(expectedGmbhSteuer);
     expect(result.details.gewinnNachSteuernEtfZufluss).toBeCloseTo(expectedEtfZufluss);
     expect(result.details.zuzahlungenEtfWert).toBeCloseTo(expectedEtfZufluss);
+    expect(result.details.cashReserve).toBeCloseTo(0);
+    expect(result.gesamtvermoegen).toBeCloseTo(expectedEtfZufluss);
   });
 
   it("uses existing cash reserves before loan top-ups when annual cash is not enough", () => {

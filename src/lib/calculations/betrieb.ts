@@ -721,9 +721,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       cashReserve += verbleibendeDarlehensZuzahlungenNachAuszahlungen;
     }
 
-    const gewinnNachSteuernEtfZufluss = etfVerkauf > 0
-      ? 0
-      : Math.min(cashReserve, Math.max(0, verbleibenderGewinnVorSteuern - gmbhSteuer));
+    const gewinnNachSteuernEtfZufluss = Math.min(
+      cashReserve,
+      Math.max(0, verbleibenderGewinnVorSteuern - gmbhSteuer)
+    );
     cashReserve -= gewinnNachSteuernEtfZufluss;
 
     // Additional taxes
@@ -750,7 +751,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const zielnettoDifferenz = gesellschafterNetto - zielnettoGesellschafter;
 
     // Positive retained result is held as cash reserve (Aktiva).
-    const cashReserveZugang = Math.max(0, nettogewinn);
+    const cashReserveZugang = Math.max(0, nettogewinn - gewinnNachSteuernEtfZufluss);
     cashReserve += cashReserveZugang;
 
     // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
