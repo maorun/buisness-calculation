@@ -129,7 +129,10 @@ export function EndeSection() {
   const bereich2KonsumVorTilgung = bereich2Details?.konsumVorTilgung ?? (bereich2NettoGehalt + bereich2DarlehenZinsenNetto);
   const bereich2GesamtNetto = bereich2Ergebnisse[0]?.nettogewinn ?? (bereich2KonsumVorTilgung + bereich2FlexibleTilgung);
   const bereich2ZielDiff = bereich2GesamtNetto - zielnettoBereich2;
-  const gesamtZeitraumJahre = Math.max(1, Math.max(0, betrieb.laufzeitJahre) + Math.max(0, ende.laufzeitJahre) + (endfaellig ? 1 : 0));
+  const betriebsLaufzeitJahre = Math.max(0, betrieb.laufzeitJahre);
+  const endeLaufzeitJahre = Math.max(0, ende.laufzeitJahre);
+  const bereich1Jahre = endfaellig ? 1 : 0;
+  const gesamtZeitraumJahre = Math.max(1, betriebsLaufzeitJahre + endeLaufzeitJahre + bereich1Jahre);
   const privatVergleichGesamt = React.useMemo(
     () => berechnePrivatVergleichErgebnis({ ...betrieb, laufzeitJahre: gesamtZeitraumJahre }),
     [betrieb, gesamtZeitraumJahre]
