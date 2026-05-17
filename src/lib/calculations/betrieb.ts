@@ -486,13 +486,14 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
     offenesDarlehen = darlehenBetragEnde;
 
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
+    const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
       jahr,
       state.benefits,
       state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
     );
-    const sparplanNetto = jaehrlicherCashZuschuss + darlehensZuschussJaehrlich - konsumNutzenwert;
+    const sparplanNetto = jaehrlicherCashZuschuss + simulierterGewinn + darlehensZuschussJaehrlich - konsumNutzenwert;
     kumulierterSparplan += sparplanNetto;
     kumulierterKonsumwert += konsumNutzenwert;
 
@@ -621,11 +622,15 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       state.darlehen.monatlicherZuschuss
     );
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
+    const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
     kumulierterCashZuschuss += jaehrlicherCashZuschuss;
     const darlehensZuzahlungenJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const cashReserveVorjahr = cashReserve;
-    const ausCashZuschussBeglicheneBetriebsausgaben = Math.min(jaehrlicherCashZuschuss, betriebsausgabenGesamt);
-    const betriebsausgabenNachCashZuschuss = Math.max(0, betriebsausgabenGesamt - ausCashZuschussBeglicheneBetriebsausgaben);
+    const ausGewinnBeglicheneBetriebsausgaben = Math.min(simulierterGewinn, betriebsausgabenGesamt);
+    const betriebsausgabenNachGewinn = Math.max(0, betriebsausgabenGesamt - ausGewinnBeglicheneBetriebsausgaben);
+    const verbleibenderGewinnVorSteuern = Math.max(0, simulierterGewinn - ausGewinnBeglicheneBetriebsausgaben);
+    const ausCashZuschussBeglicheneBetriebsausgaben = Math.min(jaehrlicherCashZuschuss, betriebsausgabenNachGewinn);
+    const betriebsausgabenNachCashZuschuss = Math.max(0, betriebsausgabenNachGewinn - ausCashZuschussBeglicheneBetriebsausgaben);
     const ausCashReserveBeglicheneBetriebsausgaben = Math.min(cashReserveVorjahr, betriebsausgabenNachCashZuschuss);
     const betriebsausgabenNachCashReserve = Math.max(0, betriebsausgabenNachCashZuschuss - ausCashReserveBeglicheneBetriebsausgaben);
     const unverbrauchterCashZuschuss = jaehrlicherCashZuschuss - ausCashZuschussBeglicheneBetriebsausgaben;
@@ -642,7 +647,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     }
 
     const auszahlungenOhneVerkaufssteuern = ungedeckteBetriebsausgaben + jaehrlicheZinsen;
-    const verfuegbareLiquiditaetVorEtfVerkauf = cashReserve + verbleibendeDarlehensZuzahlungen;
+    const verfuegbareLiquiditaetVorEtfVerkauf = verbleibenderGewinnVorSteuern + cashReserve + verbleibendeDarlehensZuzahlungen;
 
     // Solve sale amount iteratively because taxes depend on realized sale gain.
     let etfVerkauf = Math.min(
@@ -656,7 +661,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
       const gewinnNachBetriebsausgabenIter =
-        realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
+        simulierterGewinn + realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
       const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
         ? gewinnNachBetriebsausgabenIter * GMBH_STEUER_GESAMT
         : 0;
@@ -681,7 +686,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
-      realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
+      simulierterGewinn + realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
 
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
@@ -716,6 +721,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       cashReserve += verbleibendeDarlehensZuzahlungenNachAuszahlungen;
     }
 
+    const gewinnNachSteuernEtfZufluss = Math.min(
+      cashReserve,
+      Math.max(0, verbleibenderGewinnVorSteuern - gmbhSteuer)
+    );
+    cashReserve -= gewinnNachSteuernEtfZufluss;
+
     // Additional taxes
     const gesamtSteuer = gmbhSteuer + vorabpauschalesteuer + etfVerkaufssteuer;
 
@@ -740,12 +751,13 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const zielnettoDifferenz = gesellschafterNetto - zielnettoGesellschafter;
 
     // Positive retained result is held as cash reserve (Aktiva).
-    const cashReserveZugang = Math.max(0, nettogewinn);
+    const cashReserveZugang = Math.max(0, nettogewinn - gewinnNachSteuernEtfZufluss);
     cashReserve += cashReserveZugang;
 
     // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
     etfLots = verkauf.lots;
     etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", freieDarlehensZuzahlungen);
+    etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", gewinnNachSteuernEtfZufluss);
     const etfWert = sumEtfWert(etfLots);
     const startkapitalEtfWert = sumEtfWertNachTyp(etfLots, "startkapital");
     const darlehenEtfWert = sumEtfWertNachTyp(etfLots, "darlehen");
@@ -785,6 +797,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         gehaelterEinkommensteuer,
         gehaelterSoli,
         gehaelterNetto,
+        simulierterGewinn,
+        ausGewinnBeglicheneBetriebsausgaben,
+        gewinnNachSteuernEtfZufluss,
         gesellschafterBruttoEinkommen,
         gesellschafterEinkommensteuer,
         gesellschafterSoli,
