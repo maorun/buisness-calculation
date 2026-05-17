@@ -128,7 +128,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Jährlicher Cash-Zufluss" value={d.jaehrlicherCashZuschuss} prefix="+" colorClass="text-teal-700" indent />
       )}
       {d.ausGewinnBeglicheneBetriebsausgaben > 0 && (
-        <BilanzRow label="Mit simuliertem Gewinn beglichene Betriebsausgaben" value={d.ausGewinnBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />
+        <BilanzRow label="Mit simuliertem Gewinn beglichene Betriebsausgaben" value={d.ausGewinnBeglicheneBetriebsausgaben} colorClass="text-teal-700" indent />
       )}
       {d.ausCashZuschussBeglicheneBetriebsausgaben > 0 && (
         <BilanzRow label="Betriebsausgaben aus Cash-Zuschuss" value={d.ausCashZuschussBeglicheneBetriebsausgaben} prefix="+" colorClass="text-teal-700" indent />

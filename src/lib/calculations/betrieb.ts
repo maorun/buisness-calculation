@@ -486,14 +486,14 @@ export function berechnePrivatVergleichErgebnis(state: BetriebState): PrivatVerg
     offenesDarlehen = darlehenBetragEnde;
 
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
-    const simulierterGewinnFuerPrivat = Math.max(0, state.simulierterGewinn ?? 0);
+    const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
       jahr,
       state.benefits,
       state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
     );
-    const sparplanNetto = jaehrlicherCashZuschuss + simulierterGewinnFuerPrivat + darlehensZuschussJaehrlich - konsumNutzenwert;
+    const sparplanNetto = jaehrlicherCashZuschuss + simulierterGewinn + darlehensZuschussJaehrlich - konsumNutzenwert;
     kumulierterSparplan += sparplanNetto;
     kumulierterKonsumwert += konsumNutzenwert;
 
