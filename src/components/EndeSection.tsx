@@ -129,10 +129,10 @@ export function EndeSection() {
   const bereich2KonsumVorTilgung = bereich2Details?.konsumVorTilgung ?? (bereich2NettoGehalt + bereich2DarlehenZinsenNetto);
   const bereich2GesamtNetto = bereich2Ergebnisse[0]?.nettogewinn ?? (bereich2KonsumVorTilgung + bereich2FlexibleTilgung);
   const bereich2ZielDiff = bereich2GesamtNetto - zielnettoBereich2;
-  const betriebsLaufzeitJahre = Math.max(0, betrieb.laufzeitJahre);
-  const endeLaufzeitJahre = Math.max(0, ende.laufzeitJahre);
+  const betriebslaufzeitJahre = Math.max(0, betrieb.laufzeitJahre);
+  const endelaufzeitJahre = Math.max(0, ende.laufzeitJahre);
   const bereich1Jahre = endfaellig ? 1 : 0;
-  const gesamtZeitraumJahre = Math.max(1, betriebsLaufzeitJahre + endeLaufzeitJahre + bereich1Jahre);
+  const gesamtZeitraumJahre = Math.max(1, betriebslaufzeitJahre + endelaufzeitJahre + bereich1Jahre);
   const privatVergleichGesamt = React.useMemo(
     () => berechnePrivatVergleichErgebnis({ ...betrieb, laufzeitJahre: gesamtZeitraumJahre }),
     [betrieb, gesamtZeitraumJahre]
@@ -153,7 +153,10 @@ export function EndeSection() {
       </div>
 
       <div className={`rounded-xl border p-4 md:p-6 ${gesamtVorteil >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
-        <h3 className={`font-semibold mb-1 ${gesamtVorteil >= 0 ? "text-green-900" : "text-orange-900"}`}>Top-KPI: GmbH-Vorteil gesamt (Betrieb + Ende)</h3>
+        <h3 className={`font-semibold mb-1 ${gesamtVorteil >= 0 ? "text-green-900" : "text-orange-900"}`}>
+          Top-KPI: GmbH-Vorteil gesamt (Betrieb + Ende)
+          <span className="sr-only">Aktueller Status: {gewinnerGesamtText}.</span>
+        </h3>
         <p className={`text-sm font-bold ${gesamtVorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>{gewinnerGesamtText}</p>
         <p className={`text-xs mt-1 ${gesamtVorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
           Vorteilhaftigkeitskennzahl: {Math.abs(gesamtVorteil).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
