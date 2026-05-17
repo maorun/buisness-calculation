@@ -294,8 +294,8 @@ export function berechneGmbhKonsumwertProJahr(
   umsatzsteuerSatz: number = UMSATZSTEUER_SATZ
 ): number {
   const tankgutscheinEffektiv = berechneTankgutscheinJaehrlich(benefits) * (1 - steuerRate);
-  const handyKostenBrutto = berechneHandyNettoKostenProJahr(jahr, handyConfig);
-  const handyKostenNachVorsteuer = handyKostenBrutto / (1 + umsatzsteuerSatz);
+  const handyKostenNominal = berechneHandyNettoKostenProJahr(jahr, handyConfig);
+  const handyKostenNachVorsteuer = handyKostenNominal / (1 + umsatzsteuerSatz);
   const handyEffektiv = handyKostenNachVorsteuer * (1 - steuerRate);
   return tankgutscheinEffektiv + handyEffektiv;
 }
