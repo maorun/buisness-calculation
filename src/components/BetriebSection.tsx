@@ -475,9 +475,9 @@ export function BetriebSection() {
           <p>Vergleichslogik:</p>
           <ul className="list-disc pl-4 space-y-1">
             <li>Anfangskapital = Startkapital + Darlehensbetrag</li>
-            <li>Tankgutschein und Firmenhandy werden als zusätzlicher Nutzen separat als verkonsumierter Wert ausgewiesen</li>
+            <li>Tankgutschein und Firmenhandy werden separat als verkonsumierter Wert ausgewiesen</li>
             <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss minus Tankgutschein minus Firmenhandy</li>
-            <li>In der GmbH bleiben Tankgutschein und Firmenhandy steuerlich begünstigte Betriebsausgaben</li>
+            <li>In der GmbH wird der Konsumwert steuer- und vorsteuerbereinigt gezeigt (Steuerschild + Vorsteuerabzug beim Firmenhandy)</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
             <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
           </ul>
@@ -488,7 +488,7 @@ export function BetriebSection() {
             <p className="text-blue-700">ETF-Verkäufe kumuliert: <span className="font-semibold">{gmbhKumulierterEtfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
             <p className="text-blue-700">Verbleibender ETF-Wert: <span className="font-semibold">{gmbhVerbleibenderEtfWert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
             <p className="text-blue-700">Steuern kumuliert: <span className="font-semibold">{gmbhSteuernKumuliert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-            <p className="text-blue-700">Verkonsumierter Wert: <span className="font-semibold">{gmbhKumulierterKonsumwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+            <p className="text-blue-700">Verkonsumierter Wert (steuerbereinigt): <span className="font-semibold">{gmbhKumulierterKonsumwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
             <p className="text-sm font-bold text-blue-900 border-t border-blue-300 pt-1 mt-1">
               Endwert (Verkäufe + Rest-ETF): {gmbhEndwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>

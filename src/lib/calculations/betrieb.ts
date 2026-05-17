@@ -33,6 +33,7 @@ export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
 export const MONATE_PRO_JAHR = 12;
+export const UMSATZSTEUER_SATZ = 0.19;
 // Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
 const GRUNDFREIBETRAG_2024 = 11604;
 const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
@@ -283,6 +284,20 @@ export function berechneKonsumNutzenwertProJahr(
   handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): number {
   return berechneTankgutscheinJaehrlich(benefits) + berechneHandyNettoKostenProJahr(jahr, handyConfig);
+}
+
+export function berechneGmbhKonsumwertProJahr(
+  jahr: number,
+  benefits: BenefitConfig,
+  handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
+  steuerRate: number = GMBH_STEUER_GESAMT,
+  umsatzsteuerSatz: number = UMSATZSTEUER_SATZ
+): number {
+  const tankgutscheinEffektiv = berechneTankgutscheinJaehrlich(benefits) * (1 - steuerRate);
+  const handyKostenBrutto = berechneHandyNettoKostenProJahr(jahr, handyConfig);
+  const handyKostenNachVorsteuer = handyKostenBrutto / (1 + umsatzsteuerSatz);
+  const handyEffektiv = handyKostenNachVorsteuer * (1 - steuerRate);
+  return tankgutscheinEffektiv + handyEffektiv;
 }
 
 export function berechneBetriebskostenPosten(
@@ -587,7 +602,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
-    const konsumNutzenwert = berechneKonsumNutzenwertProJahr(jahr, state.benefits, handyConfig);
+    const konsumNutzenwert = berechneGmbhKonsumwertProJahr(jahr, state.benefits, handyConfig);
     kumulierterKonsumwert += konsumNutzenwert;
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const gehaelterGesamt = geschaeftsfuehrergehalt;

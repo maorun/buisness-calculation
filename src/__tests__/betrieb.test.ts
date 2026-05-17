@@ -10,6 +10,7 @@ import {
   berechneBenefitsKosten,
   berechneBenefitsSteuerersparnis,
   berechneHandyNettoKostenProJahr,
+  berechneGmbhKonsumwertProJahr,
   berechneBetriebsErgebnisse,
   berechnePrivatVergleichErgebnis,
   BASISZINS_2024,
@@ -20,6 +21,7 @@ import {
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
+  UMSATZSTEUER_SATZ,
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
 } from "@/lib/calculations/betrieb";
@@ -297,6 +299,16 @@ describe("berechneHandyNettoKostenProJahr", () => {
     expect(berechneHandyNettoKostenProJahr(5, config)).toBe(0);
     // Year 6 (= 3 + ersatzzyklusJahre): replacement with trade-in
     expect(berechneHandyNettoKostenProJahr(6, config)).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN * (1 - HANDY_VERKAUFSQUOTE));
+  });
+});
+
+describe("berechneGmbhKonsumwertProJahr", () => {
+  it("reduces the GmbH consumption value by tax shield and input VAT for company phones", () => {
+    const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 0, bav: 0 };
+    const expectedTankEffektiv = 600 * (1 - GMBH_STEUER_GESAMT);
+    const expectedHandyEffektiv = (HANDY_ANSCHAFFUNGSKOSTEN / (1 + UMSATZSTEUER_SATZ)) * (1 - GMBH_STEUER_GESAMT);
+
+    expect(berechneGmbhKonsumwertProJahr(1, benefits)).toBeCloseTo(expectedTankEffektiv + expectedHandyEffektiv);
   });
 });
 
@@ -718,9 +730,11 @@ describe("berechneBetriebsErgebnisse", () => {
     );
     expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
     expect(firmenhandyJahr2?.wert).toBe(0);
-    expect(jahr1.details.konsumNutzenwert).toBeCloseTo(1600);
-    expect(jahr2.details.konsumNutzenwert).toBeCloseTo(600);
-    expect(jahr2.details.kumulierterKonsumwert).toBeCloseTo(2200);
+    const erwarteterKonsumwertJahr1 = berechneGmbhKonsumwertProJahr(1, state.benefits, state.firmenhandy);
+    const erwarteterKonsumwertJahr2 = berechneGmbhKonsumwertProJahr(2, state.benefits, state.firmenhandy);
+    expect(jahr1.details.konsumNutzenwert).toBeCloseTo(erwarteterKonsumwertJahr1);
+    expect(jahr2.details.konsumNutzenwert).toBeCloseTo(erwarteterKonsumwertJahr2);
+    expect(jahr2.details.kumulierterKonsumwert).toBeCloseTo(erwarteterKonsumwertJahr1 + erwarteterKonsumwertJahr2);
   });
 
   it("counts GF salary as operating expense and computes total target-net details", () => {
