@@ -20,6 +20,10 @@ const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
 } as const;
 const DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS = 2400;
+const RECOMMENDED_MIN_LAUFZEIT_JAHRE = 12;
+const HIGH_ZINSSATZ_THRESHOLD = 3;
+const DEFAULT_GMBH_VORSCHLAG =
+  "Laufzeit verlängern, Kostenstruktur straffen und Entnahmen reduzieren, um den ETF-Bestand länger wachsen zu lassen.";
 
 function InputField({
   label,
@@ -162,17 +166,21 @@ export function BetriebSection() {
       },
     ];
   }, []);
+  const breakEvenBerechenbar =
+    gmbhZeitreihe.length > 0 && gmbhZeitreihe.length === privatZeitreihe.length;
   const breakEvenJahr = (() => {
+    if (!breakEvenBerechenbar) {
+      return null;
+    }
     const index = gmbhZeitreihe.findIndex((gmbhJahr, i) => {
-      const privatJahr = privatZeitreihe[i];
-      return gmbhJahr.gesamtwertMitKonsum >= (privatJahr?.gesamtwertMitKonsum ?? Number.POSITIVE_INFINITY);
+      return gmbhJahr.gesamtwertMitKonsum >= privatZeitreihe[i].gesamtwertMitKonsum;
     });
-    return index >= 0 ? gmbhZeitreihe[index]?.jahr ?? null : null;
+    return index >= 0 ? gmbhZeitreihe[index].jahr : null;
   })();
   const lohntSichGmbH = differenzVergleich > 0;
-  const kennzahlProzent = privatVergleich.gesamtwertMitKonsum > 0
+  const kennzahlProzent = privatVergleich.gesamtwertMitKonsum !== 0
     ? (differenzVergleich / privatVergleich.gesamtwertMitKonsum) * 100
-    : 0;
+    : null;
   const topTreiber = [
     {
       id: "steuer",
@@ -202,7 +210,7 @@ export function BetriebSection() {
     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
     .slice(0, 4);
   const gmbhVorschlaege = [
-    ...(betrieb.laufzeitJahre < 12
+    ...(betrieb.laufzeitJahre < RECOMMENDED_MIN_LAUFZEIT_JAHRE
       ? ["Längere Laufzeit prüfen: Mit mehr Jahren kann der Steuer- und Zinseszinseffekt der GmbH stärker wirken."]
       : []),
     ...((betrieb.simulierterGewinn ?? 0) < (erstesJahrDetails?.betriebsausgabenGesamt ?? 0)
@@ -211,7 +219,7 @@ export function BetriebSection() {
     ...((betrieb.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB) > 0
       ? ["GF-Gehalt und Entnahmen prüfen: Mehr Kapital in der GmbH belassen verbessert oft den Endwert."]
       : []),
-    ...(betrieb.darlehen.zinssatz > 3
+    ...(betrieb.darlehen.zinssatz > HIGH_ZINSSATZ_THRESHOLD
       ? ["Darlehenskonditionen optimieren (insb. Zinssatz), um laufende Liquiditäts- und Steuerbelastung zu reduzieren."]
       : []),
     ...(gmbhKumulierterEtfVerkauf > privatVergleich.kumulierterEtfVerkauf
@@ -565,10 +573,16 @@ export function BetriebSection() {
             {lohntSichGmbH ? "Ja – die GmbH liegt vorne" : "Noch nicht – aktuell liegt Privat vorne"}
           </p>
           <p className={`text-xs mt-1 ${lohntSichGmbH ? "text-green-700" : "text-orange-700"}`}>
-            Kennzahl „Lohnt sich die GmbH?“: {kennzahlProzent >= 0 ? "+" : ""}{kennzahlProzent.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% gegenüber Privat
+            Kennzahl „Lohnt sich die GmbH?“: {kennzahlProzent === null
+              ? "Nicht berechenbar (Privat-Gesamtwert = 0 €)"
+              : `${kennzahlProzent >= 0 ? "+" : ""}${kennzahlProzent.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% gegenüber Privat`}
           </p>
           <p className="text-xs text-slate-700 mt-1">
-            Break-even: {breakEvenJahr ? `ab Jahr ${breakEvenJahr}` : "innerhalb der gewählten Laufzeit nicht erreicht"}
+            Break-even: {!breakEvenBerechenbar
+              ? "nicht berechenbar (Zeitreihen nicht vergleichbar)"
+              : breakEvenJahr
+                ? `ab Jahr ${breakEvenJahr}`
+                : "innerhalb der gewählten Laufzeit nicht erreicht"}
           </p>
         </div>
 
@@ -579,7 +593,7 @@ export function BetriebSection() {
               <div key={treiber.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                 <p className="text-xs font-semibold text-slate-800">{treiber.label}</p>
                 <p className={`text-xs mt-0.5 ${treiber.impact >= 0 ? "text-green-700" : "text-red-700"}`}>
-                  {treiber.impact >= 0 ? "+" : "−"} {Math.abs(treiber.impact).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  {treiber.impact >= 0 ? "+" : "-"} {Math.abs(treiber.impact).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
                 <p className="text-[11px] text-slate-600 mt-0.5">{treiber.description}</p>
               </div>
@@ -593,7 +607,7 @@ export function BetriebSection() {
             <ul className="list-disc pl-4 space-y-1">
               {(gmbhVorschlaege.length > 0
                 ? gmbhVorschlaege
-                : ["Laufzeit verlängern, Kostenstruktur straffen und Entnahmen reduzieren, um den ETF-Bestand länger wachsen zu lassen."])
+                : [DEFAULT_GMBH_VORSCHLAG])
                 .map((vorschlag) => (
                   <li key={vorschlag} className="text-xs text-amber-800">{vorschlag}</li>
                 ))}
