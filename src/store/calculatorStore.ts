@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition } from "@/lib/types";
-import { berechneBetriebsErgebnisse, DEFAULT_FIRMENHANDY_CONFIG } from "@/lib/calculations/betrieb";
+import { berechneBetriebsErgebnisse, DEFAULT_FIRMENHANDY_CONFIG, DEFAULT_STILLER_GESELLSCHAFTER_CONFIG } from "@/lib/calculations/betrieb";
 import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
 import { berechneGesamtkosten } from "@/lib/calculations/gruendung";
 import { JahresErgebnis } from "@/lib/types";
@@ -54,6 +54,7 @@ const initialState: CalculatorState = {
       bav: 0,
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
+    stillerGesellschafter: { ...DEFAULT_STILLER_GESELLSCHAFTER_CONFIG },
   },
   ende: {
     geschaeftsfuehrergehalt: 0,
