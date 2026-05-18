@@ -168,6 +168,12 @@ export interface PrivatVergleichErgebnis {
 
 export interface PrivatVergleichJahreswert {
   jahr: number;
+  sparplanNetto: number;
+  entnahmenVorSteuern: number;
+  etfVerkauf: number;
+  vorabpauschalesteuer: number;
+  etfVerkaufssteuer: number;
+  gesamtSteuer: number;
   kumulierterEtfVerkauf: number;
   verbleibenderEtfWert: number;
   endwert: number;
@@ -615,6 +621,12 @@ function simulierePrivatVergleich(state: BetriebState): {
     const endwertJahr = kumulierterEtfVerkauf + verbleibenderEtfWertJahr;
     jahreswerte.push({
       jahr,
+      sparplanNetto,
+      entnahmenVorSteuern,
+      etfVerkauf: verkauf.etfVerkauf,
+      vorabpauschalesteuer,
+      etfVerkaufssteuer,
+      gesamtSteuer: vorabpauschalesteuer + etfVerkaufssteuer,
       kumulierterEtfVerkauf,
       verbleibenderEtfWert: verbleibenderEtfWertJahr,
       endwert: endwertJahr,

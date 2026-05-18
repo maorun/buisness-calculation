@@ -976,6 +976,16 @@ describe("berechnePrivatVergleichZeitreihe", () => {
     const zeitreihe = berechnePrivatVergleichZeitreihe(basisState);
     expect(zeitreihe).toHaveLength(3);
     expect(zeitreihe.map((item) => item.jahr)).toEqual([1, 2, 3]);
+    expect(zeitreihe[0]).toEqual(
+      expect.objectContaining({
+        sparplanNetto: expect.any(Number),
+        entnahmenVorSteuern: expect.any(Number),
+        etfVerkauf: expect.any(Number),
+        vorabpauschalesteuer: expect.any(Number),
+        etfVerkaufssteuer: expect.any(Number),
+        gesamtSteuer: expect.any(Number),
+      })
+    );
   });
 
   it("matches final yearly value with final private comparison result", () => {
@@ -995,5 +1005,7 @@ describe("berechnePrivatVergleichZeitreihe", () => {
     expect(letztesJahr.endwert).toBeCloseTo(endwert.endwert);
     expect(letztesJahr.kumulierterKonsumwert).toBeCloseTo(endwert.kumulierterKonsumwert);
     expect(letztesJahr.gesamtwertMitKonsum).toBeCloseTo(endwert.gesamtwertMitKonsum);
+    const kumulierteSteuernAusZeitreihe = zeitreihe.reduce((sum, jahr) => sum + jahr.gesamtSteuer, 0);
+    expect(kumulierteSteuernAusZeitreihe).toBeCloseTo(endwert.kumulierteSteuern);
   });
 });
