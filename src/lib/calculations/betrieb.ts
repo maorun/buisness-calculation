@@ -502,7 +502,7 @@ function simulierePrivatVergleich(state: BetriebState): {
     const simulierterGewinnBrutto = Math.max(0, state.simulierterGewinn ?? 0);
     const simulierterGewinnSteuer = berechneEinkommensteuerBetrieb(simulierterGewinnBrutto);
     const simulierterGewinnSoli = berechneSoliBetrieb(simulierterGewinnSteuer);
-    const simulierterGewinnNetto = Math.max(0, simulierterGewinnBrutto - simulierterGewinnSteuer - simulierterGewinnSoli);
+    const simulierterGewinnNetto = simulierterGewinnBrutto - simulierterGewinnSteuer - simulierterGewinnSoli;
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
       jahr,
