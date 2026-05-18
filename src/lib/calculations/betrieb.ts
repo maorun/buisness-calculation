@@ -540,13 +540,16 @@ function simulierePrivatVergleich(state: BetriebState): {
 
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
     const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
+    const simulierterGewinnSteuer = berechneEinkommensteuerBetrieb(simulierterGewinn);
+    const simulierterGewinnSoli = berechneSoliBetrieb(simulierterGewinnSteuer);
+    const simulierterGewinnNetto = simulierterGewinn - simulierterGewinnSteuer - simulierterGewinnSoli;
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
       jahr,
       state.benefits,
       state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
     );
-    const sparplanNetto = jaehrlicherCashZuschuss + simulierterGewinn + darlehensZuschussJaehrlich - konsumNutzenwert;
+    const sparplanNetto = jaehrlicherCashZuschuss + simulierterGewinnNetto + darlehensZuschussJaehrlich - konsumNutzenwert;
     kumulierterSparplan += sparplanNetto;
     kumulierterKonsumwert += konsumNutzenwert;
 

@@ -764,7 +764,7 @@ export function BetriebSection() {
           <ul className="list-disc pl-4 space-y-1">
             <li>Anfangskapital = Startkapital + Darlehensbetrag</li>
             <li>Tankgutschein und Firmenhandy werden separat als verkonsumierter Wert ausgewiesen</li>
-            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss minus Tankgutschein minus Firmenhandy</li>
+            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss + simulierter Gewinn nach ESt/Soli minus Tankgutschein minus Firmenhandy</li>
             <li>In der GmbH wird der Konsumwert steuerbereinigt gezeigt (inkl. Vorsteuerabzug beim Firmenhandy)</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
             <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>

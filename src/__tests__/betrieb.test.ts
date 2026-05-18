@@ -931,8 +931,30 @@ describe("berechnePrivatVergleichErgebnis", () => {
       laufzeitJahre: 1,
     });
 
-    expect(result.kumulierterSparplan).toBe(1000);
-    expect(result.verbleibenderEtfWert).toBeCloseTo(1000);
+    const est = berechneEinkommensteuerBetrieb(1000);
+    const soli = berechneSoliBetrieb(est);
+    const expectedNet = 1000 - est - soli;
+    expect(result.kumulierterSparplan).toBe(expectedNet);
+    expect(result.verbleibenderEtfWert).toBeCloseTo(expectedNet);
+  });
+
+  it("uses different Teilfreistellung and tax rates for privat vs GmbH in yearly Vorabpauschale tax", () => {
+    const state: BetriebState = {
+      ...basisState,
+      startkapital: 100000,
+      darlehen: { ...basisState.darlehen, betrag: 0, zinssatz: 0, monatlicherZuschuss: 0 },
+      etfRendite: 7,
+      laufzeitJahre: 1,
+    };
+
+    const privat = berechnePrivatVergleichErgebnis(state);
+    const gmbh = berechneBetriebsErgebnisse(state);
+    const gmbhVorabsteuer = gmbh[0].details.vorabpauschalesteuer;
+
+    expect(privat.kumulierteVorabpauschalesteuer).toBeGreaterThan(0);
+    expect(gmbhVorabsteuer).toBeGreaterThan(0);
+    expect(privat.kumulierteVorabpauschalesteuer).not.toBeCloseTo(gmbhVorabsteuer);
+    expect(privat.kumulierteVorabpauschalesteuer).toBeGreaterThan(gmbhVorabsteuer);
   });
 });
 
