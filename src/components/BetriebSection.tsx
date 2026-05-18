@@ -812,6 +812,9 @@ export function BetriebSection() {
           <div className="mb-2 text-[11px] text-slate-600 space-y-0.5">
             <p>Sparplan netto = Cash-Zuschuss + Darlehens-Zuschuss + simulierter Gewinn netto − Konsumwert.</p>
             <p>ETF-Verkauf deckt Entnahmen vor Steuer sowie anfallende Vorabpauschale- und ETF-Verkaufssteuer.</p>
+            <p>
+              Steuer gesamt privat (kumuliert): {formatEuro(privatVergleich.kumulierteSteuern)} = Vorabpauschale ({formatEuro(privatVergleich.kumulierteVorabpauschalesteuer)}) + ETF-Verkauf ({formatEuro(privatVergleich.kumulierteEtfVerkaufssteuer)}).
+            </p>
           </div>
           <div className="space-y-2">
             {privatZeitreihe.map((privatJahr, index) => {
@@ -822,6 +825,22 @@ export function BetriebSection() {
               const jahrDifferenzProzent = jahrDifferenz !== null && privatJahr.gesamtwertMitKonsum !== 0
                 ? (jahrDifferenz / privatJahr.gesamtwertMitKonsum) * 100
                 : null;
+              const sparplanVorAbzug = privatJahr.jaehrlicherCashZuschuss + privatJahr.darlehensZuschussJaehrlich + privatJahr.simulierterGewinnNetto;
+              const konsumAbzugQuote = sparplanVorAbzug > 0
+                ? (privatJahr.konsumNutzenwert / sparplanVorAbzug) * 100
+                : null;
+              const vorabSteuerAnteil = privatJahr.gesamtSteuer > 0
+                ? (privatJahr.vorabpauschalesteuer / privatJahr.gesamtSteuer) * 100
+                : null;
+              const verkaufsSteuerAnteil = privatJahr.gesamtSteuer > 0
+                ? (privatJahr.etfVerkaufssteuer / privatJahr.gesamtSteuer) * 100
+                : null;
+              const steuerQuoteAufEtfVerkauf = privatJahr.etfVerkauf > 0
+                ? (privatJahr.gesamtSteuer / privatJahr.etfVerkauf) * 100
+                : null;
+              const steuerTreiber = privatJahr.vorabpauschalesteuer >= privatJahr.etfVerkaufssteuer
+                ? "Vorabpauschale"
+                : "ETF-Verkaufssteuer";
               return (
                 <details key={privatJahr.jahr} className="rounded-md border border-slate-200 bg-slate-50 p-2" open={index === 0}>
                   <summary className="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2">
@@ -836,6 +855,8 @@ export function BetriebSection() {
                       <li><span className="font-medium">Darlehens-Zuschuss:</span> {formatEuro(privatJahr.darlehensZuschussJaehrlich)}</li>
                       <li><span className="font-medium">Gewinn netto (ESt/Soli):</span> {formatEuro(privatJahr.simulierterGewinnNetto)}</li>
                       <li><span className="font-medium">Konsumwert (Abzug):</span> - {formatEuro(privatJahr.konsumNutzenwert)}</li>
+                      <li><span className="font-medium">Summe vor Konsumabzug:</span> {formatEuro(sparplanVorAbzug)}</li>
+                      <li><span className="font-medium">Konsumabzug in %:</span> {konsumAbzugQuote === null ? "—" : formatPercentSigned(konsumAbzugQuote)}</li>
                       <li><span className="font-medium">Sparplan netto:</span> {formatEuro(privatJahr.sparplanNetto)}</li>
                     </ul>
                     <ul className="space-y-1 text-[11px] text-slate-700">
@@ -850,6 +871,10 @@ export function BetriebSection() {
                       <li><span className="font-medium">Vorabpauschale-Steuer:</span> {formatEuro(privatJahr.vorabpauschalesteuer)}</li>
                       <li><span className="font-medium">ETF-Verkaufssteuer:</span> {formatEuro(privatJahr.etfVerkaufssteuer)}</li>
                       <li><span className="font-medium">Steuern gesamt:</span> {formatEuro(privatJahr.gesamtSteuer)}</li>
+                      <li><span className="font-medium">Anteil Vorabpauschale:</span> {vorabSteuerAnteil === null ? "—" : formatPercentSigned(vorabSteuerAnteil)}</li>
+                      <li><span className="font-medium">Anteil ETF-Verkaufssteuer:</span> {verkaufsSteuerAnteil === null ? "—" : formatPercentSigned(verkaufsSteuerAnteil)}</li>
+                      <li><span className="font-medium">Steuerquote auf ETF-Verkauf:</span> {steuerQuoteAufEtfVerkauf === null ? "—" : formatPercentSigned(steuerQuoteAufEtfVerkauf)}</li>
+                      <li><span className="font-medium">Haupttreiber Steuer:</span> {privatJahr.gesamtSteuer > 0 ? steuerTreiber : "keine Steuer"}</li>
                     </ul>
                     <ul className="space-y-1 text-[11px] text-slate-700">
                       <li><span className="font-medium">Gesamtwert Privat inkl. Konsum:</span> {formatEuro(privatJahr.gesamtwertMitKonsum)}</li>
