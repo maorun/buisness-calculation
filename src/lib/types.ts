@@ -32,6 +32,12 @@ export interface BenefitConfig {
 export interface StillerGesellschafterConfig {
   /** Whether the silent partner arrangement is active. */
   aktiv: boolean;
+  /**
+   * Participation type:
+   * - 'typisch': standard silent partner – only shares in profits/losses, not in hidden reserves.
+   * - 'atypisch': creates a Mitunternehmerschaft – also participates in hidden reserves and goodwill.
+   */
+  typ: 'typisch' | 'atypisch';
   /** Capital contribution of the silent partner in €. Invested into the ETF pool at the start. */
   einlage: number;
   /** Annual profit share paid to the silent partner (% of simulated operating profit). */

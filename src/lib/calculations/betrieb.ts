@@ -70,6 +70,7 @@ export const ETF_SORT_EPSILON = 0.0000000001;
 /** Default configuration for the silent partner (stiller Gesellschafter). */
 export const DEFAULT_STILLER_GESELLSCHAFTER_CONFIG: StillerGesellschafterConfig = {
   aktiv: false,
+  typ: 'typisch',
   einlage: 25000,
   gewinnbeteiligungProzent: 20,
   zinssatz: 4,
@@ -80,7 +81,13 @@ export const DEFAULT_STILLER_GESELLSCHAFTER_CONFIG: StillerGesellschafterConfig 
  * - Minimum interest on the Einlage (always, regardless of profit)
  * - Profit share on the simulated operating profit
  *
- * Both are fully deductible as Betriebsausgaben.
+ * Both are fully deductible as Betriebsausgaben for both typisch and atypisch.
+ *
+ * Note: For the atypisch variant the profit share additionally creates a
+ * Mitunternehmerschaft, which shifts part of the GmbH's taxable base to the
+ * partner's income tax sphere.  The GmbH-side deduction is identical to the
+ * typisch treatment within this model; the difference lies at the partner level
+ * (income characterisation and loss-offset rules differ).
  */
 export function berechneStillenGesellschafterKosten(
   config: StillerGesellschafterConfig | undefined,

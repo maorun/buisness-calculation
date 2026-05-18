@@ -500,28 +500,86 @@ export function BetriebSection() {
         </div>
 
         {(betrieb.stillerGesellschafter?.aktiv) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField
-              label="Kapitaleinlage (€)"
-              value={betrieb.stillerGesellschafter?.einlage ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.einlage}
-              onChange={(v) => updateStillerGesellschafter("einlage", v)}
-              suffix="€"
-              hint="Einmalige Kapitaleinlage des stillen Gesellschafters; wird in den ETF-Pool der GmbH investiert."
-            />
-            <InputField
-              label="Gewinnbeteiligung (% des Gewinns)"
-              value={betrieb.stillerGesellschafter?.gewinnbeteiligungProzent ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.gewinnbeteiligungProzent}
-              onChange={(v) => updateStillerGesellschafter("gewinnbeteiligungProzent", v)}
-              suffix="%"
-              hint="Prozentualer Anteil am simulierten Jahresgewinn (Betriebsausgabe der GmbH)."
-            />
-            <InputField
-              label="Mindestverzinsung (% p.a.)"
-              value={betrieb.stillerGesellschafter?.zinssatz ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.zinssatz}
-              onChange={(v) => updateStillerGesellschafter("zinssatz", v)}
-              suffix="% p.a."
-              hint="Jährliche Mindestverzinsung der Einlage, unabhängig vom Gewinn (Betriebsausgabe der GmbH)."
-            />
+          <div className="space-y-4">
+            {/* Typ-Auswahl */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Beteiligungsform</p>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="stillerGesellschafterTyp"
+                    value="typisch"
+                    checked={(betrieb.stillerGesellschafter?.typ ?? 'typisch') === 'typisch'}
+                    onChange={() => updateStillerGesellschafter("typ", "typisch")}
+                    className="h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                  <span className="text-sm text-gray-700">Typisch</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="stillerGesellschafterTyp"
+                    value="atypisch"
+                    checked={(betrieb.stillerGesellschafter?.typ ?? 'typisch') === 'atypisch'}
+                    onChange={() => updateStillerGesellschafter("typ", "atypisch")}
+                    className="h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                  <span className="text-sm text-gray-700">Atypisch</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Typisch/Atypisch Erklärung */}
+            {(betrieb.stillerGesellschafter?.typ ?? 'typisch') === 'typisch' ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 space-y-1">
+                <p className="font-semibold text-slate-800">Typisch stiller Gesellschafter</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Beteiligt sich <span className="font-medium">nur am Gewinn und Verlust</span>, nicht an den stillen Reserven oder dem Firmenwert der GmbH.</li>
+                  <li>Gewinnbeteiligung und Mindestverzinsung sind für die GmbH <span className="font-medium">Betriebsausgaben</span> (reduzieren KSt + GewSt).</li>
+                  <li>Beim stillen Gesellschafter werden die Zahlungen als <span className="font-medium">Einkünfte aus Kapitalvermögen</span> (Abgeltungssteuer 25 % + SolZ) versteuert.</li>
+                  <li>Kein Mitunternehmerverhältnis – die GmbH bleibt steuerlich eigenständig.</li>
+                  <li>Geeignet für einfache Kapitalbeteiligungen ohne unternehmerisches Mitspracherecht.</li>
+                </ul>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1">
+                <p className="font-semibold text-amber-900">Atypisch stiller Gesellschafter</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Beteiligt sich am Gewinn und Verlust <span className="font-medium">sowie an den stillen Reserven und dem Firmenwert</span> der GmbH.</li>
+                  <li>Entsteht eine <span className="font-medium">Mitunternehmerschaft</span> (GmbH & Still) – steuerlich wie eine Personengesellschaft behandelt.</li>
+                  <li>Der auf den stillen Gesellschafter entfallende Gewinnanteil unterliegt <span className="font-medium">nicht der GmbH-Körperschaftsteuer</span>, sondern wird beim Partner als <span className="font-medium">Einkünfte aus Gewerbebetrieb</span> versteuert.</li>
+                  <li>Ermöglicht dem stillen Gesellschafter, <span className="font-medium">Verluste der GmbH</span> mit seinen anderen Einkünften zu verrechnen (bis zur Höhe der Einlage).</li>
+                  <li>Höhere Komplexität: gesonderte Gewinnfeststellung, separates Steuerbilanzkapitalkonto erforderlich.</li>
+                  <li>Empfehlung: Abstimmung mit einem Steuerberater empfohlen.</li>
+                </ul>
+              </div>
+            )}
+
+            {/* Eingabefelder */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField
+                label="Kapitaleinlage (€)"
+                value={betrieb.stillerGesellschafter?.einlage ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.einlage}
+                onChange={(v) => updateStillerGesellschafter("einlage", v)}
+                suffix="€"
+                hint="Einmalige Kapitaleinlage des stillen Gesellschafters; wird in den ETF-Pool der GmbH investiert."
+              />
+              <InputField
+                label="Gewinnbeteiligung (% des Gewinns)"
+                value={betrieb.stillerGesellschafter?.gewinnbeteiligungProzent ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.gewinnbeteiligungProzent}
+                onChange={(v) => updateStillerGesellschafter("gewinnbeteiligungProzent", v)}
+                suffix="%"
+                hint="Prozentualer Anteil am simulierten Jahresgewinn (Betriebsausgabe der GmbH)."
+              />
+              <InputField
+                label="Mindestverzinsung (% p.a.)"
+                value={betrieb.stillerGesellschafter?.zinssatz ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.zinssatz}
+                onChange={(v) => updateStillerGesellschafter("zinssatz", v)}
+                suffix="% p.a."
+                hint="Jährliche Mindestverzinsung der Einlage, unabhängig vom Gewinn (Betriebsausgabe der GmbH)."
+              />
+            </div>
           </div>
         )}
       </div>
