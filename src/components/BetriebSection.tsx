@@ -832,10 +832,44 @@ export function BetriebSection() {
                   return (
                     <tr key={privatJahr.jahr} className="border-b border-slate-200 last:border-b-0">
                       <td className="py-2 pr-3 font-medium text-slate-700">Jahr {privatJahr.jahr}</td>
-                      <td className="py-2 pr-3">{privatJahr.sparplanNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3 align-top">
+                        <div className="font-medium">
+                          {privatJahr.sparplanNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-0.5 space-y-0.5">
+                          <div>Cash-Zuschuss: + {privatJahr.sparplanAusCashZuschuss.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          <div>Gewinn netto: + {privatJahr.sparplanAusGewinnNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          {(privatJahr.sparplanAusGewinnBrutto > 0 || privatJahr.sparplanAusGewinnSteuer > 0 || privatJahr.sparplanAusGewinnSoli > 0) && (
+                            <div className="text-slate-500">
+                              (aus Gewinn brutto {privatJahr.sparplanAusGewinnBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € − ESt {privatJahr.sparplanAusGewinnSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € − Soli {privatJahr.sparplanAusGewinnSoli.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)
+                            </div>
+                          )}
+                          <div>Darlehenszuschuss: + {privatJahr.sparplanAusDarlehensZuzahlung.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          <div>Konsumabzug (Tank/Handy): − {privatJahr.sparplanAbzugKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                        </div>
+                      </td>
                       <td className="py-2 pr-3">{privatJahr.entnahmenVorSteuern.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.etfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.gesamtSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3 align-top">
+                        <div className="font-medium">{privatJahr.etfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                        <div className="text-[11px] text-slate-600 mt-0.5 space-y-0.5">
+                          <div>für GF-Gehalt: {privatJahr.etfVerkaufFuerGehalt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          <div>für Zinsen: {privatJahr.etfVerkaufFuerZinsen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          <div>für Sparplan-Defizit: {privatJahr.etfVerkaufFuerSparplanDefizit.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          {privatJahr.etfVerkaufFuerStillenGesellschafter > 0 && (
+                            <div>für stillen Gesellschafter: {privatJahr.etfVerkaufFuerStillenGesellschafter.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          )}
+                          <div>für Vorabpauschale-Steuer: {privatJahr.etfVerkaufFuerVorabpauschalesteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          <div>für ETF-Verkaufssteuer: {privatJahr.etfVerkaufFuerEtfVerkaufssteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          <div className="text-slate-500">Verwendungszweck gesamt: {privatJahr.etfVerkaufVerwendungszweckGesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                        </div>
+                      </td>
+                      <td className="py-2 pr-3 align-top">
+                        <div className="font-medium">{privatJahr.gesamtSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                        <div className="text-[11px] text-slate-600 mt-0.5 space-y-0.5">
+                          <div>Vorabpauschale-Steuer: {privatJahr.vorabpauschalesteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                          <div>ETF-Verkaufssteuer: {privatJahr.etfVerkaufssteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                        </div>
+                      </td>
                       <td className="py-2 pr-3">{privatJahr.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
                       <td className="py-2 pr-3">
                         {gmbhJahr

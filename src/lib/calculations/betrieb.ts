@@ -169,7 +169,21 @@ export interface PrivatVergleichErgebnis {
 export interface PrivatVergleichJahreswert {
   jahr: number;
   sparplanNetto: number;
+  sparplanAusCashZuschuss: number;
+  sparplanAusGewinnBrutto: number;
+  sparplanAusGewinnSteuer: number;
+  sparplanAusGewinnSoli: number;
+  sparplanAusGewinnNetto: number;
+  sparplanAusDarlehensZuzahlung: number;
+  sparplanAbzugKonsum: number;
   entnahmenVorSteuern: number;
+  etfVerkaufFuerGehalt: number;
+  etfVerkaufFuerZinsen: number;
+  etfVerkaufFuerSparplanDefizit: number;
+  etfVerkaufFuerStillenGesellschafter: number;
+  etfVerkaufFuerVorabpauschalesteuer: number;
+  etfVerkaufFuerEtfVerkaufssteuer: number;
+  etfVerkaufVerwendungszweckGesamt: number;
   etfVerkauf: number;
   vorabpauschalesteuer: number;
   etfVerkaufssteuer: number;
@@ -622,7 +636,22 @@ function simulierePrivatVergleich(state: BetriebState): {
     jahreswerte.push({
       jahr,
       sparplanNetto,
+      sparplanAusCashZuschuss: jaehrlicherCashZuschuss,
+      sparplanAusGewinnBrutto: simulierterGewinn,
+      sparplanAusGewinnSteuer: simulierterGewinnSteuer,
+      sparplanAusGewinnSoli: simulierterGewinnSoli,
+      sparplanAusGewinnNetto: simulierterGewinnNetto,
+      sparplanAusDarlehensZuzahlung: darlehensZuschussJaehrlich,
+      sparplanAbzugKonsum: konsumNutzenwert,
       entnahmenVorSteuern,
+      etfVerkaufFuerGehalt: gehaltsEntnahme,
+      etfVerkaufFuerZinsen: zinsEntnahme,
+      etfVerkaufFuerSparplanDefizit: entnahmeAusSparplanDefizit,
+      etfVerkaufFuerStillenGesellschafter: stillerGesellschafterEntnahme,
+      etfVerkaufFuerVorabpauschalesteuer: vorabpauschalesteuer,
+      etfVerkaufFuerEtfVerkaufssteuer: etfVerkaufssteuer,
+      etfVerkaufVerwendungszweckGesamt:
+        entnahmenVorSteuern + vorabpauschalesteuer + etfVerkaufssteuer,
       etfVerkauf: verkauf.etfVerkauf,
       vorabpauschalesteuer,
       etfVerkaufssteuer,
