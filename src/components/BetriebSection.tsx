@@ -293,6 +293,7 @@ export function BetriebSection() {
   const overlayProzent = kennzahlProzent === null
     ? "nicht berechenbar"
     : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+  const formatEuro = (value: number) => `${value.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`;
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
@@ -805,15 +806,29 @@ export function BetriebSection() {
         </div>
         <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
           <h4 className="text-sm font-semibold text-slate-800 mb-2">Private Rechnung pro Jahr (Vergleichsprüfung)</h4>
+          <div className="mb-2 text-[11px] text-slate-600 space-y-0.5">
+            <p>Sparplan netto = Cash-Zuschuss + Darlehens-Zuschuss + simulierter Gewinn netto − Konsumwert.</p>
+            <p>ETF-Verkauf deckt Entnahmen vor Steuer sowie anfallende Vorabpauschale- und ETF-Verkaufssteuer.</p>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs text-left text-slate-800">
               <thead>
                 <tr className="border-b border-slate-300 text-slate-700">
                   <th className="py-2 pr-3">Jahr</th>
+                  <th className="py-2 pr-3">Cash-Zuschuss</th>
+                  <th className="py-2 pr-3">Darlehens-Zuschuss</th>
+                  <th className="py-2 pr-3">Gewinn netto (ESt/Soli)</th>
+                  <th className="py-2 pr-3">Konsumwert (Abzug)</th>
                   <th className="py-2 pr-3">Sparplan netto (Privat)</th>
+                  <th className="py-2 pr-3">Entnahme GF-Gehalt</th>
+                  <th className="py-2 pr-3">Entnahme Zinsen</th>
+                  <th className="py-2 pr-3">Entnahme Sparplan-Defizit</th>
+                  <th className="py-2 pr-3">Entnahme stiller Gesellschafter</th>
                   <th className="py-2 pr-3">Entnahmen vor Steuer (Privat)</th>
                   <th className="py-2 pr-3">ETF-Verkauf (Privat)</th>
-                  <th className="py-2 pr-3">Steuern (Privat)</th>
+                  <th className="py-2 pr-3">Vorabpauschale-Steuer</th>
+                  <th className="py-2 pr-3">ETF-Verkaufssteuer</th>
+                  <th className="py-2 pr-3">Steuern gesamt (Privat)</th>
                   <th className="py-2 pr-3">Gesamtwert Privat inkl. Konsum</th>
                   <th className="py-2 pr-3">Gesamtwert GmbH inkl. Konsum</th>
                   <th className="py-2 pr-3">Differenz (GmbH - Privat)</th>
@@ -832,20 +847,30 @@ export function BetriebSection() {
                   return (
                     <tr key={privatJahr.jahr} className="border-b border-slate-200 last:border-b-0">
                       <td className="py-2 pr-3 font-medium text-slate-700">Jahr {privatJahr.jahr}</td>
-                      <td className="py-2 pr-3">{privatJahr.sparplanNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.entnahmenVorSteuern.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.etfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.gesamtSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.jaehrlicherCashZuschuss)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.darlehensZuschussJaehrlich)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.simulierterGewinnNetto)}</td>
+                      <td className="py-2 pr-3">- {formatEuro(privatJahr.konsumNutzenwert)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.sparplanNetto)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.gehaltsEntnahme)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.zinsEntnahme)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.entnahmeAusSparplanDefizit)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.stillerGesellschafterEntnahme)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.entnahmenVorSteuern)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.etfVerkauf)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.vorabpauschalesteuer)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.etfVerkaufssteuer)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.gesamtSteuer)}</td>
+                      <td className="py-2 pr-3">{formatEuro(privatJahr.gesamtwertMitKonsum)}</td>
                       <td className="py-2 pr-3">
                         {gmbhJahr
-                          ? `${gmbhJahr.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`
+                          ? formatEuro(gmbhJahr.gesamtwertMitKonsum)
                           : "—"}
                       </td>
                       <td className={`py-2 pr-3 ${jahrDifferenz !== null && jahrDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}>
                         {jahrDifferenz === null
                           ? "—"
-                          : `${jahrDifferenz >= 0 ? "+" : "-"} ${Math.abs(jahrDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`}
+                          : `${jahrDifferenz >= 0 ? "+" : "-"} ${formatEuro(Math.abs(jahrDifferenz))}`}
                       </td>
                       <td className={`py-2 ${jahrDifferenzProzent !== null && jahrDifferenzProzent >= 0 ? "text-green-700" : "text-red-700"}`}>
                         {jahrDifferenzProzent === null
