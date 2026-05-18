@@ -294,6 +294,7 @@ export function BetriebSection() {
     ? "nicht berechenbar"
     : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
   const formatEuro = (value: number) => `${value.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`;
+  const formatEuroSigned = (value: number) => `${value >= 0 ? "+" : "-"} ${Math.abs(value).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`;
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
@@ -870,7 +871,7 @@ export function BetriebSection() {
                       <td className={`py-2 pr-3 ${jahrDifferenz !== null && jahrDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}>
                         {jahrDifferenz === null
                           ? "—"
-                          : `${jahrDifferenz >= 0 ? "+" : "-"} ${formatEuro(Math.abs(jahrDifferenz))}`}
+                          : formatEuroSigned(jahrDifferenz)}
                       </td>
                       <td className={`py-2 ${jahrDifferenzProzent !== null && jahrDifferenzProzent >= 0 ? "text-green-700" : "text-red-700"}`}>
                         {jahrDifferenzProzent === null
