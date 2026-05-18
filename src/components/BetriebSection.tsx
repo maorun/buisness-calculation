@@ -289,8 +289,13 @@ export function BetriebSection() {
 
   const firmenhandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
 
+  const overlayGewinner = differenzVergleich >= 0 ? "GmbH" : "Privat";
+  const overlayProzent = kennzahlProzent === null
+    ? "nicht berechenbar"
+    : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 md:pb-0">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Betrieb</h2>
         <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und freien Überschüssen sowie separatem Cash-Puffer</p>
@@ -798,6 +803,62 @@ export function BetriebSection() {
             </p>
           </div>
         </div>
+        <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
+          <h4 className="text-sm font-semibold text-slate-800 mb-2">Private Rechnung pro Jahr (Vergleichsprüfung)</h4>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-xs text-left text-slate-800">
+              <thead>
+                <tr className="border-b border-slate-300 text-slate-700">
+                  <th className="py-2 pr-3">Jahr</th>
+                  <th className="py-2 pr-3">Sparplan netto (Privat)</th>
+                  <th className="py-2 pr-3">Entnahmen vor Steuer (Privat)</th>
+                  <th className="py-2 pr-3">ETF-Verkauf (Privat)</th>
+                  <th className="py-2 pr-3">Steuern (Privat)</th>
+                  <th className="py-2 pr-3">Gesamtwert Privat inkl. Konsum</th>
+                  <th className="py-2 pr-3">Gesamtwert GmbH inkl. Konsum</th>
+                  <th className="py-2 pr-3">Differenz (GmbH - Privat)</th>
+                  <th className="py-2">Differenz in %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {privatZeitreihe.map((privatJahr, index) => {
+                  const gmbhJahr = gmbhZeitreihe[index];
+                  const jahrDifferenz = gmbhJahr
+                    ? gmbhJahr.gesamtwertMitKonsum - privatJahr.gesamtwertMitKonsum
+                    : null;
+                  const jahrDifferenzProzent = jahrDifferenz !== null && privatJahr.gesamtwertMitKonsum !== 0
+                    ? (jahrDifferenz / privatJahr.gesamtwertMitKonsum) * 100
+                    : null;
+                  return (
+                    <tr key={privatJahr.jahr} className="border-b border-slate-200 last:border-b-0">
+                      <td className="py-2 pr-3 font-medium text-slate-700">Jahr {privatJahr.jahr}</td>
+                      <td className="py-2 pr-3">{privatJahr.sparplanNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3">{privatJahr.entnahmenVorSteuern.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3">{privatJahr.etfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3">{privatJahr.gesamtSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3">{privatJahr.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
+                      <td className="py-2 pr-3">
+                        {gmbhJahr
+                          ? `${gmbhJahr.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`
+                          : "—"}
+                      </td>
+                      <td className={`py-2 pr-3 ${jahrDifferenz !== null && jahrDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}>
+                        {jahrDifferenz === null
+                          ? "—"
+                          : `${jahrDifferenz >= 0 ? "+" : "-"} ${Math.abs(jahrDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`}
+                      </td>
+                      <td className={`py-2 ${jahrDifferenzProzent !== null && jahrDifferenzProzent >= 0 ? "text-green-700" : "text-red-700"}`}>
+                        {jahrDifferenzProzent === null
+                          ? "—"
+                          : `${jahrDifferenzProzent >= 0 ? "+" : "-"} ${Math.abs(jahrDifferenzProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
         <div className={`mt-4 rounded-lg border p-3 ${differenzVergleich >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
           <p className={`text-sm font-bold ${differenzVergleich >= 0 ? "text-green-800" : "text-orange-800"}`}>{gewinnerText}</p>
           <p className={`text-xs mt-1 ${differenzVergleich >= 0 ? "text-green-700" : "text-orange-700"}`}>
@@ -808,6 +869,15 @@ export function BetriebSection() {
             Begründung: {Math.abs(steuerDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € {steuerDifferenz >= 0 ? "mehr" : "weniger"} Steuerlast in der GmbH gegenüber privat
             sowie {Math.abs(verkaufsDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € {verkaufsDifferenz >= 0 ? "mehr" : "weniger"} kumulierte ETF-Verkäufe.
           </p>
+        </div>
+      </div>
+      <div className="fixed bottom-0 inset-x-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+        <div className="mx-auto max-w-4xl px-4 py-3">
+          <p className="text-xs text-slate-600">Vergleich Privat vs. GmbH</p>
+          <p className={`text-sm font-bold ${differenzVergleich >= 0 ? "text-green-800" : "text-orange-800"}`}>
+            {Math.abs(differenzVergleich).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € mehr in {overlayGewinner}
+          </p>
+          <p className="text-xs text-slate-700">{overlayProzent}</p>
         </div>
       </div>
     </div>
