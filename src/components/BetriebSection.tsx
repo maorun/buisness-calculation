@@ -271,10 +271,18 @@ export function BetriebSection() {
     value: string | boolean | number
   ) => {
     const current = betrieb.stillerGesellschafter ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG;
+    let coerced: string | boolean | number;
+    if (typeof value === "boolean" || typeof value === "number") {
+      coerced = value;
+    } else if (field === "typ") {
+      coerced = value; // keep as string literal ('typisch' | 'atypisch')
+    } else {
+      coerced = parseFloat(value) || 0;
+    }
     setBetrieb({
       stillerGesellschafter: {
         ...current,
-        [field]: typeof value === "boolean" ? value : typeof value === "number" ? value : parseFloat(value as string) || 0,
+        [field]: coerced,
       },
     });
   };
