@@ -803,12 +803,12 @@ export function BetriebSection() {
             </p>
           </div>
         </div>
-        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
           <h4 className="text-sm font-semibold text-slate-800 mb-2">Private Rechnung pro Jahr (Vergleichsprüfung)</h4>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-xs text-left">
+            <table className="min-w-full text-xs text-left text-slate-800">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-600">
+                <tr className="border-b border-slate-300 text-slate-700">
                   <th className="py-2 pr-3">Jahr</th>
                   <th className="py-2 pr-3">Sparplan netto (Privat)</th>
                   <th className="py-2 pr-3">Entnahmen vor Steuer (Privat)</th>
@@ -830,7 +830,7 @@ export function BetriebSection() {
                     ? (jahrDifferenz / privatJahr.gesamtwertMitKonsum) * 100
                     : null;
                   return (
-                    <tr key={privatJahr.jahr} className="border-b border-slate-100 last:border-b-0">
+                    <tr key={privatJahr.jahr} className="border-b border-slate-200 last:border-b-0">
                       <td className="py-2 pr-3 font-medium text-slate-700">Jahr {privatJahr.jahr}</td>
                       <td className="py-2 pr-3">{privatJahr.sparplanNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
                       <td className="py-2 pr-3">{privatJahr.entnahmenVorSteuern.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
