@@ -10,6 +10,7 @@ import {
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
+  DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
 } from "@/lib/calculations/betrieb";
@@ -265,6 +266,19 @@ export function BetriebSection() {
     });
   };
 
+  const updateStillerGesellschafter = (
+    field: keyof NonNullable<typeof betrieb.stillerGesellschafter>,
+    value: string | boolean | number
+  ) => {
+    const current = betrieb.stillerGesellschafter ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG;
+    setBetrieb({
+      stillerGesellschafter: {
+        ...current,
+        [field]: typeof value === "boolean" ? value : typeof value === "number" ? value : parseFloat(value as string) || 0,
+      },
+    });
+  };
+
   const firmenhandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
 
   return (
@@ -446,6 +460,67 @@ export function BetriebSection() {
               onChange={(v) => updateFirmenhandy("erstanschaffungJahr", Math.max(1, parseInt(v) || 1))}
               suffix="Jahr"
               hint="In welchem Betriebsjahr wird das erste Handy angeschafft?"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Stiller Gesellschafter */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Stiller Gesellschafter</h3>
+        <p className="text-xs text-slate-500 mb-3">
+          Ein stiller Gesellschafter beteiligt sich mit einer Kapitaleinlage an der GmbH, ohne nach außen in Erscheinung zu treten.
+          Die Einlage wird in den ETF-Pool investiert. Gewinnbeteiligung und Zinsen sind vollständig als Betriebsausgaben absetzbar.
+        </p>
+
+        {/* Benefits explanation */}
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 mb-4">
+          <p className="text-xs font-semibold text-blue-800 mb-2">Vorteile eines stillen Gesellschafters für die GmbH</p>
+          <ul className="list-disc pl-4 space-y-1 text-xs text-blue-700">
+            <li><span className="font-medium">Kapitalzufluss ohne Bankdarlehen</span> – Die Einlage stärkt die Liquidität und das investierbare Kapital der GmbH, ohne klassische Kreditkonditionen.</li>
+            <li><span className="font-medium">Steuerliche Absetzbarkeit</span> – Gewinnbeteiligung und Mindestverzinsung reduzieren den steuerpflichtigen Gewinn der GmbH (Körperschaft- und Gewerbesteuer).</li>
+            <li><span className="font-medium">Keine Handelsregistereintragung</span> – Der stille Gesellschafter taucht nicht im Handelsregister auf; die Außenwirkung der GmbH bleibt unverändert.</li>
+            <li><span className="font-medium">Kein Mitspracherecht</span> – Anders als ein Gesellschafter hat ein stiller Gesellschafter in der Regel keine Geschäftsführungsbefugnisse.</li>
+            <li><span className="font-medium">Flexibles Beteiligungsmodell</span> – Gewinnbeteiligung und Verzinsung können individuell im stillen Gesellschaftsvertrag geregelt werden.</li>
+            <li><span className="font-medium">Verbesserte Eigenkapitalbasis</span> – Die Einlage erhöht die Investitionsbasis der GmbH und kann zu höheren ETF-Renditen führen.</li>
+          </ul>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <input
+            type="checkbox"
+            id="stillerGesellschafterAktiv"
+            checked={betrieb.stillerGesellschafter?.aktiv ?? false}
+            onChange={(e) => updateStillerGesellschafter("aktiv", e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+          />
+          <label htmlFor="stillerGesellschafterAktiv" className="text-sm text-gray-700">
+            Stiller Gesellschafter aktiv
+          </label>
+        </div>
+
+        {(betrieb.stillerGesellschafter?.aktiv) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField
+              label="Kapitaleinlage (€)"
+              value={betrieb.stillerGesellschafter?.einlage ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.einlage}
+              onChange={(v) => updateStillerGesellschafter("einlage", v)}
+              suffix="€"
+              hint="Einmalige Kapitaleinlage des stillen Gesellschafters; wird in den ETF-Pool der GmbH investiert."
+            />
+            <InputField
+              label="Gewinnbeteiligung (% des Gewinns)"
+              value={betrieb.stillerGesellschafter?.gewinnbeteiligungProzent ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.gewinnbeteiligungProzent}
+              onChange={(v) => updateStillerGesellschafter("gewinnbeteiligungProzent", v)}
+              suffix="%"
+              hint="Prozentualer Anteil am simulierten Jahresgewinn (Betriebsausgabe der GmbH)."
+            />
+            <InputField
+              label="Mindestverzinsung (% p.a.)"
+              value={betrieb.stillerGesellschafter?.zinssatz ?? DEFAULT_STILLER_GESELLSCHAFTER_CONFIG.zinssatz}
+              onChange={(v) => updateStillerGesellschafter("zinssatz", v)}
+              suffix="% p.a."
+              hint="Jährliche Mindestverzinsung der Einlage, unabhängig vom Gewinn (Betriebsausgabe der GmbH)."
             />
           </div>
         )}

@@ -29,6 +29,17 @@ export interface BenefitConfig {
   bav: number;
 }
 
+export interface StillerGesellschafterConfig {
+  /** Whether the silent partner arrangement is active. */
+  aktiv: boolean;
+  /** Capital contribution of the silent partner in €. Invested into the ETF pool at the start. */
+  einlage: number;
+  /** Annual profit share paid to the silent partner (% of simulated operating profit). */
+  gewinnbeteiligungProzent: number;
+  /** Minimum annual interest on the Einlage (% p.a.), paid regardless of profit. */
+  zinssatz: number;
+}
+
 export interface FirmenhandyConfig {
   /** Whether the company-phone programme is active at all. */
   aktiv: boolean;
@@ -68,6 +79,8 @@ export interface BetriebState {
   benefits: BenefitConfig;
   /** Configuration for the company mobile-phone programme. */
   firmenhandy?: FirmenhandyConfig;
+  /** Configuration for the silent partner (stiller Gesellschafter). */
+  stillerGesellschafter?: StillerGesellschafterConfig;
 }
 
 export interface EndeState {

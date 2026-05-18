@@ -1,4 +1,4 @@
-import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig } from "../types";
+import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig, StillerGesellschafterConfig } from "../types";
 
 // 2024 Basiszins for Vorabpauschale calculation
 export const BASISZINS_2024 = 0.0229;
@@ -67,6 +67,31 @@ export const DARLEHEN_MONATE_PRO_JAHR = MONATE_PRO_JAHR;
 export const MIN_ETF_LOT_WERT = 0.000001;
 export const ETF_SORT_EPSILON = 0.0000000001;
 
+/** Default configuration for the silent partner (stiller Gesellschafter). */
+export const DEFAULT_STILLER_GESELLSCHAFTER_CONFIG: StillerGesellschafterConfig = {
+  aktiv: false,
+  einlage: 25000,
+  gewinnbeteiligungProzent: 20,
+  zinssatz: 4,
+};
+
+/**
+ * Annual costs the GmbH pays to the silent partner:
+ * - Minimum interest on the Einlage (always, regardless of profit)
+ * - Profit share on the simulated operating profit
+ *
+ * Both are fully deductible as Betriebsausgaben.
+ */
+export function berechneStillenGesellschafterKosten(
+  config: StillerGesellschafterConfig | undefined,
+  simulierterGewinn: number
+): number {
+  if (!config?.aktiv) return 0;
+  const zinsen = Math.max(0, config.einlage) * (config.zinssatz / 100);
+  const gewinnbeteiligung = Math.max(0, simulierterGewinn) * (config.gewinnbeteiligungProzent / 100);
+  return zinsen + gewinnbeteiligung;
+}
+
 export function berechneEinkommensteuerBetrieb(zvE: number): number {
   if (zvE <= GRUNDFREIBETRAG_2024) return 0;
 
@@ -112,7 +137,7 @@ export function berechneDarlehensZinsenSteuerBetrieb(
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
 
-type EtfLotTyp = "startkapital" | "darlehen" | "zuzahlung";
+type EtfLotTyp = "startkapital" | "darlehen" | "zuzahlung" | "stillerGesellschafter";
 
 interface EtfLot {
   typ: EtfLotTyp;
@@ -314,7 +339,8 @@ export function berechneBetriebskostenPosten(
   benefits: BenefitConfig,
   handyNettoKosten: number,
   handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
-  geschaeftsfuehrergehalt: number = 0
+  geschaeftsfuehrergehalt: number = 0,
+  stillerGesellschafterKosten: number = 0
 ): { label: string; wert: number }[] {
   const kostenPosten = kosten.map((kostenPosition) => ({
     label: kostenPosition.bezeichnung,
@@ -328,6 +354,9 @@ export function berechneBetriebskostenPosten(
     { label: "bAV-Beitrag", wert: Math.max(0, benefits.bav ?? 0) },
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
+    ...(stillerGesellschafterKosten > 0
+      ? [{ label: "Stiller Gesellschafter (Zinsen + Gewinnbeteiligung)", wert: stillerGesellschafterKosten }]
+      : []),
   ];
 
   return [...kostenPosten, ...benefitsPosten];
@@ -407,6 +436,7 @@ function sortiereEtfLotIndizesNachSteueroptimierung(lots: EtfLot[]): number[] {
     zuzahlung: 0,
     darlehen: 1,
     startkapital: 2,
+    stillerGesellschafter: 3,
   };
 
   return lots
@@ -473,7 +503,10 @@ function simulierePrivatVergleich(state: BetriebState): {
   jahreswerte: PrivatVergleichJahreswert[];
 } {
   let etfLots: EtfLot[] = [];
-  const anfangskapitalPrivat = Math.max(0, state.startkapital) + Math.max(0, state.darlehen.betrag);
+  const stillerGesellschafterEinlage = state.stillerGesellschafter?.aktiv
+    ? Math.max(0, state.stillerGesellschafter.einlage)
+    : 0;
+  const anfangskapitalPrivat = Math.max(0, state.startkapital) + Math.max(0, state.darlehen.betrag) + stillerGesellschafterEinlage;
   etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", anfangskapitalPrivat);
 
   let offenesDarlehen = Math.max(0, state.darlehen.betrag);
@@ -513,7 +546,11 @@ function simulierePrivatVergleich(state: BetriebState): {
     const gehaltsEntnahme = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const zinsEntnahme = state.darlehen.endfaellig ? 0 : zinsenJaehrlich;
     const entnahmeAusSparplanDefizit = Math.max(0, -sparplanNetto);
-    const entnahmenVorSteuern = gehaltsEntnahme + zinsEntnahme + entnahmeAusSparplanDefizit;
+    const stillerGesellschafterEntnahme = berechneStillenGesellschafterKosten(
+      state.stillerGesellschafter,
+      simulierterGewinn
+    );
+    const entnahmenVorSteuern = gehaltsEntnahme + zinsEntnahme + entnahmeAusSparplanDefizit + stillerGesellschafterEntnahme;
     kumulierteEntnahmen += entnahmenVorSteuern;
 
     const sortierteLotIndizes = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstum);
@@ -615,6 +652,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   let etfLots: EtfLot[] = [];
   etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", Math.max(0, state.startkapital));
   etfLots = fuegeEtfLotHinzu(etfLots, "darlehen", Math.max(0, state.darlehen.betrag));
+  const stillerGesellschafterEinlage = state.stillerGesellschafter?.aktiv
+    ? Math.max(0, state.stillerGesellschafter.einlage)
+    : 0;
+  if (stillerGesellschafterEinlage > 0) {
+    etfLots = fuegeEtfLotHinzu(etfLots, "stillerGesellschafter", stillerGesellschafterEinlage);
+  }
   let cashReserve = 0;
   let offenesDarlehen = Math.max(0, state.darlehen.betrag);
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
@@ -642,13 +685,19 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     kumulierterKonsumwert += konsumNutzenwert;
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const gehaelterGesamt = geschaeftsfuehrergehalt;
-    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt;
+    const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
+    const stillerGesellschafterKosten = berechneStillenGesellschafterKosten(
+      state.stillerGesellschafter,
+      simulierterGewinn
+    );
+    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt + stillerGesellschafterKosten;
     const betriebskostenPosten = berechneBetriebskostenPosten(
       state.kosten,
       state.benefits,
       handyNettoKosten,
       handyConfig,
-      geschaeftsfuehrergehalt
+      geschaeftsfuehrergehalt,
+      stillerGesellschafterKosten
     );
 
     const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
@@ -657,7 +706,6 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       state.darlehen.monatlicherZuschuss
     );
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
-    const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
     kumulierterCashZuschuss += jaehrlicherCashZuschuss;
     const darlehensZuzahlungenJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const cashReserveVorjahr = cashReserve;
@@ -867,6 +915,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         cashReserveZugang,
         offenesDarlehen,
         nettovermoegen,
+        stillerGesellschafterKosten,
+        stillerGesellschafterEinlage: sumEtfWertNachTyp(etfLots, "stillerGesellschafter"),
       },
       betriebskostenPosten,
     });
