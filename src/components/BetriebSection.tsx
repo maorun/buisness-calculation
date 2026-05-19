@@ -23,6 +23,7 @@ const BENEFIT_MAX_VALUES = {
 const DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS = 2400;
 const RECOMMENDED_MIN_LAUFZEIT_JAHRE = 12;
 const HIGH_ZINSSATZ_THRESHOLD = 3;
+const STEUER_EQUALITY_THRESHOLD = 0.01;
 const DEFAULT_GMBH_VORSCHLAG =
   "Laufzeit verlängern, Kostenstruktur straffen und Entnahmen reduzieren, um den ETF-Bestand länger wachsen zu lassen.";
 
@@ -293,6 +294,10 @@ export function BetriebSection() {
   const overlayProzent = kennzahlProzent === null
     ? "nicht berechenbar"
     : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+  const formatEuro = (value: number) => `${value.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`;
+  const formatEuroSigned = (value: number) => `${value >= 0 ? "+" : "-"} ${Math.abs(value).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`;
+  const formatPercentSigned = (value: number) =>
+    `${value >= 0 ? "+" : "-"} ${Math.abs(value).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
@@ -805,58 +810,93 @@ export function BetriebSection() {
         </div>
         <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
           <h4 className="text-sm font-semibold text-slate-800 mb-2">Private Rechnung pro Jahr (Vergleichsprüfung)</h4>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-xs text-left text-slate-800">
-              <thead>
-                <tr className="border-b border-slate-300 text-slate-700">
-                  <th className="py-2 pr-3">Jahr</th>
-                  <th className="py-2 pr-3">Sparplan netto (Privat)</th>
-                  <th className="py-2 pr-3">Entnahmen vor Steuer (Privat)</th>
-                  <th className="py-2 pr-3">ETF-Verkauf (Privat)</th>
-                  <th className="py-2 pr-3">Steuern (Privat)</th>
-                  <th className="py-2 pr-3">Gesamtwert Privat inkl. Konsum</th>
-                  <th className="py-2 pr-3">Gesamtwert GmbH inkl. Konsum</th>
-                  <th className="py-2 pr-3">Differenz (GmbH - Privat)</th>
-                  <th className="py-2">Differenz in %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {privatZeitreihe.map((privatJahr, index) => {
-                  const gmbhJahr = gmbhZeitreihe[index];
-                  const jahrDifferenz = gmbhJahr
-                    ? gmbhJahr.gesamtwertMitKonsum - privatJahr.gesamtwertMitKonsum
-                    : null;
-                  const jahrDifferenzProzent = jahrDifferenz !== null && privatJahr.gesamtwertMitKonsum !== 0
-                    ? (jahrDifferenz / privatJahr.gesamtwertMitKonsum) * 100
-                    : null;
-                  return (
-                    <tr key={privatJahr.jahr} className="border-b border-slate-200 last:border-b-0">
-                      <td className="py-2 pr-3 font-medium text-slate-700">Jahr {privatJahr.jahr}</td>
-                      <td className="py-2 pr-3">{privatJahr.sparplanNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.entnahmenVorSteuern.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.etfVerkauf.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.gesamtSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">{privatJahr.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td>
-                      <td className="py-2 pr-3">
-                        {gmbhJahr
-                          ? `${gmbhJahr.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`
-                          : "—"}
-                      </td>
-                      <td className={`py-2 pr-3 ${jahrDifferenz !== null && jahrDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}>
-                        {jahrDifferenz === null
-                          ? "—"
-                          : `${jahrDifferenz >= 0 ? "+" : "-"} ${Math.abs(jahrDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`}
-                      </td>
-                      <td className={`py-2 ${jahrDifferenzProzent !== null && jahrDifferenzProzent >= 0 ? "text-green-700" : "text-red-700"}`}>
-                        {jahrDifferenzProzent === null
-                          ? "—"
-                          : `${jahrDifferenzProzent >= 0 ? "+" : "-"} ${Math.abs(jahrDifferenzProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="mb-2 text-[11px] text-slate-600 space-y-0.5">
+            <p>Sparplan netto = Cash-Zuschuss + Darlehens-Zuschuss + simulierter Gewinn netto − Konsumwert.</p>
+            <p>ETF-Verkauf deckt Entnahmen vor Steuer sowie anfallende Vorabpauschale- und ETF-Verkaufssteuer.</p>
+            <p>Steuer gesamt privat (kumuliert): {formatEuro(privatVergleich.kumulierteSteuern)}</p>
+            <p>
+              Davon Vorabpauschale: {formatEuro(privatVergleich.kumulierteVorabpauschalesteuer)}, ETF-Verkauf: {formatEuro(privatVergleich.kumulierteEtfVerkaufssteuer)}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {privatZeitreihe.map((privatJahr, index) => {
+              const gmbhJahr = gmbhZeitreihe[index];
+              const jahrDifferenz = gmbhJahr
+                ? gmbhJahr.gesamtwertMitKonsum - privatJahr.gesamtwertMitKonsum
+                : null;
+              const jahrDifferenzProzent = jahrDifferenz !== null && privatJahr.gesamtwertMitKonsum !== 0
+                ? (jahrDifferenz / privatJahr.gesamtwertMitKonsum) * 100
+                : null;
+              const sparplanVorAbzug = privatJahr.jaehrlicherCashZuschuss + privatJahr.darlehensZuschussJaehrlich + privatJahr.simulierterGewinnNetto;
+              const konsumAbzugQuote = sparplanVorAbzug > 0
+                ? (privatJahr.konsumNutzenwert / sparplanVorAbzug) * 100
+                : null;
+              const vorabSteuerAnteil = privatJahr.gesamtSteuer > 0
+                ? (privatJahr.vorabpauschalesteuer / privatJahr.gesamtSteuer) * 100
+                : null;
+              const verkaufsSteuerAnteil = privatJahr.gesamtSteuer > 0
+                ? (privatJahr.etfVerkaufssteuer / privatJahr.gesamtSteuer) * 100
+                : null;
+              const steuerQuoteAufEtfVerkauf = privatJahr.etfVerkauf > 0
+                ? (privatJahr.gesamtSteuer / privatJahr.etfVerkauf) * 100
+                : null;
+              const steuerDiff = Math.abs(privatJahr.vorabpauschalesteuer - privatJahr.etfVerkaufssteuer);
+              const steuerTreiber = privatJahr.gesamtSteuer <= 0
+                ? "keine Steuer"
+                : steuerDiff < STEUER_EQUALITY_THRESHOLD
+                  ? "beide gleich hoch"
+                  : privatJahr.vorabpauschalesteuer > privatJahr.etfVerkaufssteuer
+                    ? "Vorabpauschale"
+                    : "ETF-Verkaufssteuer";
+              return (
+                <details key={privatJahr.jahr} className="rounded-md border border-slate-200 bg-slate-50 p-2" open={index === 0}>
+                  <summary className="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-800">Jahr {privatJahr.jahr}</span>
+                    <span className={`text-xs font-semibold ${jahrDifferenz !== null && jahrDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}>
+                      {jahrDifferenz === null ? "Differenz: —" : `Differenz: ${formatEuroSigned(jahrDifferenz)}`}
+                    </span>
+                  </summary>
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <ul className="space-y-1 text-[11px] text-slate-700">
+                      <li><span className="font-medium">Cash-Zuschuss:</span> {formatEuro(privatJahr.jaehrlicherCashZuschuss)}</li>
+                      <li><span className="font-medium">Darlehens-Zuschuss:</span> {formatEuro(privatJahr.darlehensZuschussJaehrlich)}</li>
+                      <li><span className="font-medium">Gewinn netto (ESt/Soli):</span> {formatEuro(privatJahr.simulierterGewinnNetto)}</li>
+                      <li><span className="font-medium">Konsumwert (Abzug):</span> - {formatEuro(privatJahr.konsumNutzenwert)}</li>
+                      <li><span className="font-medium">Sparplan vor Konsumabzug:</span> {formatEuro(sparplanVorAbzug)}</li>
+                      <li><span className="font-medium">Konsumabzug in %:</span> {konsumAbzugQuote === null ? "—" : formatPercentSigned(konsumAbzugQuote)}</li>
+                      <li><span className="font-medium">Sparplan netto:</span> {formatEuro(privatJahr.sparplanNetto)}</li>
+                    </ul>
+                    <ul className="space-y-1 text-[11px] text-slate-700">
+                      <li><span className="font-medium">Entnahme GF-Gehalt:</span> {formatEuro(privatJahr.gehaltsEntnahme)}</li>
+                      <li><span className="font-medium">Entnahme Zinsen:</span> {formatEuro(privatJahr.zinsEntnahme)}</li>
+                      <li><span className="font-medium">Entnahme Sparplan-Defizit:</span> {formatEuro(privatJahr.entnahmeAusSparplanDefizit)}</li>
+                      <li><span className="font-medium">Entnahme stiller Gesellschafter:</span> {formatEuro(privatJahr.stillerGesellschafterEntnahme)}</li>
+                      <li><span className="font-medium">Entnahmen vor Steuer:</span> {formatEuro(privatJahr.entnahmenVorSteuern)}</li>
+                      <li><span className="font-medium">ETF-Verkauf:</span> {formatEuro(privatJahr.etfVerkauf)}</li>
+                    </ul>
+                    <ul className="space-y-1 text-[11px] text-slate-700">
+                      <li><span className="font-medium">Vorabpauschale-Steuer:</span> {formatEuro(privatJahr.vorabpauschalesteuer)}</li>
+                      <li><span className="font-medium">ETF-Verkaufssteuer:</span> {formatEuro(privatJahr.etfVerkaufssteuer)}</li>
+                      <li><span className="font-medium">Steuern gesamt:</span> {formatEuro(privatJahr.gesamtSteuer)}</li>
+                      <li><span className="font-medium">Anteil Vorabpauschale:</span> {vorabSteuerAnteil === null ? "—" : formatPercentSigned(vorabSteuerAnteil)}</li>
+                      <li><span className="font-medium">Anteil ETF-Verkaufssteuer:</span> {verkaufsSteuerAnteil === null ? "—" : formatPercentSigned(verkaufsSteuerAnteil)}</li>
+                      <li><span className="font-medium">Steuerquote auf ETF-Verkauf:</span> {steuerQuoteAufEtfVerkauf === null ? "—" : formatPercentSigned(steuerQuoteAufEtfVerkauf)}</li>
+                      <li><span className="font-medium">Haupttreiber Steuer:</span> {steuerTreiber}</li>
+                    </ul>
+                    <ul className="space-y-1 text-[11px] text-slate-700">
+                      <li><span className="font-medium">Gesamtwert Privat inkl. Konsum:</span> {formatEuro(privatJahr.gesamtwertMitKonsum)}</li>
+                      <li><span className="font-medium">Gesamtwert GmbH inkl. Konsum:</span> {gmbhJahr ? formatEuro(gmbhJahr.gesamtwertMitKonsum) : "—"}</li>
+                      <li className={jahrDifferenz !== null && jahrDifferenz >= 0 ? "text-green-700" : "text-red-700"}>
+                        <span className="font-medium">Differenz (GmbH - Privat):</span> {jahrDifferenz === null ? "—" : formatEuroSigned(jahrDifferenz)}
+                      </li>
+                      <li className={jahrDifferenzProzent !== null && jahrDifferenzProzent >= 0 ? "text-green-700" : "text-red-700"}>
+                        <span className="font-medium">Differenz in %:</span> {jahrDifferenzProzent === null ? "—" : formatPercentSigned(jahrDifferenzProzent)}
+                      </li>
+                    </ul>
+                  </div>
+                </details>
+              );
+            })}
           </div>
         </div>
         <div className={`mt-4 rounded-lg border p-3 ${differenzVergleich >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
