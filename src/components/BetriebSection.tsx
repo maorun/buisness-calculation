@@ -14,6 +14,11 @@ import {
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
 } from "@/lib/calculations/betrieb";
+import {
+  berechneGesamtvergleichKpi,
+  formatSignedEuro,
+  formatSignedPercent,
+} from "@/lib/calculations/gesamtvergleich";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
 
@@ -99,11 +104,12 @@ function SliderField({
 }
 
 export function BetriebSection() {
-  const { betrieb, setBetrieb, addBetriebskosten, updateBetriebskosten, removeBetriebskosten, getBetriebsErgebnisse } =
+  const { betrieb, ende, setBetrieb, addBetriebskosten, updateBetriebskosten, removeBetriebskosten, getBetriebsErgebnisse, getEndeErgebnisse } =
     useCalculatorStore();
   const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
   const ergebnisse = getBetriebsErgebnisse();
+  const endeErgebnisse = getEndeErgebnisse();
   const privatVergleich = React.useMemo(
     () => berechnePrivatVergleichErgebnis(betrieb),
     [betrieb]
@@ -234,6 +240,7 @@ export function BetriebSection() {
   } else if (differenzVergleich < 0) {
     gewinnerText = "Privat gewinnt";
   }
+  const gesamtvergleich = berechneGesamtvergleichKpi(betrieb, ende.laufzeitJahre, endeErgebnisse, ergebnisse);
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -294,6 +301,7 @@ export function BetriebSection() {
   const overlayProzent = kennzahlProzent === null
     ? "nicht berechenbar"
     : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+  const overlayGesamtProzent = formatSignedPercent(gesamtvergleich.vorteilProzent);
   const formatEuro = (value: number) => `${value.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`;
   const formatEuroSigned = (value: number) => `${value >= 0 ? "+" : "-"} ${Math.abs(value).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`;
   const formatPercentSigned = (value: number) =>
@@ -735,6 +743,15 @@ export function BetriebSection() {
                 ? `ab Jahr ${breakEvenJahr}`
                 : "innerhalb der gewählten Laufzeit nicht erreicht"}
           </p>
+          <div className="mt-3 border-t border-current/10 pt-3">
+            <p className="text-xs font-semibold text-slate-700">Gesamt-KPI inkl. Ende</p>
+            <p className={`text-xs mt-1 ${gesamtvergleich.vorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
+              Vorteilhaftigkeitskennzahl gesamt (Betrieb + Ende): {formatSignedEuro(gesamtvergleich.vorteil)} gegenüber Privat
+            </p>
+            <p className="text-xs text-slate-700 mt-1">
+              {gesamtvergleich.gewinnerText} · {overlayGesamtProzent} · Zeitraum {gesamtvergleich.zeitraumJahre} Jahre
+            </p>
+          </div>
         </div>
 
         <div className="mt-4">
@@ -912,12 +929,21 @@ export function BetriebSection() {
         </div>
       </div>
       <div className="fixed bottom-0 inset-x-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-        <div className="mx-auto max-w-4xl px-4 py-3">
-          <p className="text-xs text-slate-600">Vergleich Privat vs. GmbH</p>
-          <p className={`text-sm font-bold ${differenzVergleich >= 0 ? "text-green-800" : "text-orange-800"}`}>
-            {Math.abs(differenzVergleich).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € mehr in {overlayGewinner}
-          </p>
-          <p className="text-xs text-slate-700">{overlayProzent}</p>
+        <div className="mx-auto max-w-4xl px-4 py-3 space-y-2">
+          <div>
+            <p className="text-xs text-slate-600">Betriebsphase</p>
+            <p className={`text-sm font-bold ${differenzVergleich >= 0 ? "text-green-800" : "text-orange-800"}`}>
+              {Math.abs(differenzVergleich).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € mehr in {overlayGewinner}
+            </p>
+            <p className="text-xs text-slate-700">{overlayProzent}</p>
+          </div>
+          <div className="border-t border-slate-200 pt-2">
+            <p className="text-xs text-slate-600">Gesamtvergleich Betrieb + Ende</p>
+            <p className={`text-sm font-bold ${gesamtvergleich.vorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>
+              {formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat
+            </p>
+            <p className="text-xs text-slate-700">{overlayGesamtProzent}</p>
+          </div>
         </div>
       </div>
     </div>

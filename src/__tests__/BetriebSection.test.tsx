@@ -2,7 +2,7 @@
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { EndeSection } from "@/components/EndeSection";
+import { BetriebSection } from "@/components/BetriebSection";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import {
   berechneGesamtvergleichKpi,
@@ -10,7 +10,7 @@ import {
   formatSignedPercent,
 } from "@/lib/calculations/gesamtvergleich";
 
-function setStoreState(partialState?: Partial<ReturnType<typeof useCalculatorStore.getState>>) {
+function setStoreState() {
   useCalculatorStore.setState({
     gruendung: {
       kosten: [],
@@ -61,17 +61,16 @@ function setStoreState(partialState?: Partial<ReturnType<typeof useCalculatorSto
       zielnettoBereich1: 17000,
       zielnettoBereich2: 17000,
     },
-    ...partialState,
   });
 }
 
-describe("EndeSection", () => {
+describe("BetriebSection", () => {
   beforeEach(() => {
     localStorage.clear();
     setStoreState();
   });
 
-  it("shows the overall advantage KPI in the fixed summary bar", () => {
+  it("merges the overall Betrieb-und-Ende KPI into the existing decision area", () => {
     const state = useCalculatorStore.getState();
     const gesamtvergleich = berechneGesamtvergleichKpi(
       state.betrieb,
@@ -80,10 +79,12 @@ describe("EndeSection", () => {
       state.getBetriebsErgebnisse()
     );
 
-    render(<EndeSection />);
+    render(<BetriebSection />);
 
+    expect(screen.getByText("Entscheidungsfläche: Lohnt sich die GmbH?")).toBeTruthy();
+    expect(screen.getByText(/Vorteilhaftigkeitskennzahl gesamt \(Betrieb \+ Ende\):/)).toBeTruthy();
+    expect(screen.getByText(`Vorteilhaftigkeitskennzahl gesamt (Betrieb + Ende): ${formatSignedEuro(gesamtvergleich.vorteil)} gegenüber Privat`)).toBeTruthy();
+    expect(screen.getByText(new RegExp(`${gesamtvergleich.gewinnerText}.*${formatSignedPercent(gesamtvergleich.vorteilProzent).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`))).toBeTruthy();
     expect(screen.getByText("Gesamtvergleich Betrieb + Ende")).toBeTruthy();
-    expect(screen.getByText(`${formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat`)).toBeTruthy();
-    expect(screen.getByText(`Relativ: ${formatSignedPercent(gesamtvergleich.vorteilProzent)}`)).toBeTruthy();
   });
 });
