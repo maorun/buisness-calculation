@@ -33,8 +33,11 @@ export function berechneGesamtvergleichKpi(
   endeErgebnisse: JahresErgebnis[],
   betriebsErgebnisse: JahresErgebnis[]
 ): GesamtvergleichKpi {
-  const bereich1Jahre = betrieb.darlehen.endfaellig ? 1 : 0;
-  const zeitraumJahre = Math.max(1, Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + bereich1Jahre);
+  const endfaelligkeitsAbwicklungsjahre = betrieb.darlehen.endfaellig ? 1 : 0;
+  const zeitraumJahre = Math.max(
+    1,
+    Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
+  );
   const privatVergleich = berechnePrivatVergleichErgebnis({ ...betrieb, laufzeitJahre: zeitraumJahre });
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
     ? betriebsErgebnisse[betriebsErgebnisse.length - 1]
