@@ -144,7 +144,6 @@ export function EndeSection() {
   const privatGesamtwertBetriebUndEnde = privatVergleichGesamt.gesamtwertMitKonsum;
   const gesamtVorteil = gmbhGesamtwertBetriebUndEnde - privatGesamtwertBetriebUndEnde;
   const gewinnerGesamtText = gesamtVorteil > 0 ? "GmbH gewinnt" : gesamtVorteil < 0 ? "Privat gewinnt" : "Unentschieden";
-  const gesamtVorteilAbsolut = Math.abs(gesamtVorteil);
   const gesamtVorteilProzent = privatGesamtwertBetriebUndEnde !== 0
     ? (gesamtVorteil / privatGesamtwertBetriebUndEnde) * 100
     : null;
