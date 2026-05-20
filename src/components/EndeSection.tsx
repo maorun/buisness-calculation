@@ -15,9 +15,13 @@ import {
 } from "@/lib/calculations/ende";
 import {
   berechneBenefitsSteuerersparnis,
-  berechnePrivatVergleichErgebnis,
   DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
+import {
+  berechneGesamtvergleichKpi,
+  formatSignedEuro,
+  formatSignedPercent,
+} from "@/lib/calculations/gesamtvergleich";
 
 function InputField({
   label,
@@ -129,50 +133,40 @@ export function EndeSection() {
   const bereich2KonsumVorTilgung = bereich2Details?.konsumVorTilgung ?? (bereich2NettoGehalt + bereich2DarlehenZinsenNetto);
   const bereich2GesamtNetto = bereich2Ergebnisse[0]?.nettogewinn ?? (bereich2KonsumVorTilgung + bereich2FlexibleTilgung);
   const bereich2ZielDiff = bereich2GesamtNetto - zielnettoBereich2;
-  const betriebslaufzeitJahre = Math.max(0, betrieb.laufzeitJahre);
-  const endelaufzeitJahre = Math.max(0, ende.laufzeitJahre);
-  const bereich1Jahre = endfaellig ? 1 : 0;
-  const gesamtZeitraumJahre = Math.max(1, betriebslaufzeitJahre + endelaufzeitJahre + bereich1Jahre);
-  const privatVergleichGesamt = React.useMemo(
-    () => berechnePrivatVergleichErgebnis({ ...betrieb, laufzeitJahre: gesamtZeitraumJahre }),
-    [betrieb, gesamtZeitraumJahre]
-  );
-  const letzterEndeStand = ergebnisse.length > 0 ? ergebnisse[ergebnisse.length - 1] : undefined;
-  const letzterBetriebNettovermoegen = letzterBetriebsstand?.details.nettovermoegen ?? 0;
-  const gmbhBetriebKonsumwert = letzterBetriebsstand?.details.kumulierterKonsumwert ?? 0;
-  const gmbhGesamtwertBetriebUndEnde = (letzterEndeStand?.gesamtvermoegen ?? letzterBetriebNettovermoegen) + gmbhBetriebKonsumwert;
-  const privatGesamtwertBetriebUndEnde = privatVergleichGesamt.gesamtwertMitKonsum;
-  const gesamtVorteil = gmbhGesamtwertBetriebUndEnde - privatGesamtwertBetriebUndEnde;
-  const gewinnerGesamtText = gesamtVorteil > 0 ? "GmbH gewinnt" : gesamtVorteil < 0 ? "Privat gewinnt" : "Unentschieden";
+  const gesamtvergleich = berechneGesamtvergleichKpi(betrieb, ende.laufzeitJahre, ergebnisse, betriebsErgebnisse);
+  const overlayProzentText = formatSignedPercent(gesamtvergleich.vorteilProzent);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28 md:pb-32">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Ende / Auszahlungsphase</h2>
         <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV-Beitrag und Gesamtergebnis</p>
       </div>
 
-      <div className={`rounded-xl border p-4 md:p-6 ${gesamtVorteil >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
-        <h3 className={`font-semibold mb-1 ${gesamtVorteil >= 0 ? "text-green-900" : "text-orange-900"}`}>
+      <div className={`rounded-xl border p-4 md:p-6 ${gesamtvergleich.vorteil >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
+        <h3 className={`font-semibold mb-1 ${gesamtvergleich.vorteil >= 0 ? "text-green-900" : "text-orange-900"}`}>
           Top-KPI: GmbH-Vorteil gesamt (Betrieb + Ende)
-          <span className="sr-only">Aktueller Status: {gewinnerGesamtText}.</span>
+          <span className="sr-only">Aktueller Status: {gesamtvergleich.gewinnerText}.</span>
         </h3>
-        <p className={`text-sm font-bold ${gesamtVorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>{gewinnerGesamtText}</p>
-        <p className={`text-xs mt-1 ${gesamtVorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
-          Vorteilhaftigkeitskennzahl: {Math.abs(gesamtVorteil).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+        <p className={`text-sm font-bold ${gesamtvergleich.vorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>{gesamtvergleich.gewinnerText}</p>
+        <p className={`text-xs mt-1 ${gesamtvergleich.vorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
+          Vorteilhaftigkeitskennzahl: {formatSignedEuro(gesamtvergleich.vorteil)} gegenüber Privat
+        </p>
+        <p className="text-[11px] text-slate-600 mt-1">
+          Relativ: {overlayProzentText}
         </p>
         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
             <p className="font-semibold text-blue-800">Gesamtwert GmbH (Betrieb + Ende)</p>
-            <p className="text-blue-700 mt-1">{gmbhGesamtwertBetriebUndEnde.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</p>
+            <p className="text-blue-700 mt-1">{gesamtvergleich.gmbhGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</p>
           </div>
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
             <p className="font-semibold text-emerald-800">Gesamtwert Privat (gleicher Zeitraum)</p>
-            <p className="text-emerald-700 mt-1">{privatGesamtwertBetriebUndEnde.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</p>
+            <p className="text-emerald-700 mt-1">{gesamtvergleich.privatGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</p>
           </div>
         </div>
         <p className="text-[11px] text-slate-600 mt-3">
-          Zeitraum: {gesamtZeitraumJahre} Jahre. Vergleichswert Privat wird über den gleichen Gesamtzeitraum simuliert.
+          Zeitraum: {gesamtvergleich.zeitraumJahre} Jahre. Vergleichswert Privat wird über den gleichen Gesamtzeitraum simuliert.
           GmbH-Gesamtwert kombiniert Endvermögen aus der Ende-Phase mit dem kumulierten Betriebskonsumwert.
         </p>
       </div>
@@ -566,6 +560,25 @@ export function EndeSection() {
           <p><span className="font-medium">Darlehen (Zinsen):</span> Progressive Einkommensteuer (Marginalsteuersatz), Tilgungsanteil steuerfrei (§ 32d Abs. 2 Nr. 1b EStG)</p>
           <p><span className="font-medium">Teileinkünfteverfahren:</span> 60% des Betrags × persönlicher Steuersatz</p>
           <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt. Abgeltungssteuer gilt nur für Gewinnausschüttungen.</p>
+        </div>
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur shadow-[0_-6px_24px_rgba(15,23,42,0.08)]">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <p className="text-xs text-slate-600">Gesamtvergleich Betrieb + Ende</p>
+            <p className={`text-sm font-bold ${gesamtvergleich.vorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>
+              {formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat
+            </p>
+          </div>
+          <div className="text-right">
+            <p className={`text-xs font-semibold ${gesamtvergleich.vorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
+              {gesamtvergleich.gewinnerText}
+            </p>
+            <p className="text-xs text-slate-700">{overlayProzentText}</p>
+            <p className="text-[11px] text-slate-500">
+              GmbH {gesamtvergleich.gmbhGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € · Privat {gesamtvergleich.privatGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €
+            </p>
+          </div>
         </div>
       </div>
     </div>
