@@ -1,4 +1,4 @@
-const CACHE_NAME = "business-calculation-v1";
+const CACHE_NAME = "gmbh-kalkulator-v1";
 const OFFLINE_URL = "/offline";
 const PRECACHE_URLS = ["/", OFFLINE_URL, "/favicon.ico"];
 
@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
           caches
             .open(CACHE_NAME)
             .then((cache) => cache.put(event.request, copy))
-            .catch((error) => console.error("Failed to cache navigation request", error));
+            .catch((error) => console.error("Fehler beim Cachen der Navigationsanfrage", error));
           return response;
         })
         .catch(async () => {
@@ -71,7 +71,7 @@ self.addEventListener("fetch", (event) => {
           caches
             .open(CACHE_NAME)
             .then((cache) => cache.put(event.request, copy))
-            .catch((error) => console.error("Failed to cache asset request", error));
+            .catch((error) => console.error("Fehler beim Cachen der Asset-Anfrage", error));
           return response;
         })
         .catch(() => Response.error());
