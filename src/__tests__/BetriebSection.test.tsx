@@ -70,16 +70,17 @@ describe("BetriebSection", () => {
     setStoreState();
   });
 
-  it("shows Geldentwicklung im Betrieb with total money development (GmbH net change + Gesellschafter netto)", () => {
+  it("shows Geldentwicklung im Betrieb (Gesamt) for full runtime without Gesellschafter income", () => {
     render(<BetriebSection />);
 
-    expect(screen.getByText("Geldentwicklung im Betrieb (Jahr 1)")).toBeTruthy();
-    // Should NOT show the old misleading label
+    expect(screen.getByText("Geldentwicklung im Betrieb (Gesamt)")).toBeTruthy();
+    // Should NOT show the old labels
     expect(screen.queryByText("GmbH-Geldentwicklung (Jahr 1)")).toBeNull();
-    // The aria-label should reflect the overall Betrieb, not just the GmbH
+    expect(screen.queryByText("Geldentwicklung im Betrieb (Jahr 1)")).toBeNull();
+    // The aria-label should reflect the GmbH net asset direction
     const ariaEl =
-      screen.queryByLabelText("Gesamter Betrieb generiert Überschuss") ??
-      screen.queryByLabelText("Gesamter Betrieb generiert Fehlbetrag");
+      screen.queryByLabelText("GmbH-Nettovermögen ist gewachsen") ??
+      screen.queryByLabelText("GmbH-Nettovermögen ist geschrumpft");
     expect(ariaEl).not.toBeNull();
   });
 
