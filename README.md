@@ -8,6 +8,8 @@ Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft 
 
 ## Features
 
+- 📱 **PWA mit Offline-Unterstützung** (installierbar und mit Offline-Fallback-Seite)
+
 ### 📋 Gründung
 - Erfassung aller **einmaligen Gründungskosten** (z. B. Notar, Handelsregistereintrag, Stammkapital)
 - Automatische Berechnung der **Gesamtgründungskosten**
