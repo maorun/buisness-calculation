@@ -140,6 +140,11 @@ export function BetriebSection() {
   const gmbhNettoveraenderung = erstesJahrDetails
     ? (erstesJahrNettovermoegen - nettovermoegenStart)
     : 0;
+  // Total Betrieb money development = GmbH net asset change + Gesellschafter net income.
+  // This avoids the misleading picture where salary paid to the GF appears as a loss for
+  // the overall operation; instead we show whether the whole system (GmbH + Gesellschafter)
+  // generated positive or negative net value in the first year.
+  const gesamtBetriebGeldentwicklung = gmbhNettoveraenderung + gesellschafterNetto;
   const gmbhAnfangskapital = Math.max(0, betrieb.startkapital) + Math.max(0, betrieb.darlehen.betrag);
   const gmbhKumulierterEtfVerkauf = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.details.etfVerkauf ?? 0), 0);
   const gmbhVerbleibenderEtfWert = letztesJahrDetails?.etfWert
@@ -674,21 +679,21 @@ export function BetriebSection() {
               {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>
           </div>
-          <div className={`rounded-lg border p-3 ${gmbhNettoveraenderung >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
-            <p className={`text-xs font-medium ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
-              GmbH-Geldentwicklung (Jahr 1)
+          <div className={`rounded-lg border p-3 ${gesamtBetriebGeldentwicklung >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+            <p className={`text-xs font-medium ${gesamtBetriebGeldentwicklung >= 0 ? "text-green-700" : "text-red-700"}`}>
+              Geldentwicklung im Betrieb (Jahr 1)
             </p>
             <p
-              className={`mt-1 text-lg font-bold ${gmbhNettoveraenderung >= 0 ? "text-green-800" : "text-red-800"}`}
-              aria-label={gmbhNettoveraenderung >= 0 ? "Geld der GmbH wird mehr" : "Geld der GmbH wird weniger"}
+              className={`mt-1 text-lg font-bold ${gesamtBetriebGeldentwicklung >= 0 ? "text-green-800" : "text-red-800"}`}
+              aria-label={gesamtBetriebGeldentwicklung >= 0 ? "Gesamter Betrieb generiert Überschuss" : "Gesamter Betrieb generiert Fehlbetrag"}
             >
-              {gmbhNettoveraenderung >= 0 ? "▲ Mehr" : "▼ Weniger"}
+              {gesamtBetriebGeldentwicklung >= 0 ? "▲ Mehr" : "▼ Weniger"}
             </p>
-            <p className={`text-xs mt-1 ${gmbhNettoveraenderung >= 0 ? "text-green-700" : "text-red-700"}`}>
-              {Math.abs(gmbhNettoveraenderung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            <p className={`text-xs mt-1 ${gesamtBetriebGeldentwicklung >= 0 ? "text-green-700" : "text-red-700"}`}>
+              {Math.abs(gesamtBetriebGeldentwicklung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>
             <p className="text-xs text-slate-600 mt-1">
-              Vergleich: Nettovermögen Start {nettovermoegenStart.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € → Jahr 1 {erstesJahrNettovermoegen.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              GmbH-Nettovermögen: {gmbhNettoveraenderung >= 0 ? "+" : ""}{gmbhNettoveraenderung.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € · Gesellschafter netto: +{gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>
           </div>
         </div>

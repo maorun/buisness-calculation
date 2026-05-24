@@ -70,6 +70,19 @@ describe("BetriebSection", () => {
     setStoreState();
   });
 
+  it("shows Geldentwicklung im Betrieb with total money development (GmbH net change + Gesellschafter netto)", () => {
+    render(<BetriebSection />);
+
+    expect(screen.getByText("Geldentwicklung im Betrieb (Jahr 1)")).toBeTruthy();
+    // Should NOT show the old misleading label
+    expect(screen.queryByText("GmbH-Geldentwicklung (Jahr 1)")).toBeNull();
+    // The aria-label should reflect the overall Betrieb, not just the GmbH
+    const ariaEl =
+      screen.queryByLabelText("Gesamter Betrieb generiert Überschuss") ??
+      screen.queryByLabelText("Gesamter Betrieb generiert Fehlbetrag");
+    expect(ariaEl).not.toBeNull();
+  });
+
   it("merges the overall Betrieb-und-Ende KPI into the existing decision area", () => {
     const state = useCalculatorStore.getState();
     const gesamtvergleich = berechneGesamtvergleichKpi(
