@@ -37,7 +37,10 @@ self.addEventListener("fetch", (event) => {
       fetch(event.request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put(event.request, copy))
+            .catch((error) => console.error("Failed to cache navigation request", error));
           return response;
         })
         .catch(async () => {
@@ -65,7 +68,10 @@ self.addEventListener("fetch", (event) => {
           }
 
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put(event.request, copy))
+            .catch((error) => console.error("Failed to cache asset request", error));
           return response;
         })
         .catch(() => Response.error());
