@@ -70,6 +70,20 @@ describe("BetriebSection", () => {
     setStoreState();
   });
 
+  it("shows Geldentwicklung im Betrieb (Gesamt) for full runtime without Gesellschafter income", () => {
+    render(<BetriebSection />);
+
+    expect(screen.getByText("Geldentwicklung im Betrieb (Gesamt)")).toBeTruthy();
+    // Should NOT show the old labels
+    expect(screen.queryByText("GmbH-Geldentwicklung (Jahr 1)")).toBeNull();
+    expect(screen.queryByText("Geldentwicklung im Betrieb (Jahr 1)")).toBeNull();
+    // The aria-label should reflect the GmbH net asset direction
+    const ariaEl =
+      screen.queryByLabelText("GmbH-Nettovermögen ist gewachsen") ??
+      screen.queryByLabelText("GmbH-Nettovermögen ist geschrumpft");
+    expect(ariaEl).not.toBeNull();
+  });
+
   it("merges the overall Betrieb-und-Ende KPI into the existing decision area", () => {
     const state = useCalculatorStore.getState();
     const gesamtvergleich = berechneGesamtvergleichKpi(
