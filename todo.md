@@ -128,16 +128,16 @@ Allein aus dem Teilfreistellungs-Vorteil gewinnt die GmbH erst ab einem Startkap
 
 ---
 
-### ⚠️ Fehlender Parameter im Rechner: `anderesJaehrlichesPrivatEinkommen` (persönlicher Grenzsteuersatz)
+### ⚠️ Fehlender Parameter im Rechner: `persönlicherGrenzsteuersatz` (Steuersatz des Gesellschafters)
 
-Der aktuelle Privatvergleich berechnet die Einkommensteuer **immer ab 0 €** (ohne vorhandenes Einkommen). Das ist für Gesellschafter unrealistisch, die **bereits ein Anstellungsverhältnis oder andere Einkunftsquellen** haben.
+Der aktuelle Privatvergleich berechnet die Einkommensteuer **immer ab 0 €**, als hätte der Gesellschafter kein weiteres Einkommen. Für Gesellschafter mit Anstellung oder anderen Einkunftsquellen ist das unrealistisch – relevant ist nicht das Einkommen selbst, sondern der **persönliche Grenzsteuersatz**, der durch andere Einkünfte bereits aufgebaut ist. Das andere Einkommen fließt dabei nicht in den Vergleich ein.
 
 **Konkretes Szenario, das im Rechner derzeit nicht abgebildet werden kann:**
 
-> **Gesellschafter verdient 80.000 €/Jahr aus Anstellung** (bereits im 42 %-Bracket).  
+> **Gesellschafter ist bereits im 42 %-Bracket** (z. B. durch Anstellung – das konkrete Einkommen spielt keine Rolle im Vergleich).  
 > Die GmbH erzielt zusätzlich **50.000 €/Jahr** operativen Gewinn – kein Gehalt wird bezahlt.
 
-| | GmbH | Privat (bei persönlichem Grenzsteuersatz 42 %) |
+| | GmbH | Privat (Grenzsteuersatz 42 %) |
 |---|---|---|
 | Operativer Gewinn | 50.000 € | 50.000 € |
 | Steuer | 50.000 × 29,825 % = **14.913 €** | 50.000 × 42 % + Soli ≈ **22.050 €** |
@@ -156,11 +156,11 @@ Abzüglich Gründungskosten (~2.680 €) und laufende GmbH-Mehrkosten (~14.200 �
 
 #### Empfehlung für den Rechner
 
-Das Eingabefeld **`anderesJaehrlichesPrivatEinkommen`** (andere jährliche Einkünfte des Gesellschafters, z. B. aus Anstellung) ist der wichtigste fehlende Parameter für einen realistischen GmbH-vs.-Privat-Vergleich.
+Der fehlende Parameter ist **`persönlicherGrenzsteuersatz`** (in % – z. B. 42 für den 42 %-Bracket). Er gibt an, mit welchem Steuersatz der nächste Euro des GmbH-Gewinns privat versteuert werden würde – bedingt durch andere Einkünfte des Gesellschafters, die selbst nicht in den Vergleich einfließen.
 
-Mit diesem Feld:
-- Privatvergleich startet nicht mehr bei 0 €, sondern beim tatsächlichen persönlichen Grenzsteuersatz
+Mit diesem Parameter:
+- Der Privatvergleich berechnet die Steuer auf operative Gewinne mit dem tatsächlichen Grenzsteuersatz statt ab 0 €
 - GmbH schlägt privat schon bei moderatem operativem Gewinn (~50.000 €/Jahr) mit Minimalkapital (25.000 €) innerhalb von 10 Jahren
 - Der Rechner wird für den typischsten Anwendungsfall realistischer: Unternehmer/Freiberufler mit Haupteinkommen + GmbH als Investitionsvehikel
 
-**Umsetzung im Rechner:** Neues Konfigurationsfeld im Betrieb-Tab: „Sonstiges Jahreseinkommen des Gesellschafters (für Grenzsteuersatz-Berechnung im Privatvergleich)" – fließt nur in den Privatvergleich ein, nicht in die GmbH-Berechnung.
+**Umsetzung im Rechner:** Neues Konfigurationsfeld im Betrieb-Tab: „Persönlicher Grenzsteuersatz des Gesellschafters (z. B. 42 % bei Anstellung)" – fließt nur in den Privatvergleich ein, nicht in die GmbH-Berechnung.
