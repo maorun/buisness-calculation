@@ -128,7 +128,7 @@ Allein aus dem Teilfreistellungs-Vorteil gewinnt die GmbH erst ab einem Startkap
 
 ---
 
-### ⚠️ Fehlender Parameter im Rechner: `anderesEinkommen` (persönlicher Grenzsteuersatz)
+### ⚠️ Fehlender Parameter im Rechner: `anderesJaehrlichesPrivatEinkommen` (persönlicher Grenzsteuersatz)
 
 Der aktuelle Privatvergleich berechnet die Einkommensteuer **immer ab 0 €** (ohne vorhandenes Einkommen). Das ist für Gesellschafter unrealistisch, die **bereits ein Anstellungsverhältnis oder andere Einkunftsquellen** haben.
 
