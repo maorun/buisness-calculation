@@ -74,6 +74,8 @@ export interface BetriebState {
   jaehrlicherCashZuschuss: number;
   /** Annual simulated operating profit during Betrieb phase. */
   simulierterGewinn?: number;
+  /** Personal marginal tax rate of the shareholder (in %, e.g. 42). Used only for private comparison of operating profit. */
+  persoenlicherGrenzsteuersatz?: number;
   /** Annual overall target net amount during Betrieb phase. */
   zielnettoGesellschafter?: number;
   /** Annual gross managing-director salary treated as operating expense. */

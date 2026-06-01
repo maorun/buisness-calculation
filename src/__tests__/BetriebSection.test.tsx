@@ -19,6 +19,7 @@ function setStoreState() {
       startkapital: 12500,
       jaehrlicherCashZuschuss: 2400,
       simulierterGewinn: 0,
+      persoenlicherGrenzsteuersatz: undefined,
       zielnettoGesellschafter: 36000,
       geschaeftsfuehrergehalt: 17000,
       darlehen: {
@@ -82,6 +83,11 @@ describe("BetriebSection", () => {
       screen.queryByLabelText("GmbH-Nettovermögen ist gewachsen") ??
       screen.queryByLabelText("GmbH-Nettovermögen ist geschrumpft");
     expect(ariaEl).not.toBeNull();
+  });
+
+  it("renders the personal marginal tax rate input for private comparison", () => {
+    render(<BetriebSection />);
+    expect(screen.getByText("Persönlicher Grenzsteuersatz des Gesellschafters (%)")).toBeTruthy();
   });
 
   it("merges the overall Betrieb-und-Ende KPI into the existing decision area", () => {

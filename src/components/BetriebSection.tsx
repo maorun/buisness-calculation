@@ -348,6 +348,20 @@ export function BetriebSection() {
             hint="Wird zuerst mit Betriebsausgaben verrechnet; ein verbleibender Überschuss wird nach Steuern als zusätzlicher ETF-Zufluss angelegt."
           />
           <InputField
+            label="Persönlicher Grenzsteuersatz des Gesellschafters (%)"
+            value={betrieb.persoenlicherGrenzsteuersatz ?? ""}
+            onChange={(v) =>
+              setBetrieb({
+                persoenlicherGrenzsteuersatz:
+                  v.trim() === ""
+                    ? undefined
+                    : Math.max(0, Math.min(100, parseFloat(v) || 0)),
+              })
+            }
+            suffix="%"
+            hint="Optional für den Privatvergleich: Versteuert den simulierten Gewinn mit dem persönlichen Grenzsteuersatz zzgl. Soli (z. B. 42 % bei Anstellung)."
+          />
+          <InputField
             label="Laufzeit (Jahre)"
             value={betrieb.laufzeitJahre}
             onChange={(v) => setBetrieb({ laufzeitJahre: parseInt(v) || 1 })}
