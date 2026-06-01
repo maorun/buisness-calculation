@@ -144,6 +144,23 @@ export function berechneDarlehensZinsenSteuerBetrieb(
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
 
+function berechneSimulierterGewinnSteuerPrivat(
+  simulierterGewinn: number,
+  persoenlicherGrenzsteuersatz?: number
+): { einkommensteuer: number; soli: number } {
+  const gewinn = Math.max(0, simulierterGewinn);
+  const grenztarif = Math.max(0, Math.min(100, persoenlicherGrenzsteuersatz ?? 0));
+  if (grenztarif > 0) {
+    const einkommensteuer = gewinn * (grenztarif / 100);
+    const soli = einkommensteuer * SOLI;
+    return { einkommensteuer, soli };
+  }
+
+  const einkommensteuer = berechneEinkommensteuerBetrieb(gewinn);
+  const soli = berechneSoliBetrieb(einkommensteuer);
+  return { einkommensteuer, soli };
+}
+
 type EtfLotTyp = "startkapital" | "darlehen" | "zuzahlung" | "stillerGesellschafter";
 
 interface EtfLot {
@@ -554,8 +571,8 @@ function simulierePrivatVergleich(state: BetriebState): {
 
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
     const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
-    const simulierterGewinnSteuer = berechneEinkommensteuerBetrieb(simulierterGewinn);
-    const simulierterGewinnSoli = berechneSoliBetrieb(simulierterGewinnSteuer);
+    const { einkommensteuer: simulierterGewinnSteuer, soli: simulierterGewinnSoli } =
+      berechneSimulierterGewinnSteuerPrivat(simulierterGewinn, state.persoenlicherGrenzsteuersatz);
     const simulierterGewinnNetto = simulierterGewinn - simulierterGewinnSteuer - simulierterGewinnSoli;
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(

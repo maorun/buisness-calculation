@@ -838,6 +838,7 @@ describe("berechnePrivatVergleichErgebnis", () => {
     startkapital: 10000,
     jaehrlicherCashZuschuss: 0,
     simulierterGewinn: 0,
+    persoenlicherGrenzsteuersatz: undefined,
     geschaeftsfuehrergehalt: 0,
     darlehen: { betrag: 5000, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: true },
     etfRendite: 0,
@@ -938,6 +939,23 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(result.verbleibenderEtfWert).toBeCloseTo(expectedNet);
   });
 
+  it("applies personal marginal tax rate plus soli to simulated private profit when configured", () => {
+    const result = berechnePrivatVergleichErgebnis({
+      ...basisState,
+      startkapital: 0,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      simulierterGewinn: 1000,
+      persoenlicherGrenzsteuersatz: 42,
+      laufzeitJahre: 1,
+    });
+
+    const expectedSteuer = 1000 * 0.42;
+    const expectedSoli = expectedSteuer * 0.055;
+    const expectedNet = 1000 - expectedSteuer - expectedSoli;
+    expect(result.kumulierterSparplan).toBeCloseTo(expectedNet);
+    expect(result.verbleibenderEtfWert).toBeCloseTo(expectedNet);
+  });
+
   it("uses different Teilfreistellung and tax rates for privat vs GmbH in yearly Vorabpauschale tax", () => {
     const state: BetriebState = {
       ...basisState,
@@ -963,6 +981,7 @@ describe("berechnePrivatVergleichZeitreihe", () => {
     startkapital: 10000,
     jaehrlicherCashZuschuss: 0,
     simulierterGewinn: 0,
+    persoenlicherGrenzsteuersatz: undefined,
     geschaeftsfuehrergehalt: 0,
     darlehen: { betrag: 5000, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: true },
     etfRendite: 0,
