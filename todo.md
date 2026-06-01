@@ -93,3 +93,74 @@ Erbringt der Gesellschafter persönlich Dienstleistungen für die GmbH (z. B. IT
 
 - **Relevanz:** Weitere steueroptimierte Mittelentnahme ohne Abgeltungsteuer auf Ausschüttungen.
 - **Umsetzung im Rechner:** Zusätzliche Kostenposition "Beratungshonorar/Dienstleistung GF" in den Betriebskosten.
+
+---
+
+## 🔍 Analyse: Wann schlägt GmbH (ohne Gehalt) privat innerhalb von 10 Jahren?
+
+> **Rahmenbedingung:** Kein GF-Gehalt – der Gesellschafter erhält ausschließlich Sachleistungen (Firmenhandy, Tankgutschein etc.). Betrachtet wird die Betriebsphase von 10 Jahren; die Laufzeit, die laufenden Kosten und der operative Gewinn werden nicht pauschal erhöht oder gesenkt.
+
+---
+
+### Warum die GmbH strukturell besser abschneiden kann
+
+Die GmbH hat gegenüber einem privaten ETF-Sparplan zwei fundamentale Steuervorteile:
+
+| Merkmal | GmbH | Privat |
+|---|---|---|
+| **Teilfreistellung Aktien-ETF** | 80 % steuerfrei → effektiv ~5,97 % auf Gewinne | 30 % steuerfrei → effektiv ~18,46 % auf Gewinne |
+| **Steuersatz auf operative Überschüsse** | KSt + GewSt = **29,825 % (Flat)** | Progressiv bis **45 %** (+ Soli) |
+
+Solange der operative Gewinn gering ist und der Gesellschafter privat einen **niedrigen persönlichen Grenzsteuersatz** hat (unter 29,825 %), gewinnt privat. Erst wenn der Grenzsteuersatz die GmbH-Flat-Rate übersteigt, kippt das Bild.
+
+**Breakeven-Gewinn (kein Gehalt, kein sonstiges Einkommen):**  
+Ab einem simulierten Jahresgewinn von ca. **≥ 105.000 €** übersteigt der persönliche Einkommensteuersatz dauerhaft den GmbH-Satz von 29,825 %. Die GmbH beginnt dann jährlich mehr netto zu behalten:
+
+- GmbH: 105.000 € × (1 − 29,825 %) = **73.634 €** netto für Reinvestition
+- Privat: 105.000 € − ESt − Soli ≈ **69.400 €** netto für Reinvestition
+- **Jährlicher Vorteil GmbH: ~4.200 €** – über 10 Jahre mit Zinseszins ≈ **60.000 €**
+- Abzüglich Gründungs- und Mehrkosten (~16.000 €) → **Nettovorteil ~44.000 € nach 10 Jahren**
+
+Startkapital hierfür: nur **25.000 € Stammkapital** (Mindestkapital GmbH).
+
+**Reines ETF-Vehikel ohne operativen Gewinn:**  
+Allein aus dem Teilfreistellungs-Vorteil gewinnt die GmbH erst ab einem Startkapital von ca. **≥ 600.000 €**, da die jährliche Einsparung bei der Vorabpauschale (~0,20 % des NAV) erst dann die laufenden Mehrkosten (Buchhaltung, IHK, Bankgebühren ~1.420 €/Jahr) übersteigt.
+
+---
+
+### ⚠️ Fehlender Parameter im Rechner: `anderesEinkommen` (persönlicher Grenzsteuersatz)
+
+Der aktuelle Privatvergleich berechnet die Einkommensteuer **immer ab 0 €** (ohne vorhandenes Einkommen). Das ist für Gesellschafter unrealistisch, die **bereits ein Anstellungsverhältnis oder andere Einkunftsquellen** haben.
+
+**Konkretes Szenario, das im Rechner derzeit nicht abgebildet werden kann:**
+
+> **Gesellschafter verdient 80.000 €/Jahr aus Anstellung** (bereits im 42 %-Bracket).  
+> Die GmbH erzielt zusätzlich **50.000 €/Jahr** operativen Gewinn – kein Gehalt wird bezahlt.
+
+| | GmbH | Privat (bei persönlichem Grenzsteuersatz 42 %) |
+|---|---|---|
+| Operativer Gewinn | 50.000 € | 50.000 € |
+| Steuer | 50.000 × 29,825 % = **14.913 €** | 50.000 × 42 % + Soli ≈ **22.050 €** |
+| Netto nach Steuern | **35.088 €** | **27.950 €** |
+| Jährlicher Vorteil GmbH | **+7.138 €/Jahr** | – |
+
+Über 10 Jahre bei 7 % ETF-Rendite (Zinseszins auf die jährlichen Zuflüsse):
+
+```
+FV = 7.138 × [(1,07^10 − 1) / 0,07] ≈ 7.138 × 13,82 ≈ 98.630 €
+```
+
+Abzüglich Gründungskosten (~2.680 €) und laufende GmbH-Mehrkosten (~14.200 €):
+
+**Nettovorteil GmbH nach 10 Jahren: ≈ 81.750 € – bereits ab 25.000 € Stammkapital!**
+
+#### Empfehlung für den Rechner
+
+Das Eingabefeld **`anderesJaehrlichesPrivatEinkommen`** (andere jährliche Einkünfte des Gesellschafters, z. B. aus Anstellung) ist der wichtigste fehlende Parameter für einen realistischen GmbH-vs.-Privat-Vergleich.
+
+Mit diesem Feld:
+- Privatvergleich startet nicht mehr bei 0 €, sondern beim tatsächlichen persönlichen Grenzsteuersatz
+- GmbH schlägt privat schon bei moderatem operativem Gewinn (~50.000 €/Jahr) mit Minimalkapital (25.000 €) innerhalb von 10 Jahren
+- Der Rechner wird für den typischsten Anwendungsfall realistischer: Unternehmer/Freiberufler mit Haupteinkommen + GmbH als Investitionsvehikel
+
+**Umsetzung im Rechner:** Neues Konfigurationsfeld im Betrieb-Tab: „Sonstiges Jahreseinkommen des Gesellschafters (für Grenzsteuersatz-Berechnung im Privatvergleich)" – fließt nur in den Privatvergleich ein, nicht in die GmbH-Berechnung.
