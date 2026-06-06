@@ -13,7 +13,9 @@ import {
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
+  berechneAlleInvestitionsErgebnisse,
 } from "@/lib/calculations/betrieb";
+import { InvestitionsPosition } from "@/lib/types";
 import {
   berechneGesamtvergleichKpi,
   formatSignedEuro,
@@ -104,7 +106,7 @@ function SliderField({
 }
 
 export function BetriebSection() {
-  const { betrieb, ende, setBetrieb, addBetriebskosten, updateBetriebskosten, removeBetriebskosten, getBetriebsErgebnisse, getEndeErgebnisse } =
+  const { betrieb, ende, setBetrieb, addBetriebskosten, updateBetriebskosten, removeBetriebskosten, addInvestition, updateInvestition, removeInvestition, getBetriebsErgebnisse, getEndeErgebnisse } =
     useCalculatorStore();
   const teilfreistellungGmbh = (TEILFREISTELLUNG_AKTIEN_GMBH * 100).toLocaleString("de-DE");
 
@@ -298,7 +300,19 @@ export function BetriebSection() {
 
   const firmenhandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
 
+  const investitionsErgebnisse = React.useMemo(
+    () => berechneAlleInvestitionsErgebnisse(betrieb.investitionen, betrieb.laufzeitJahre),
+    [betrieb.investitionen, betrieb.laufzeitJahre]
+  );
+
   const overlayGewinner = differenzVergleich >= 0 ? "GmbH" : "Privat";
+
+  const [newInvestition, setNewInvestition] = React.useState<Omit<InvestitionsPosition, "id">>({
+    bezeichnung: "",
+    kapital: 0,
+    gewinnVerlustProJahr: 0,
+    wertsteigerung: 0,
+  });
   const overlayProzent = kennzahlProzent === null
     ? "nicht berechenbar"
     : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
@@ -623,6 +637,135 @@ export function BetriebSection() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Investitionsbereich */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Investitionsbereich (GmbH)</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Zusätzliche Investitionen der GmbH mit jährlichem Gewinn/Verlust und Kapitalwertsteigerung.
+          Die Ergebnisse werden auf Basis der Laufzeit aus „Kapital &amp; ETF-Investment" berechnet ({betrieb.laufzeitJahre} Jahre).
+        </p>
+
+        {/* Existing investments */}
+        {(betrieb.investitionen ?? []).length > 0 && (
+          <div className="space-y-4 mb-6">
+            {(betrieb.investitionen ?? []).map((inv) => {
+              const ergebnis = investitionsErgebnisse.find((e) => e.id === inv.id);
+              return (
+                <div key={inv.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-slate-800">{inv.bezeichnung || "Investition"}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeInvestition(inv.id)}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Entfernen
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <InputField
+                      label="Bezeichnung"
+                      value={inv.bezeichnung}
+                      onChange={(v) => updateInvestition(inv.id, { bezeichnung: v })}
+                      type="text"
+                    />
+                    <InputField
+                      label="Kapital (€)"
+                      value={inv.kapital}
+                      onChange={(v) => updateInvestition(inv.id, { kapital: parseFloat(v) || 0 })}
+                      suffix="€"
+                    />
+                    <InputField
+                      label="Gewinn/Verlust (€/Jahr)"
+                      value={inv.gewinnVerlustProJahr}
+                      onChange={(v) => updateInvestition(inv.id, { gewinnVerlustProJahr: parseFloat(v) || 0 })}
+                      suffix="€/Jahr"
+                    />
+                    <InputField
+                      label="Wertsteigerung (% p.a.)"
+                      value={inv.wertsteigerung}
+                      onChange={(v) => updateInvestition(inv.id, { wertsteigerung: parseFloat(v) || 0 })}
+                      suffix="% p.a."
+                    />
+                  </div>
+                  {ergebnis && (
+                    <div className={`rounded-md border p-2 text-xs ${ergebnis.gesamtGewinnVerlust >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+                      <p className={`font-semibold mb-1 ${ergebnis.gesamtGewinnVerlust >= 0 ? "text-green-800" : "text-red-800"}`}>
+                        Ergebnis nach {betrieb.laufzeitJahre} Jahren
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                        <p className="text-slate-700">Endkapital: <span className="font-semibold">{ergebnis.endkapital.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                        <p className="text-slate-700">Kum. Gewinn/Verlust: <span className={`font-semibold ${ergebnis.gesamtGewinnVerlust >= 0 ? "text-green-700" : "text-red-700"}`}>{ergebnis.gesamtGewinnVerlust >= 0 ? "+" : ""}{ergebnis.gesamtGewinnVerlust.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+                        <p className="text-slate-700">Gesamtrendite: <span className={`font-semibold ${ergebnis.gesamtRendite >= 0 ? "text-green-700" : "text-red-700"}`}>{ergebnis.gesamtRendite >= 0 ? "+" : ""}{ergebnis.gesamtRendite.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %</span></p>
+                      </div>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-slate-600">Jahreswerte anzeigen</summary>
+                        <div className="mt-1 space-y-0.5 max-h-40 overflow-y-auto">
+                          {ergebnis.jahreswerte.map((jw) => (
+                            <div key={jw.jahr} className="flex gap-4 text-[11px] text-slate-700">
+                              <span className="w-12">Jahr {jw.jahr}</span>
+                              <span>Kapital: {jw.kapital.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>
+                              <span>Kum. G/V: {jw.kumulierterGewinnVerlust >= 0 ? "+" : ""}{jw.kumulierterGewinnVerlust.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Add new investment form */}
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <p className="text-xs font-semibold text-blue-800 mb-3">Neue Investition hinzufügen</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <InputField
+              label="Bezeichnung"
+              value={newInvestition.bezeichnung}
+              onChange={(v) => setNewInvestition((prev) => ({ ...prev, bezeichnung: v }))}
+              type="text"
+            />
+            <InputField
+              label="Kapital (€)"
+              value={newInvestition.kapital}
+              onChange={(v) => setNewInvestition((prev) => ({ ...prev, kapital: parseFloat(v) || 0 }))}
+              suffix="€"
+              hint="Eingesetztes Kapital der Investition"
+            />
+            <InputField
+              label="Gewinn/Verlust (€/Jahr)"
+              value={newInvestition.gewinnVerlustProJahr}
+              onChange={(v) => setNewInvestition((prev) => ({ ...prev, gewinnVerlustProJahr: parseFloat(v) || 0 }))}
+              suffix="€/Jahr"
+              hint="Positiv = Gewinn, negativ = Verlust"
+            />
+            <InputField
+              label="Wertsteigerung (% p.a.)"
+              value={newInvestition.wertsteigerung}
+              onChange={(v) => setNewInvestition((prev) => ({ ...prev, wertsteigerung: parseFloat(v) || 0 }))}
+              suffix="% p.a."
+              hint="Jährliche Wertsteigerung des eingesetzten Kapitals"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (newInvestition.bezeichnung.trim() || newInvestition.kapital > 0) {
+                addInvestition(newInvestition);
+                setNewInvestition({ bezeichnung: "", kapital: 0, gewinnVerlustProJahr: 0, wertsteigerung: 0 });
+              }
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            disabled={!newInvestition.bezeichnung.trim() && newInvestition.kapital === 0}
+          >
+            Investition hinzufügen
+          </button>
+        </div>
       </div>
 
       {/* Operating costs */}
