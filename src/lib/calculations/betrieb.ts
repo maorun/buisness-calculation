@@ -721,6 +721,11 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   let kumulierterCashZuschuss = 0;
   let kumulierterKonsumwert = 0;
 
+  // Track investment capital values (compound growth per year)
+  const investitionen = state.investitionen ?? [];
+  let investitionsKapitalWerte: number[] = investitionen.map((inv) => Math.max(0, inv.kapital));
+  let investitionsKumulierterGewinnVerlust = 0;
+
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = sumEtfWert(etfLots);
     const etfLotsNachWachstum = wachseEtfLots(etfLots, state.etfRendite);
@@ -903,9 +908,17 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
 
     offenesDarlehen = darlehenBetragEnde;
 
-    // Gesamtvermögen = total gross assets (ETF + cash reserve).
+    // Gesamtvermögen = total gross assets (ETF + cash reserve + investments).
     // The outstanding loan is a liability shown separately; net worth = assets - offenesDarlehen.
-    const gesamtvermoegen = etfWert + cashReserve;
+    // Update investment capital values for this year (compound growth + cumulative cash flow)
+    investitionsKapitalWerte = investitionsKapitalWerte.map((kap, i) =>
+      kap * (1 + (investitionen[i]?.wertsteigerung ?? 0) / 100)
+    );
+    const investitionsKapitalGesamt = investitionsKapitalWerte.reduce((sum, k) => sum + k, 0);
+    const investitionsGewinnVerlustProJahr = investitionen.reduce((sum, inv) => sum + inv.gewinnVerlustProJahr, 0);
+    investitionsKumulierterGewinnVerlust += investitionsGewinnVerlustProJahr;
+
+    const gesamtvermoegen = etfWert + cashReserve + investitionsKapitalGesamt;
     const nettovermoegen = gesamtvermoegen - offenesDarlehen;
     const haftungskapitalEingeflossen = Math.max(0, state.startkapital) + kumulierterCashZuschuss;
 
@@ -972,6 +985,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         nettovermoegen,
         stillerGesellschafterKosten,
         stillerGesellschafterEinlage: sumEtfWertNachTyp(etfLots, "stillerGesellschafter"),
+        investitionsKapitalGesamt,
+        investitionsGewinnVerlustProJahr,
+        investitionsKumulierterGewinnVerlust,
       },
       betriebskostenPosten,
     });

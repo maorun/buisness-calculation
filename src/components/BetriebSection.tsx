@@ -42,6 +42,7 @@ function InputField({
   suffix,
   hint,
   max,
+  min,
 }: {
   label: string;
   value: number | string;
@@ -50,7 +51,17 @@ function InputField({
   suffix?: string;
   hint?: string;
   max?: number;
+  min?: number;
 }) {
+  const [localStr, setLocalStr] = React.useState<string>(String(value));
+  const [focused, setFocused] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!focused) {
+      setLocalStr(String(value));
+    }
+  }, [value, focused]);
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -58,9 +69,18 @@ function InputField({
         <input
           type={type}
           className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={value}
+          value={localStr}
           max={max}
-          onChange={(e) => onChange(e.target.value)}
+          min={min}
+          onChange={(e) => {
+            setLocalStr(e.target.value);
+            onChange(e.target.value);
+          }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setFocused(false);
+            setLocalStr(String(value));
+          }}
         />
         {suffix && <span className="text-sm text-slate-600 whitespace-nowrap">{suffix}</span>}
       </div>
@@ -653,7 +673,7 @@ export function BetriebSection() {
             {(betrieb.investitionen ?? []).map((inv) => {
               const ergebnis = investitionsErgebnisse.find((e) => e.id === inv.id);
               return (
-                <div key={inv.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div key={inv.id} className="rounded-lg border border-slate-200 bg-white p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-slate-800">{inv.bezeichnung || "Investition"}</span>
                     <button
@@ -680,7 +700,7 @@ export function BetriebSection() {
                     <InputField
                       label="Gewinn/Verlust (€/Jahr)"
                       value={inv.gewinnVerlustProJahr}
-                      onChange={(v) => updateInvestition(inv.id, { gewinnVerlustProJahr: parseFloat(v) || 0 })}
+                      onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) updateInvestition(inv.id, { gewinnVerlustProJahr: n }); }}
                       suffix="€/Jahr"
                     />
                     <InputField
@@ -721,7 +741,7 @@ export function BetriebSection() {
         )}
 
         {/* Add new investment form */}
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <div className="rounded-lg border border-blue-200 bg-white p-3">
           <p className="text-xs font-semibold text-blue-800 mb-3">Neue Investition hinzufügen</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <InputField
@@ -740,7 +760,7 @@ export function BetriebSection() {
             <InputField
               label="Gewinn/Verlust (€/Jahr)"
               value={newInvestition.gewinnVerlustProJahr}
-              onChange={(v) => setNewInvestition((prev) => ({ ...prev, gewinnVerlustProJahr: parseFloat(v) || 0 }))}
+              onChange={(v) => { const n = parseFloat(v); setNewInvestition((prev) => ({ ...prev, gewinnVerlustProJahr: isNaN(n) ? prev.gewinnVerlustProJahr : n })); }}
               suffix="€/Jahr"
               hint="Positiv = Gewinn, negativ = Verlust"
             />
