@@ -352,6 +352,14 @@ export function BetriebSection() {
       {/* Startkapital & ETF */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-4">Kapital & ETF-Investment</h3>
+        <div className="mb-4">
+          <InputField
+            label="Laufzeit (Jahre)"
+            value={betrieb.laufzeitJahre}
+            onChange={(v) => setBetrieb({ laufzeitJahre: parseInt(v) || 1 })}
+            suffix="Jahre"
+          />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InputField
             label="Startkapital (€)"
@@ -394,12 +402,6 @@ export function BetriebSection() {
             }
             suffix="%"
             hint="Optional für den Privatvergleich: Versteuert den simulierten Gewinn mit dem persönlichen Grenzsteuersatz zzgl. Soli (z. B. 42 % bei Anstellung)."
-          />
-          <InputField
-            label="Laufzeit (Jahre)"
-            value={betrieb.laufzeitJahre}
-            onChange={(v) => setBetrieb({ laufzeitJahre: parseInt(v) || 1 })}
-            suffix="Jahre"
           />
         </div>
       </div>
@@ -702,6 +704,7 @@ export function BetriebSection() {
                       value={inv.gewinnVerlustProJahr}
                       onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) updateInvestition(inv.id, { gewinnVerlustProJahr: n }); }}
                       suffix="€/Jahr"
+                      type="text"
                     />
                     <InputField
                       label="Wertsteigerung (% p.a.)"
@@ -763,6 +766,7 @@ export function BetriebSection() {
               onChange={(v) => { const n = parseFloat(v); setNewInvestition((prev) => ({ ...prev, gewinnVerlustProJahr: isNaN(n) ? prev.gewinnVerlustProJahr : n })); }}
               suffix="€/Jahr"
               hint="Positiv = Gewinn, negativ = Verlust"
+              type="text"
             />
             <InputField
               label="Wertsteigerung (% p.a.)"
