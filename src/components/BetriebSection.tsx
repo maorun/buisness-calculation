@@ -55,12 +55,12 @@ function InputField({
 }) {
   const [localStr, setLocalStr] = React.useState<string>(String(value));
   const [focused, setFocused] = React.useState(false);
+  const [prevValue, setPrevValue] = React.useState(value);
 
-  React.useEffect(() => {
-    if (!focused) {
-      setLocalStr(String(value));
-    }
-  }, [value, focused]);
+  if (!focused && prevValue !== value) {
+    setPrevValue(value);
+    setLocalStr(String(value));
+  }
 
   return (
     <div>
@@ -349,17 +349,20 @@ export function BetriebSection() {
         <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und freien Überschüssen sowie separatem Cash-Puffer</p>
       </div>
 
+      {/* Laufzeit */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-4">Laufzeit</h3>
+        <InputField
+          label="Laufzeit (Jahre)"
+          value={betrieb.laufzeitJahre}
+          onChange={(v) => setBetrieb({ laufzeitJahre: parseInt(v) || 1 })}
+          suffix="Jahre"
+        />
+      </div>
+
       {/* Startkapital & ETF */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-4">Kapital & ETF-Investment</h3>
-        <div className="mb-4">
-          <InputField
-            label="Laufzeit (Jahre)"
-            value={betrieb.laufzeitJahre}
-            onChange={(v) => setBetrieb({ laufzeitJahre: parseInt(v) || 1 })}
-            suffix="Jahre"
-          />
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InputField
             label="Startkapital (€)"
@@ -666,7 +669,7 @@ export function BetriebSection() {
         <h3 className="font-semibold text-gray-700 mb-2">Investitionsbereich (GmbH)</h3>
         <p className="text-xs text-slate-500 mb-4">
           Zusätzliche Investitionen der GmbH mit jährlichem Gewinn/Verlust und Kapitalwertsteigerung.
-          Die Ergebnisse werden auf Basis der Laufzeit aus „Kapital &amp; ETF-Investment" berechnet ({betrieb.laufzeitJahre} Jahre).
+          Die Ergebnisse werden auf Basis der oben konfigurierten Laufzeit berechnet ({betrieb.laufzeitJahre} Jahre).
         </p>
 
         {/* Existing investments */}
