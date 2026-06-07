@@ -1,4 +1,4 @@
-import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig, StillerGesellschafterConfig } from "../types";
+import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig, StillerGesellschafterConfig, InvestitionsPosition, InvestitionsErgebnis } from "../types";
 
 // 2024 Basiszins for Vorabpauschale calculation
 export const BASISZINS_2024 = 0.0229;
@@ -721,6 +721,11 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   let kumulierterCashZuschuss = 0;
   let kumulierterKonsumwert = 0;
 
+  // Track investment capital values (compound growth per year)
+  const investitionen = state.investitionen ?? [];
+  let investitionsKapitalWerte: number[] = investitionen.map((inv) => Math.max(0, inv.kapital));
+  let investitionsKumulierterGewinnVerlust = 0;
+
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = sumEtfWert(etfLots);
     const etfLotsNachWachstum = wachseEtfLots(etfLots, state.etfRendite);
@@ -903,9 +908,17 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
 
     offenesDarlehen = darlehenBetragEnde;
 
-    // Gesamtvermögen = total gross assets (ETF + cash reserve).
+    // Gesamtvermögen = total gross assets (ETF + cash reserve + investments).
     // The outstanding loan is a liability shown separately; net worth = assets - offenesDarlehen.
-    const gesamtvermoegen = etfWert + cashReserve;
+    // Update investment capital values for this year (compound growth + cumulative cash flow)
+    investitionsKapitalWerte = investitionsKapitalWerte.map((kap, i) =>
+      kap * (1 + (investitionen[i]?.wertsteigerung ?? 0) / 100)
+    );
+    const investitionsKapitalGesamt = investitionsKapitalWerte.reduce((sum, k) => sum + k, 0);
+    const investitionsGewinnVerlustProJahr = investitionen.reduce((sum, inv) => sum + inv.gewinnVerlustProJahr, 0);
+    investitionsKumulierterGewinnVerlust += investitionsGewinnVerlustProJahr;
+
+    const gesamtvermoegen = etfWert + cashReserve + investitionsKapitalGesamt;
     const nettovermoegen = gesamtvermoegen - offenesDarlehen;
     const haftungskapitalEingeflossen = Math.max(0, state.startkapital) + kumulierterCashZuschuss;
 
@@ -972,10 +985,62 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         nettovermoegen,
         stillerGesellschafterKosten,
         stillerGesellschafterEinlage: sumEtfWertNachTyp(etfLots, "stillerGesellschafter"),
+        investitionsKapitalGesamt,
+        investitionsGewinnVerlustProJahr,
+        investitionsKumulierterGewinnVerlust,
       },
       betriebskostenPosten,
     });
   }
 
   return ergebnisse;
+}
+
+/**
+ * Calculate annual results for a single investment position.
+ *
+ * In each year the capital grows by `wertsteigerung` percent and the
+ * `gewinnVerlustProJahr` cash flow is received (or paid out if negative).
+ * The cumulative profit/loss includes both the annual cash flows and the
+ * capital appreciation.
+ */
+export function berechneInvestitionsErgebnis(
+  investition: InvestitionsPosition,
+  laufzeitJahre: number
+): InvestitionsErgebnis {
+  const jahreswerte: InvestitionsErgebnis["jahreswerte"] = [];
+  let kapital = Math.max(0, investition.kapital);
+  let kumulierterGewinnVerlust = 0;
+  const anfangskapital = kapital;
+
+  for (let jahr = 1; jahr <= laufzeitJahre; jahr++) {
+    kapital = kapital * (1 + investition.wertsteigerung / 100);
+    kumulierterGewinnVerlust += investition.gewinnVerlustProJahr;
+    jahreswerte.push({ jahr, kapital, kumulierterGewinnVerlust });
+  }
+
+  const endkapital = kapital;
+  const kapitalzuwachs = endkapital - anfangskapital;
+  const gesamtGewinnVerlust = kapitalzuwachs + kumulierterGewinnVerlust;
+  const gesamtRendite = anfangskapital > 0 ? (gesamtGewinnVerlust / anfangskapital) * 100 : 0;
+
+  return {
+    id: investition.id,
+    bezeichnung: investition.bezeichnung,
+    endkapital,
+    gesamtGewinnVerlust,
+    gesamtRendite,
+    jahreswerte,
+  };
+}
+
+/**
+ * Calculate results for all investment positions.
+ */
+export function berechneAlleInvestitionsErgebnisse(
+  investitionen: InvestitionsPosition[] | undefined,
+  laufzeitJahre: number
+): InvestitionsErgebnis[] {
+  if (!investitionen || investitionen.length === 0) return [];
+  return investitionen.map((inv) => berechneInvestitionsErgebnis(inv, laufzeitJahre));
 }

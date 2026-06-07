@@ -68,6 +68,26 @@ export interface FirmenhandyConfig {
   erstanschaffungJahr?: number;
 }
 
+export interface InvestitionsPosition {
+  id: string;
+  bezeichnung: string;
+  /** Initial capital invested (€). */
+  kapital: number;
+  /** Annual profit (positive) or loss (negative) in €. */
+  gewinnVerlustProJahr: number;
+  /** Annual capital appreciation rate in % (e.g. 3 means 3 % p.a.). */
+  wertsteigerung: number;
+}
+
+export interface InvestitionsErgebnis {
+  id: string;
+  bezeichnung: string;
+  endkapital: number;
+  gesamtGewinnVerlust: number;
+  gesamtRendite: number;
+  jahreswerte: { jahr: number; kapital: number; kumulierterGewinnVerlust: number }[];
+}
+
 export interface BetriebState {
   startkapital: number;
   /** Annual cash inflow that stays liquid and is not invested into ETFs. */
@@ -89,6 +109,8 @@ export interface BetriebState {
   firmenhandy?: FirmenhandyConfig;
   /** Configuration for the silent partner (stiller Gesellschafter). */
   stillerGesellschafter?: StillerGesellschafterConfig;
+  /** List of additional investments in the GmbH. */
+  investitionen?: InvestitionsPosition[];
 }
 
 export interface EndeState {

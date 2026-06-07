@@ -85,6 +85,15 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       ))}
+      {d.investitionsGewinnVerlustProJahr !== 0 && d.investitionsGewinnVerlustProJahr !== undefined && (
+        <BilanzRow
+          label={`${d.investitionsGewinnVerlustProJahr >= 0 ? "+" : "−"} Investitions-Gewinn/Verlust`}
+          value={d.investitionsGewinnVerlustProJahr}
+          prefix={d.investitionsGewinnVerlustProJahr >= 0 ? "+" : "−"}
+          colorClass={d.investitionsGewinnVerlustProJahr >= 0 ? "text-green-700" : "text-red-600"}
+          indent
+        />
+      )}
       {d.jaehrlicheZinsen > 0 && (
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
@@ -166,6 +175,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       {d.cashReserve > 0 && (
         <BilanzRow label="Cash-Reserve" value={d.cashReserve} prefix="+" colorClass="text-blue-700" bold indent />
       )}
+      {d.investitionsKapitalGesamt > 0 && (
+        <BilanzRow label="Investitionskapital (GmbH)" value={d.investitionsKapitalGesamt} prefix="+" colorClass="text-blue-700" bold indent />
+      )}
 
       {(d.offenesDarlehen > 0 || d.haftungskapitalEingeflossen > 0) && (
         <>
@@ -188,7 +200,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       />
 
       {/* ── Weitere Infos ─────────────────────────────── */}
-      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0) && (
+      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0 || d.investitionsKumulierterGewinnVerlust !== 0) && (
         <>
           <SectionHeader label="Weitere Infos" />
           {d.theoretischerEtfErtrag > 0 && (
@@ -199,6 +211,15 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           )}
           {d.aufgelaufeneZinsen > 0 && (
             <BilanzRow label="Aufgelaufene Zinsen (endfällig, kumuliert)" value={d.aufgelaufeneZinsen} colorClass="text-amber-600" indent />
+          )}
+          {d.investitionsKumulierterGewinnVerlust !== 0 && d.investitionsKumulierterGewinnVerlust !== undefined && (
+            <BilanzRow
+              label="Kum. Investitions-Gewinn/Verlust"
+              value={d.investitionsKumulierterGewinnVerlust}
+              prefix={d.investitionsKumulierterGewinnVerlust >= 0 ? "+" : "−"}
+              colorClass={d.investitionsKumulierterGewinnVerlust >= 0 ? "text-green-700" : "text-red-600"}
+              indent
+            />
           )}
         </>
       )}

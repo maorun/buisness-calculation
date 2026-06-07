@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition } from "@/lib/types";
+import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
 import { berechneBetriebsErgebnisse, DEFAULT_FIRMENHANDY_CONFIG, DEFAULT_STILLER_GESELLSCHAFTER_CONFIG } from "@/lib/calculations/betrieb";
 import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
 import { berechneGesamtkosten } from "@/lib/calculations/gruendung";
@@ -84,6 +84,10 @@ interface CalculatorStore extends CalculatorState {
   updateBetriebskosten: (id: string, position: Partial<KostenPosition>) => void;
   removeBetriebskosten: (id: string) => void;
 
+  addInvestition: (position: Omit<InvestitionsPosition, "id">) => void;
+  updateInvestition: (id: string, position: Partial<InvestitionsPosition>) => void;
+  removeInvestition: (id: string) => void;
+
   // Derived getters
   getGruendungsGesamtkosten: () => number;
   getBetriebsErgebnisse: () => JahresErgebnis[];
@@ -153,6 +157,32 @@ export const useCalculatorStore = create<CalculatorStore>()(
       betrieb: {
         ...state.betrieb,
         kosten: state.betrieb.kosten.filter((k) => k.id !== id),
+      },
+    })),
+
+  addInvestition: (position) =>
+    set((state) => ({
+      betrieb: {
+        ...state.betrieb,
+        investitionen: [...(state.betrieb.investitionen ?? []), { ...position, id: generateId() }],
+      },
+    })),
+
+  updateInvestition: (id, position) =>
+    set((state) => ({
+      betrieb: {
+        ...state.betrieb,
+        investitionen: (state.betrieb.investitionen ?? []).map((inv) =>
+          inv.id === id ? { ...inv, ...position } : inv
+        ),
+      },
+    })),
+
+  removeInvestition: (id) =>
+    set((state) => ({
+      betrieb: {
+        ...state.betrieb,
+        investitionen: (state.betrieb.investitionen ?? []).filter((inv) => inv.id !== id),
       },
     })),
 
