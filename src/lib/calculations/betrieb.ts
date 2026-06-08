@@ -725,6 +725,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
   const investitionen = state.investitionen ?? [];
   let investitionsKapitalWerte: number[] = investitionen.map((inv) => Math.max(0, inv.kapital));
   let investitionsKumulierterGewinnVerlust = 0;
+  // Track remaining loan balances for each investment
+  let investitionsKreditRestschuldWerte: number[] = investitionen.map((inv) => Math.max(0, inv.kredit ?? 0));
+  let investitionsKumulierterNettoCashflow = 0;
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
     const etfWertVorjahrEnd = sumEtfWert(etfLots);
@@ -918,8 +921,27 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const investitionsGewinnVerlustProJahr = investitionen.reduce((sum, inv) => sum + inv.gewinnVerlustProJahr, 0);
     investitionsKumulierterGewinnVerlust += investitionsGewinnVerlustProJahr;
 
+    // Compute per-investment loan cashflow: interest, repayment, remaining balance
+    let investitionsZinsaufwandProJahr = 0;
+    let investitionsTilgungProJahr = 0;
+    investitionsKreditRestschuldWerte = investitionsKreditRestschuldWerte.map((restschuld, i) => {
+      const inv = investitionen[i];
+      if (!inv || restschuld <= 0) return 0;
+      const zinssatz = Math.max(0, inv.zinssatz ?? 0);
+      const tilgung = Math.max(0, inv.tilgungsrateJaehrlich ?? 0);
+      const zinsaufwand = restschuld * (zinssatz / 100);
+      const tatsaechlicheTilgung = Math.min(tilgung, restschuld);
+      investitionsZinsaufwandProJahr += zinsaufwand;
+      investitionsTilgungProJahr += tatsaechlicheTilgung;
+      return Math.max(0, restschuld - tatsaechlicheTilgung);
+    });
+    const investitionsKreditRestschuld = investitionsKreditRestschuldWerte.reduce((sum, r) => sum + r, 0);
+    // Net cashflow from investments = annual profit/loss - interest - repayment
+    const investitionsNettoCashflowProJahr = investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - investitionsTilgungProJahr;
+    investitionsKumulierterNettoCashflow += investitionsNettoCashflowProJahr;
+
     const gesamtvermoegen = etfWert + cashReserve + investitionsKapitalGesamt;
-    const nettovermoegen = gesamtvermoegen - offenesDarlehen;
+    const nettovermoegen = gesamtvermoegen - offenesDarlehen - investitionsKreditRestschuld;
     const haftungskapitalEingeflossen = Math.max(0, state.startkapital) + kumulierterCashZuschuss;
 
     ergebnisse.push({
@@ -988,6 +1010,11 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         investitionsKapitalGesamt,
         investitionsGewinnVerlustProJahr,
         investitionsKumulierterGewinnVerlust,
+        investitionsZinsaufwandProJahr,
+        investitionsTilgungProJahr,
+        investitionsNettoCashflowProJahr,
+        investitionsKumulierterNettoCashflow,
+        investitionsKreditRestschuld,
       },
       betriebskostenPosten,
     });
@@ -1012,11 +1039,21 @@ export function berechneInvestitionsErgebnis(
   let kapital = Math.max(0, investition.kapital);
   let kumulierterGewinnVerlust = 0;
   const anfangskapital = kapital;
+  const kredit = Math.max(0, investition.kredit ?? 0);
+  const zinssatz = Math.max(0, investition.zinssatz ?? 0);
+  const tilgungsrate = Math.max(0, investition.tilgungsrateJaehrlich ?? 0);
+  let restschuld = kredit;
+  let kumulierterNettoCashflow = 0;
 
   for (let jahr = 1; jahr <= laufzeitJahre; jahr++) {
     kapital = kapital * (1 + investition.wertsteigerung / 100);
     kumulierterGewinnVerlust += investition.gewinnVerlustProJahr;
-    jahreswerte.push({ jahr, kapital, kumulierterGewinnVerlust });
+    const zinsaufwand = restschuld * (zinssatz / 100);
+    const tilgung = Math.min(tilgungsrate, restschuld);
+    restschuld = Math.max(0, restschuld - tilgung);
+    const nettoCashflow = investition.gewinnVerlustProJahr - zinsaufwand - tilgung;
+    kumulierterNettoCashflow += nettoCashflow;
+    jahreswerte.push({ jahr, kapital, kumulierterGewinnVerlust, zinsaufwand, tilgung, restschuld, nettoCashflow, kumulierterNettoCashflow });
   }
 
   const endkapital = kapital;

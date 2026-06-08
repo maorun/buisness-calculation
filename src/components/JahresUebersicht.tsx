@@ -94,6 +94,22 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       )}
+      {d.investitionsZinsaufwandProJahr > 0 && (
+        <BilanzRow label="− Zinsen auf Investitionskredite" value={d.investitionsZinsaufwandProJahr} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.investitionsTilgungProJahr > 0 && (
+        <BilanzRow label="− Tilgung Investitionskredite" value={d.investitionsTilgungProJahr} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {(d.investitionsZinsaufwandProJahr > 0 || d.investitionsTilgungProJahr > 0) && d.investitionsNettoCashflowProJahr !== undefined && d.investitionsNettoCashflowProJahr !== 0 && (
+        <BilanzRow
+          label={`= Investitions-Cashflow (netto)`}
+          value={d.investitionsNettoCashflowProJahr}
+          prefix={d.investitionsNettoCashflowProJahr >= 0 ? "+" : "−"}
+          colorClass={d.investitionsNettoCashflowProJahr >= 0 ? "text-teal-700" : "text-red-600"}
+          bold
+          indent
+        />
+      )}
       {d.jaehrlicheZinsen > 0 && (
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
@@ -179,7 +195,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Investitionskapital (GmbH)" value={d.investitionsKapitalGesamt} prefix="+" colorClass="text-blue-700" bold indent />
       )}
 
-      {(d.offenesDarlehen > 0 || d.haftungskapitalEingeflossen > 0) && (
+      {(d.offenesDarlehen > 0 || d.haftungskapitalEingeflossen > 0 || d.investitionsKreditRestschuld > 0) && (
         <>
           <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
           {d.haftungskapitalEingeflossen > 0 && (
@@ -187,6 +203,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           )}
           {d.offenesDarlehen > 0 && (
             <BilanzRow label="Offenes Darlehen (Verbindlichkeit)" value={d.offenesDarlehen} prefix="−" colorClass="text-gray-600" indent />
+          )}
+          {d.investitionsKreditRestschuld > 0 && (
+            <BilanzRow label="Investitionskredite (Restschuld)" value={d.investitionsKreditRestschuld} prefix="−" colorClass="text-gray-600" indent />
           )}
         </>
       )}
@@ -200,7 +219,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       />
 
       {/* ── Weitere Infos ─────────────────────────────── */}
-      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0 || d.investitionsKumulierterGewinnVerlust !== 0) && (
+      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0 || d.investitionsKumulierterGewinnVerlust !== 0 || d.investitionsKumulierterNettoCashflow !== 0) && (
         <>
           <SectionHeader label="Weitere Infos" />
           {d.theoretischerEtfErtrag > 0 && (
@@ -218,6 +237,15 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
               value={d.investitionsKumulierterGewinnVerlust}
               prefix={d.investitionsKumulierterGewinnVerlust >= 0 ? "+" : "−"}
               colorClass={d.investitionsKumulierterGewinnVerlust >= 0 ? "text-green-700" : "text-red-600"}
+              indent
+            />
+          )}
+          {d.investitionsKumulierterNettoCashflow !== 0 && d.investitionsKumulierterNettoCashflow !== undefined && (
+            <BilanzRow
+              label="Kum. Investitions-Netto-Cashflow (nach Zins & Tilgung)"
+              value={d.investitionsKumulierterNettoCashflow}
+              prefix={d.investitionsKumulierterNettoCashflow >= 0 ? "+" : "−"}
+              colorClass={d.investitionsKumulierterNettoCashflow >= 0 ? "text-teal-700" : "text-red-600"}
               indent
             />
           )}
