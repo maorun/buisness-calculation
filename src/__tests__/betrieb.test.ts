@@ -1017,6 +1017,30 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(result.verbleibenderEtfWert).toBeCloseTo(expectedNet);
   });
 
+  it("includes investment cashflow and net assets in the private comparison", () => {
+    const result = berechnePrivatVergleichErgebnis({
+      ...basisState,
+      startkapital: 10000,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      laufzeitJahre: 1,
+      investitionen: [{
+        id: "1",
+        bezeichnung: "Privatinvestment",
+        kapital: 5000,
+        gewinnVerlustProJahr: -1000,
+        wertsteigerung: 0,
+        kredit: 0,
+        zinssatz: 0,
+        tilgungsrateJaehrlich: 0,
+      }],
+    });
+
+    expect(result.kumulierterSparplan).toBeCloseTo(-1000);
+    expect(result.kumulierterEtfVerkauf).toBeCloseTo(1000);
+    expect(result.investitionsNettovermoegen).toBeCloseTo(5000);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(15000);
+  });
+
   it("uses different Teilfreistellung and tax rates for privat vs GmbH in yearly Vorabpauschale tax", () => {
     const state: BetriebState = {
       ...basisState,

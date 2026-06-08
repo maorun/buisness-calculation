@@ -174,6 +174,7 @@ export interface PrivatVergleichErgebnis {
   kumulierterEtfVerkauf: number;
   verbleibenderEtfWert: number;
   endwert: number;
+  investitionsNettovermoegen: number;
   kumulierterKonsumwert: number;
   gesamtwertMitKonsum: number;
   kumulierteSteuern: number;
@@ -202,8 +203,26 @@ export interface PrivatVergleichJahreswert {
   kumulierterEtfVerkauf: number;
   verbleibenderEtfWert: number;
   endwert: number;
+  investitionsNettovermoegen: number;
   kumulierterKonsumwert: number;
   gesamtwertMitKonsum: number;
+}
+
+export interface InvestitionsZusammenfassungJahreswert {
+  jahr: number;
+  kapitalGesamt: number;
+  kreditRestschuld: number;
+  nettovermoegen: number;
+  nettoCashflow: number;
+  kumulierterNettoCashflow: number;
+}
+
+export interface InvestitionsZusammenfassung {
+  kapitalGesamt: number;
+  kreditRestschuld: number;
+  nettovermoegen: number;
+  kumulierterNettoCashflow: number;
+  jahreswerte: InvestitionsZusammenfassungJahreswert[];
 }
 
 /**
@@ -554,9 +573,11 @@ function simulierePrivatVergleich(state: BetriebState): {
   let kumulierteEntnahmen = 0;
   let kumulierterSparplan = 0;
   let kumulierterKonsumwert = 0;
+  const investitionsZusammenfassung = berechneInvestitionsZusammenfassung(state.investitionen, state.laufzeitJahre);
   const jahreswerte: PrivatVergleichJahreswert[] = [];
 
   for (let jahr = 1; jahr <= state.laufzeitJahre; jahr++) {
+    const investitionsJahreswert = investitionsZusammenfassung.jahreswerte[jahr - 1];
     const etfWertVorjahrEnde = sumEtfWert(etfLots);
     const etfLotsNachWachstum = wachseEtfLots(etfLots, state.etfRendite);
     const etfWertNachWachstum = sumEtfWert(etfLotsNachWachstum);
@@ -580,7 +601,9 @@ function simulierePrivatVergleich(state: BetriebState): {
       state.benefits,
       state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
     );
-    const sparplanNetto = jaehrlicherCashZuschuss + simulierterGewinnNetto + darlehensZuschussJaehrlich - konsumNutzenwert;
+    const investitionsNettoCashflow = investitionsJahreswert?.nettoCashflow ?? 0;
+    const sparplanNetto =
+      jaehrlicherCashZuschuss + simulierterGewinnNetto + darlehensZuschussJaehrlich + investitionsNettoCashflow - konsumNutzenwert;
     kumulierterSparplan += sparplanNetto;
     kumulierterKonsumwert += konsumNutzenwert;
 
@@ -644,6 +667,7 @@ function simulierePrivatVergleich(state: BetriebState): {
 
     const verbleibenderEtfWertJahr = sumEtfWert(etfLots);
     const endwertJahr = kumulierterEtfVerkauf + verbleibenderEtfWertJahr;
+    const investitionsNettovermoegenJahr = investitionsJahreswert?.nettovermoegen ?? 0;
     jahreswerte.push({
       jahr,
       jaehrlicherCashZuschuss,
@@ -663,14 +687,16 @@ function simulierePrivatVergleich(state: BetriebState): {
       kumulierterEtfVerkauf,
       verbleibenderEtfWert: verbleibenderEtfWertJahr,
       endwert: endwertJahr,
+      investitionsNettovermoegen: investitionsNettovermoegenJahr,
       kumulierterKonsumwert,
-      gesamtwertMitKonsum: endwertJahr + kumulierterKonsumwert,
+      gesamtwertMitKonsum: endwertJahr + investitionsNettovermoegenJahr + kumulierterKonsumwert,
     });
   }
 
   const verbleibenderEtfWert = sumEtfWert(etfLots);
   const endwert = kumulierterEtfVerkauf + verbleibenderEtfWert;
-  const gesamtwertMitKonsum = endwert + kumulierterKonsumwert;
+  const investitionsNettovermoegen = investitionsZusammenfassung.nettovermoegen;
+  const gesamtwertMitKonsum = endwert + investitionsNettovermoegen + kumulierterKonsumwert;
   const kumulierteSteuern = kumulierteVorabpauschalesteuer + kumulierteEtfVerkaufssteuer;
 
   return {
@@ -679,6 +705,7 @@ function simulierePrivatVergleich(state: BetriebState): {
       kumulierterEtfVerkauf,
       verbleibenderEtfWert,
       endwert,
+      investitionsNettovermoegen,
       kumulierterKonsumwert,
       gesamtwertMitKonsum,
       kumulierteSteuern,
@@ -1081,4 +1108,42 @@ export function berechneAlleInvestitionsErgebnisse(
 ): InvestitionsErgebnis[] {
   if (!investitionen || investitionen.length === 0) return [];
   return investitionen.map((inv) => berechneInvestitionsErgebnis(inv, laufzeitJahre));
+}
+
+export function berechneInvestitionsZusammenfassung(
+  investitionen: InvestitionsPosition[] | undefined,
+  laufzeitJahre: number
+): InvestitionsZusammenfassung {
+  const ergebnisse = berechneAlleInvestitionsErgebnisse(investitionen, laufzeitJahre);
+  const jahreswerte: InvestitionsZusammenfassungJahreswert[] = Array.from(
+    { length: Math.max(0, laufzeitJahre) },
+    (_, index) => {
+      const jahr = index + 1;
+      const kapitalGesamt = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.jahreswerte[index]?.kapital ?? 0), 0);
+      const kreditRestschuld = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.jahreswerte[index]?.restschuld ?? 0), 0);
+      const nettoCashflow = ergebnisse.reduce((sum, ergebnis) => sum + (ergebnis.jahreswerte[index]?.nettoCashflow ?? 0), 0);
+      const kumulierterNettoCashflow = ergebnisse.reduce(
+        (sum, ergebnis) => sum + (ergebnis.jahreswerte[index]?.kumulierterNettoCashflow ?? 0),
+        0
+      );
+
+      return {
+        jahr,
+        kapitalGesamt,
+        kreditRestschuld,
+        nettovermoegen: kapitalGesamt - kreditRestschuld,
+        nettoCashflow,
+        kumulierterNettoCashflow,
+      };
+    }
+  );
+  const letztesJahr = jahreswerte[jahreswerte.length - 1];
+
+  return {
+    kapitalGesamt: letztesJahr?.kapitalGesamt ?? 0,
+    kreditRestschuld: letztesJahr?.kreditRestschuld ?? 0,
+    nettovermoegen: letztesJahr?.nettovermoegen ?? 0,
+    kumulierterNettoCashflow: letztesJahr?.kumulierterNettoCashflow ?? 0,
+    jahreswerte,
+  };
 }

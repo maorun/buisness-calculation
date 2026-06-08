@@ -86,4 +86,76 @@ describe("EndeSection", () => {
     expect(screen.getByText(`${formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat`)).toBeTruthy();
     expect(screen.getByText(`Relativ: ${formatSignedPercent(gesamtvergleich.vorteilProzent)}`)).toBeTruthy();
   });
+
+  it("keeps investments in the overall comparison on both GmbH and private sides", () => {
+    setStoreState({
+      betrieb: {
+        startkapital: 0,
+        jaehrlicherCashZuschuss: 0,
+        simulierterGewinn: 0,
+        zielnettoGesellschafter: 0,
+        geschaeftsfuehrergehalt: 0,
+        darlehen: {
+          betrag: 0,
+          zinssatz: 0,
+          monatlicherZuschuss: 0,
+          endfaellig: false,
+        },
+        etfRendite: 0,
+        laufzeitJahre: 1,
+        kosten: [],
+        benefits: {
+          tankgutschein: 0,
+          strategieessen: 0,
+          bav: 0,
+        },
+        firmenhandy: {
+          aktiv: false,
+          anschaffungskosten: 1000,
+          restwertQuote: 0.1,
+          ersatzzyklusJahre: 3,
+          erstanschaffungJahr: 1,
+        },
+        stillerGesellschafter: {
+          aktiv: false,
+          typ: "typisch",
+          einlage: 0,
+          gewinnbeteiligungProzent: 0,
+          zinssatz: 0,
+        },
+        investitionen: [{
+          id: "inv-1",
+          bezeichnung: "Immobilie",
+          kapital: 10000,
+          gewinnVerlustProJahr: 0,
+          wertsteigerung: 0,
+          kredit: 0,
+          zinssatz: 0,
+          tilgungsrateJaehrlich: 0,
+        }],
+      },
+      ende: {
+        geschaeftsfuehrergehalt: 0,
+        stammkapitalErhoehungEtf: 0,
+        gehaltBereich1: 0,
+        teiltilgungBereich1: 0,
+        gewinnausschuettung: 0,
+        tilgungsrate: 0,
+        laufzeitJahre: 1,
+        zielnettoBereich1: 0,
+        zielnettoBereich2: 0,
+      },
+    });
+    const state = useCalculatorStore.getState();
+    const gesamtvergleich = berechneGesamtvergleichKpi(
+      state.betrieb,
+      state.ende.laufzeitJahre,
+      state.getEndeErgebnisse(),
+      state.getBetriebsErgebnisse()
+    );
+
+    expect(gesamtvergleich.gmbhGesamtwert).toBeCloseTo(10000);
+    expect(gesamtvergleich.privatGesamtwert).toBeCloseTo(10000);
+    expect(gesamtvergleich.vorteil).toBeCloseTo(0);
+  });
 });
