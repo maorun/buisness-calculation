@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { GruendungSection } from "@/components/GruendungSection";
 import { BetriebSection } from "@/components/BetriebSection";
 import { EndeSection } from "@/components/EndeSection";
+import { useCalculatorStore } from "@/store/calculatorStore";
 
 type Tab = "gruendung" | "betrieb" | "ende";
 
@@ -15,21 +16,62 @@ const tabs: { id: Tab; label: string }[] = [
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("gruendung");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
+  const { gruendung, betrieb, ende } = useCalculatorStore((state) => ({
+    gruendung: state.gruendung,
+    betrieb: state.betrieb,
+    ende: state.ende,
+  }));
+
+  const handleCopyParameters = async () => {
+    const payload = {
+      gruendung,
+      betrieb,
+      ende,
+    };
+    const text = JSON.stringify(payload, null, 2);
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus("success");
+    } catch {
+      setCopyStatus("error");
+    }
+
+    setTimeout(() => setCopyStatus("idle"), 2500);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div
-            aria-hidden="true"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-800"
-          >
-            BC
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              aria-hidden="true"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-800"
+            >
+              BC
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">GmbH-Kalkulator</h1>
+              <p className="text-xs text-slate-600">Vermögensaufbau via GmbH</p>
+            </div>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">GmbH-Kalkulator</h1>
-            <p className="text-xs text-slate-600">Vermögensaufbau via GmbH</p>
+            <button
+              type="button"
+              onClick={handleCopyParameters}
+              className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
+            >
+              Parameter kopieren
+            </button>
+            {copyStatus === "success" && (
+              <p className="mt-1 text-[11px] text-green-700 text-right">In Zwischenablage kopiert.</p>
+            )}
+            {copyStatus === "error" && (
+              <p className="mt-1 text-[11px] text-red-700 text-right">Kopieren fehlgeschlagen.</p>
+            )}
           </div>
         </div>
       </header>
