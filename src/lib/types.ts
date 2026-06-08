@@ -77,6 +77,12 @@ export interface InvestitionsPosition {
   gewinnVerlustProJahr: number;
   /** Annual capital appreciation rate in % (e.g. 3 means 3 % p.a.). */
   wertsteigerung: number;
+  /** Loan amount taken to finance this investment (€). Optional. */
+  kredit?: number;
+  /** Annual interest rate on the investment loan (%, e.g. 3 means 3 % p.a.). */
+  zinssatz?: number;
+  /** Annual principal repayment on the investment loan (€). */
+  tilgungsrateJaehrlich?: number;
 }
 
 export interface InvestitionsErgebnis {
@@ -85,7 +91,16 @@ export interface InvestitionsErgebnis {
   endkapital: number;
   gesamtGewinnVerlust: number;
   gesamtRendite: number;
-  jahreswerte: { jahr: number; kapital: number; kumulierterGewinnVerlust: number }[];
+  jahreswerte: {
+    jahr: number;
+    kapital: number;
+    kumulierterGewinnVerlust: number;
+    zinsaufwand: number;
+    tilgung: number;
+    restschuld: number;
+    nettoCashflow: number;
+    kumulierterNettoCashflow: number;
+  }[];
 }
 
 export interface BetriebState {

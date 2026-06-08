@@ -332,6 +332,9 @@ export function BetriebSection() {
     kapital: 0,
     gewinnVerlustProJahr: 0,
     wertsteigerung: 0,
+    kredit: 0,
+    zinssatz: 0,
+    tilgungsrateJaehrlich: 0,
   });
   const overlayProzent = kennzahlProzent === null
     ? "nicht berechenbar"
@@ -715,6 +718,27 @@ export function BetriebSection() {
                       onChange={(v) => updateInvestition(inv.id, { wertsteigerung: parseFloat(v) || 0 })}
                       suffix="% p.a."
                     />
+                    <InputField
+                      label="Kredit (€)"
+                      value={inv.kredit ?? 0}
+                      onChange={(v) => updateInvestition(inv.id, { kredit: parseFloat(v) || 0 })}
+                      suffix="€"
+                      hint="Fremdfinanzierter Anteil der Investition"
+                    />
+                    <InputField
+                      label="Zinssatz (% p.a.)"
+                      value={inv.zinssatz ?? 0}
+                      onChange={(v) => updateInvestition(inv.id, { zinssatz: parseFloat(v) || 0 })}
+                      suffix="% p.a."
+                      hint="Zinssatz auf den Investitionskredit"
+                    />
+                    <InputField
+                      label="Tilgung (€/Jahr)"
+                      value={inv.tilgungsrateJaehrlich ?? 0}
+                      onChange={(v) => updateInvestition(inv.id, { tilgungsrateJaehrlich: parseFloat(v) || 0 })}
+                      suffix="€/Jahr"
+                      hint="Jährliche Kredittilgung"
+                    />
                   </div>
                   {ergebnis && (
                     <div className={`rounded-md border p-2 text-xs ${ergebnis.gesamtGewinnVerlust >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
@@ -730,10 +754,14 @@ export function BetriebSection() {
                         <summary className="cursor-pointer text-xs text-slate-600">Jahreswerte anzeigen</summary>
                         <div className="mt-1 space-y-0.5 max-h-40 overflow-y-auto">
                           {ergebnis.jahreswerte.map((jw) => (
-                            <div key={jw.jahr} className="flex gap-4 text-[11px] text-slate-700">
+                            <div key={jw.jahr} className="flex flex-wrap gap-4 text-[11px] text-slate-700">
                               <span className="w-12">Jahr {jw.jahr}</span>
                               <span>Kapital: {jw.kapital.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>
                               <span>Kum. G/V: {jw.kumulierterGewinnVerlust >= 0 ? "+" : ""}{jw.kumulierterGewinnVerlust.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>
+                              {jw.zinsaufwand > 0 && <span>Zinsen: {jw.zinsaufwand.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>}
+                              {jw.tilgung > 0 && <span>Tilgung: {jw.tilgung.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>}
+                              {(jw.zinsaufwand > 0 || jw.tilgung > 0) && <span className={jw.nettoCashflow >= 0 ? "text-teal-700" : "text-red-600"}>Netto-CF: {jw.nettoCashflow >= 0 ? "+" : ""}{jw.nettoCashflow.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>}
+                              {jw.restschuld > 0 && <span>Restschuld: {jw.restschuld.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span>}
                             </div>
                           ))}
                         </div>
@@ -778,13 +806,34 @@ export function BetriebSection() {
               suffix="% p.a."
               hint="Jährliche Wertsteigerung des eingesetzten Kapitals"
             />
+            <InputField
+              label="Kredit (€)"
+              value={newInvestition.kredit ?? 0}
+              onChange={(v) => setNewInvestition((prev) => ({ ...prev, kredit: parseFloat(v) || 0 }))}
+              suffix="€"
+              hint="Fremdfinanzierter Anteil (optional)"
+            />
+            <InputField
+              label="Zinssatz (% p.a.)"
+              value={newInvestition.zinssatz ?? 0}
+              onChange={(v) => setNewInvestition((prev) => ({ ...prev, zinssatz: parseFloat(v) || 0 }))}
+              suffix="% p.a."
+              hint="Zinssatz auf den Investitionskredit"
+            />
+            <InputField
+              label="Tilgung (€/Jahr)"
+              value={newInvestition.tilgungsrateJaehrlich ?? 0}
+              onChange={(v) => setNewInvestition((prev) => ({ ...prev, tilgungsrateJaehrlich: parseFloat(v) || 0 }))}
+              suffix="€/Jahr"
+              hint="Jährliche Kredittilgung"
+            />
           </div>
           <button
             type="button"
             onClick={() => {
               if (newInvestition.bezeichnung.trim() && newInvestition.kapital > 0) {
                 addInvestition(newInvestition);
-                setNewInvestition({ bezeichnung: "", kapital: 0, gewinnVerlustProJahr: 0, wertsteigerung: 0 });
+                setNewInvestition({ bezeichnung: "", kapital: 0, gewinnVerlustProJahr: 0, wertsteigerung: 0, kredit: 0, zinssatz: 0, tilgungsrateJaehrlich: 0 });
               }
             }}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
