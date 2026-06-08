@@ -100,7 +100,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       {d.investitionsTilgungProJahr > 0 && (
         <BilanzRow label="− Tilgung Investitionskredite" value={d.investitionsTilgungProJahr} prefix="−" colorClass="text-gray-600" indent />
       )}
-      {(d.investitionsZinsaufwandProJahr > 0 || d.investitionsTilgungProJahr > 0) && d.investitionsNettoCashflowProJahr !== undefined && (
+      {(d.investitionsZinsaufwandProJahr > 0 || d.investitionsTilgungProJahr > 0) && d.investitionsNettoCashflowProJahr !== undefined && d.investitionsNettoCashflowProJahr !== 0 && (
         <BilanzRow
           label={`= Investitions-Cashflow (netto)`}
           value={d.investitionsNettoCashflowProJahr}
