@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GruendungSection } from "@/components/GruendungSection";
 import { BetriebSection } from "@/components/BetriebSection";
 import { EndeSection } from "@/components/EndeSection";
 import { useCalculatorStore } from "@/store/calculatorStore";
 
 type Tab = "gruendung" | "betrieb" | "ende";
+const COPY_STATUS_RESET_DELAY_MS = 2500;
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "gruendung", label: "Gründung" },
@@ -17,11 +18,18 @@ const tabs: { id: Tab; label: string }[] = [
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("gruendung");
   const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
-  const { gruendung, betrieb, ende } = useCalculatorStore((state) => ({
-    gruendung: state.gruendung,
-    betrieb: state.betrieb,
-    ende: state.ende,
-  }));
+  const resetCopyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gruendung = useCalculatorStore((state) => state.gruendung);
+  const betrieb = useCalculatorStore((state) => state.betrieb);
+  const ende = useCalculatorStore((state) => state.ende);
+
+  useEffect(() => {
+    return () => {
+      if (resetCopyStatusTimerRef.current) {
+        clearTimeout(resetCopyStatusTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopyParameters = async () => {
     const payload = {
@@ -38,7 +46,13 @@ export default function Home() {
       setCopyStatus("error");
     }
 
-    setTimeout(() => setCopyStatus("idle"), 2500);
+    if (resetCopyStatusTimerRef.current) {
+      clearTimeout(resetCopyStatusTimerRef.current);
+    }
+    resetCopyStatusTimerRef.current = setTimeout(
+      () => setCopyStatus("idle"),
+      COPY_STATUS_RESET_DELAY_MS
+    );
   };
 
   return (
@@ -66,12 +80,14 @@ export default function Home() {
             >
               Parameter kopieren
             </button>
-            {copyStatus === "success" && (
-              <p className="mt-1 text-[11px] text-green-700 text-right">In Zwischenablage kopiert.</p>
-            )}
-            {copyStatus === "error" && (
-              <p className="mt-1 text-[11px] text-red-700 text-right">Kopieren fehlgeschlagen.</p>
-            )}
+            <div className="mt-1 text-right text-[11px]" role="status" aria-live="polite">
+              {copyStatus === "success" && (
+                <p className="text-green-700">In Zwischenablage kopiert.</p>
+              )}
+              {copyStatus === "error" && (
+                <p className="text-red-700">Kopieren fehlgeschlagen.</p>
+              )}
+            </div>
           </div>
         </div>
       </header>
