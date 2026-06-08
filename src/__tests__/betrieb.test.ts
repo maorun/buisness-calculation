@@ -664,6 +664,67 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.deckungssaldoNachAusgabenUndSteuern).toBeCloseTo(0, 2);
   });
 
+  it("covers negative investment cashflow with ETF sales so no liquidity gap remains", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 10000,
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+      investitionen: [{
+        id: "1",
+        bezeichnung: "Verlustprojekt",
+        kapital: 0,
+        gewinnVerlustProJahr: -1000,
+        wertsteigerung: 0,
+        kredit: 0,
+        zinssatz: 0,
+        tilgungsrateJaehrlich: 0,
+      }],
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+
+    expect(result.details.investitionsNettoCashflowProJahr).toBeCloseTo(-1000);
+    expect(result.details.etfVerkauf).toBeCloseTo(1000);
+    expect(result.details.deckungssaldoNachAusgabenUndSteuern).toBeCloseTo(0, 2);
+    expect(result.details.cashReserve).toBeCloseTo(0);
+    expect(result.gesamtvermoegen).toBeCloseTo(9000);
+  });
+
+  it("uses positive investment cashflow before selling ETF units", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 10000,
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+      investitionen: [{
+        id: "1",
+        bezeichnung: "Cashflowprojekt",
+        kapital: 0,
+        gewinnVerlustProJahr: 1000,
+        wertsteigerung: 0,
+        kredit: 0,
+        zinssatz: 0,
+        tilgungsrateJaehrlich: 0,
+      }],
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+
+    expect(result.details.investitionsNettoCashflowProJahr).toBeCloseTo(1000);
+    expect(result.details.etfVerkauf).toBeCloseTo(0);
+    expect(result.details.cashReserve).toBeCloseTo(1000);
+    expect(result.gesamtvermoegen).toBeCloseTo(11000);
+  });
+
   it("cash reserve accumulates only positive annual net profit", () => {
     const state: BetriebState = {
       ...defaultState,
@@ -954,6 +1015,30 @@ describe("berechnePrivatVergleichErgebnis", () => {
     const expectedNet = 1000 - expectedSteuer - expectedSoli;
     expect(result.kumulierterSparplan).toBeCloseTo(expectedNet);
     expect(result.verbleibenderEtfWert).toBeCloseTo(expectedNet);
+  });
+
+  it("includes investment cashflow and net assets in the private comparison", () => {
+    const result = berechnePrivatVergleichErgebnis({
+      ...basisState,
+      startkapital: 10000,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      laufzeitJahre: 1,
+      investitionen: [{
+        id: "1",
+        bezeichnung: "Privatinvestment",
+        kapital: 5000,
+        gewinnVerlustProJahr: -1000,
+        wertsteigerung: 0,
+        kredit: 0,
+        zinssatz: 0,
+        tilgungsrateJaehrlich: 0,
+      }],
+    });
+
+    expect(result.kumulierterSparplan).toBeCloseTo(-1000);
+    expect(result.kumulierterEtfVerkauf).toBeCloseTo(1000);
+    expect(result.investitionsNettovermoegen).toBeCloseTo(5000);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(15000);
   });
 
   it("uses different Teilfreistellung and tax rates for privat vs GmbH in yearly Vorabpauschale tax", () => {

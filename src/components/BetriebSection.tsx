@@ -170,9 +170,10 @@ export function BetriebSection() {
   const gmbhEndwert = gmbhKumulierterEtfVerkauf + gmbhVerbleibenderEtfWert;
   const gmbhKumulierterKonsumwert = letztesJahrDetails?.kumulierterKonsumwert
     ?? 0;
-  const gmbhGesamtwertMitKonsum = gmbhEndwert + gmbhKumulierterKonsumwert;
+  const gmbhGesamtwertMitKonsum = letztesJahrNettovermoegen + gmbhKumulierterKonsumwert;
   const differenzVergleich = gmbhGesamtwertMitKonsum - privatVergleich.gesamtwertMitKonsum;
-  const endwertDifferenzOhneKonsum = gmbhEndwert - privatVergleich.endwert;
+  const endwertDifferenzOhneKonsum =
+    letztesJahrNettovermoegen - (privatVergleich.endwert + privatVergleich.investitionsNettovermoegen);
   const gmbhSteuernKumuliert = ergebnisse.reduce((sum, ergebnis) => sum + ergebnis.steuer, 0);
   const steuerDifferenz = gmbhSteuernKumuliert - privatVergleich.kumulierteSteuern;
   const verkaufsDifferenz = gmbhKumulierterEtfVerkauf - privatVergleich.kumulierterEtfVerkauf;
@@ -185,15 +186,13 @@ export function BetriebSection() {
   }[]>((acc, ergebnis) => {
     const kumulierterEtfVerkauf =
       (acc[acc.length - 1]?.kumulierterEtfVerkauf ?? 0) + (ergebnis.details.etfVerkauf ?? 0);
-    const verbleibenderEtfWert = ergebnis.details.etfWert ?? 0;
-    const endwert = kumulierterEtfVerkauf + verbleibenderEtfWert;
     const kumulierterKonsumwert = ergebnis.details.kumulierterKonsumwert ?? 0;
     return [
       ...acc,
       {
         jahr: ergebnis.jahr,
         kumulierterEtfVerkauf,
-        gesamtwertMitKonsum: endwert + kumulierterKonsumwert,
+        gesamtwertMitKonsum: (ergebnis.details.nettovermoegen ?? 0) + kumulierterKonsumwert,
       },
     ];
   }, []);

@@ -1,4 +1,4 @@
-import { berechnePrivatVergleichErgebnis } from "./betrieb";
+import { berechneInvestitionsZusammenfassung, berechnePrivatVergleichErgebnis } from "./betrieb";
 import { BetriebState, JahresErgebnis } from "../types";
 
 const PERCENT_REFERENCE_EPSILON = 0.01;
@@ -39,6 +39,7 @@ export function berechneGesamtvergleichKpi(
     Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
   );
   const privatVergleich = berechnePrivatVergleichErgebnis({ ...betrieb, laufzeitJahre: zeitraumJahre });
+  const investitionsZusammenfassung = berechneInvestitionsZusammenfassung(betrieb.investitionen, zeitraumJahre);
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
     ? betriebsErgebnisse[betriebsErgebnisse.length - 1]
     : undefined;
@@ -47,7 +48,10 @@ export function berechneGesamtvergleichKpi(
     : undefined;
   const gmbhBetriebKonsumwert = letzterBetriebsstand?.details.kumulierterKonsumwert ?? 0;
   const gmbhBetriebNettovermoegen = letzterBetriebsstand?.details.nettovermoegen ?? 0;
-  const gmbhGesamtwert = (letzterEndeStand?.gesamtvermoegen ?? gmbhBetriebNettovermoegen) + gmbhBetriebKonsumwert;
+  const gmbhGesamtwert =
+    (letzterEndeStand?.gesamtvermoegen ?? gmbhBetriebNettovermoegen) +
+    gmbhBetriebKonsumwert +
+    (letzterEndeStand ? investitionsZusammenfassung.nettovermoegen : 0);
   const privatGesamtwert = privatVergleich.gesamtwertMitKonsum;
   const vorteil = gmbhGesamtwert - privatGesamtwert;
   const vorteilProzent = Math.abs(privatGesamtwert) >= PERCENT_REFERENCE_EPSILON
