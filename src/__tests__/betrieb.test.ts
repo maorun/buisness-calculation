@@ -915,6 +915,11 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(result.verbleibenderEtfWert).toBeCloseTo(15000);
   });
 
+  it("treats the remaining private loan as liability in total net worth", () => {
+    const result = berechnePrivatVergleichErgebnis(basisState);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(10000);
+  });
+
   it("subtracts tankgutschein from annual private savings plan and tracks it as consumption value", () => {
     const state: BetriebState = {
       ...basisState,
