@@ -689,14 +689,14 @@ function simulierePrivatVergleich(state: BetriebState): {
       endwert: endwertJahr,
       investitionsNettovermoegen: investitionsNettovermoegenJahr,
       kumulierterKonsumwert,
-      gesamtwertMitKonsum: endwertJahr + investitionsNettovermoegenJahr + kumulierterKonsumwert,
+      gesamtwertMitKonsum: endwertJahr + investitionsNettovermoegenJahr + kumulierterKonsumwert - offenesDarlehen,
     });
   }
 
   const verbleibenderEtfWert = sumEtfWert(etfLots);
   const endwert = kumulierterEtfVerkauf + verbleibenderEtfWert;
   const investitionsNettovermoegen = investitionsZusammenfassung.nettovermoegen;
-  const gesamtwertMitKonsum = endwert + investitionsNettovermoegen + kumulierterKonsumwert;
+  const gesamtwertMitKonsum = endwert + investitionsNettovermoegen + kumulierterKonsumwert - offenesDarlehen;
   const kumulierteSteuern = kumulierteVorabpauschalesteuer + kumulierteEtfVerkaufssteuer;
 
   return {
