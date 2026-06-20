@@ -12,8 +12,10 @@ export const ABGELTUNGSSTEUER_GESAMT = ABGELTUNGSSTEUER * (1 + SOLI); // ~26.375
 // Equity ETF Teilfreistellung:
 // - Privatperson: 30% tax-free
 // - GmbH/Körperschaft: 80% tax-free
+// - Personengesellschaft / Familienstiftung: 60% tax-free
 export const TEILFREISTELLUNG_AKTIEN_PRIVAT = 0.3;
 export const TEILFREISTELLUNG_AKTIEN_GMBH = 0.8;
+export const TEILFREISTELLUNG_AKTIEN_STIFTUNG = 0.6;
 // Backward-compatible alias for existing callsites using the private-person default.
 export const TEILFREISTELLUNG_AKTIEN = TEILFREISTELLUNG_AKTIEN_PRIVAT;
 
@@ -92,6 +94,17 @@ export const DEFAULT_STILLER_GESELLSCHAFTER_CONFIG: StillerGesellschafterConfig 
  */
 export function berechneEffektiveSteuerRate(steuerModus: SteuerModus | undefined): number {
   return steuerModus === 'familienstiftung' ? STIFTUNG_STEUER_GESAMT : GMBH_STEUER_GESAMT;
+}
+
+/**
+ * Returns the ETF equity-fund Teilfreistellung rate for the given entity mode.
+ * - 'gmbh' (or undefined): 80% tax-free (Körperschaft, § 20 Abs. 1 InvStG)
+ * - 'familienstiftung': 60% tax-free (treated as Personengesellschaft, § 20 Abs. 3 InvStG)
+ * When `steuerModus` is undefined the function defaults to the GmbH rate for
+ * backward compatibility with existing call sites that do not set a mode.
+ */
+export function berechneTeilfreistellung(steuerModus: SteuerModus | undefined): number {
+  return steuerModus === 'familienstiftung' ? TEILFREISTELLUNG_AKTIEN_STIFTUNG : TEILFREISTELLUNG_AKTIEN_GMBH;
 }
 
 /**
@@ -835,13 +848,14 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const investitionsCashAbfluss = Math.max(0, -investitionsNettoCashflowProJahr);
     cashReserve += investitionsCashZufluss;
 
-    // Vorabpauschale tax – entity uses 80% Teilfreistellung and corporate tax rate
+    // Vorabpauschale tax – entity uses mode-appropriate Teilfreistellung and corporate tax rate
     const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum);
     // Recompute costs inside the yearly loop so changed expense inputs are reflected directly.
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
-    // Resolve the effective corporate tax rate for this entity type.
+    // Resolve the effective corporate tax rate and Teilfreistellung for this entity type.
     const effektiveSteuerRate = berechneEffektiveSteuerRate(state.steuerModus);
+    const teilfreistellung = berechneTeilfreistellung(state.steuerModus);
 
     // Phone costs are operating expenses (Betriebsausgabe) only in GmbH mode.
     // In Familienstiftung mode the phone is bought privately – no deduction.
@@ -913,8 +927,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
       const realisierterEtfErtragIter = verkaufIteration.etfGewinn;
       const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtragIter);
-      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
-      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
+      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, teilfreistellung, effektiveSteuerRate);
+      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, teilfreistellung, effektiveSteuerRate);
       const gewinnNachBetriebsausgabenIter =
         simulierterGewinn + realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
       const koerperschaftsteuerIter = gewinnNachBetriebsausgabenIter > 0
@@ -938,7 +952,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
     const realisierterEtfErtrag = verkauf.etfGewinn;
     const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtrag);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, teilfreistellung, effektiveSteuerRate);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
       simulierterGewinn + realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
@@ -949,7 +963,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       : 0;
 
     // Tax on realized ETF gain due to selling
-    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, teilfreistellung, effektiveSteuerRate);
     const gesamtauszahlungen =
       ungedeckteBetriebsausgaben + jaehrlicheZinsen + investitionsCashAbfluss + vorabpauschalesteuer + gmbhSteuer + etfVerkaufssteuer;
     const liquiditaetsabflussOhneEtfVerkauf = Math.min(gesamtauszahlungen, verfuegbareLiquiditaetVorEtfVerkauf);

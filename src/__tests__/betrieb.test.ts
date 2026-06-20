@@ -18,6 +18,7 @@ import {
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
   TEILFREISTELLUNG_AKTIEN_GMBH,
+  TEILFREISTELLUNG_AKTIEN_STIFTUNG,
   GMBH_STEUER_GESAMT,
   STIFTUNG_STEUER_GESAMT,
   HANDY_ANSCHAFFUNGSKOSTEN,
@@ -27,6 +28,7 @@ import {
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
   berechneEffektiveSteuerRate,
+  berechneTeilfreistellung,
   istHandyAlsBetriebsausgabe,
   berechneKonsumNutzenwertProJahr,
 } from "@/lib/calculations/betrieb";
@@ -1142,6 +1144,26 @@ describe("berechneEffektiveSteuerRate", () => {
 
   it("Stiftung rate is lower than GmbH rate (no GewSt)", () => {
     expect(STIFTUNG_STEUER_GESAMT).toBeLessThan(GMBH_STEUER_GESAMT);
+  });
+});
+
+describe("berechneTeilfreistellung", () => {
+  it("returns TEILFREISTELLUNG_AKTIEN_GMBH (80%) for gmbh modus", () => {
+    expect(berechneTeilfreistellung("gmbh")).toBeCloseTo(TEILFREISTELLUNG_AKTIEN_GMBH);
+    expect(berechneTeilfreistellung("gmbh")).toBeCloseTo(0.8);
+  });
+
+  it("returns TEILFREISTELLUNG_AKTIEN_STIFTUNG (60%) for familienstiftung modus", () => {
+    expect(berechneTeilfreistellung("familienstiftung")).toBeCloseTo(TEILFREISTELLUNG_AKTIEN_STIFTUNG);
+    expect(berechneTeilfreistellung("familienstiftung")).toBeCloseTo(0.6);
+  });
+
+  it("returns TEILFREISTELLUNG_AKTIEN_GMBH when modus is undefined (default)", () => {
+    expect(berechneTeilfreistellung(undefined)).toBeCloseTo(TEILFREISTELLUNG_AKTIEN_GMBH);
+  });
+
+  it("Stiftung Teilfreistellung is lower than GmbH Teilfreistellung", () => {
+    expect(TEILFREISTELLUNG_AKTIEN_STIFTUNG).toBeLessThan(TEILFREISTELLUNG_AKTIEN_GMBH);
   });
 });
 
