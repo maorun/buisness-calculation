@@ -103,7 +103,12 @@ export interface InvestitionsErgebnis {
   }[];
 }
 
+/** Which legal entity type the simulation runs for. */
+export type SteuerModus = 'gmbh' | 'familienstiftung';
+
 export interface BetriebState {
+  /** Legal entity type for the simulation ('gmbh' or 'familienstiftung'). Defaults to 'gmbh'. */
+  steuerModus?: SteuerModus;
   startkapital: number;
   /** Annual cash inflow that stays liquid and is not invested into ETFs. */
   jaehrlicherCashZuschuss: number;

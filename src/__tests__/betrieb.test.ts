@@ -19,12 +19,16 @@ import {
   TEILFREISTELLUNG_AKTIEN,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
+  STIFTUNG_STEUER_GESAMT,
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
   UMSATZSTEUER_SATZ,
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
+  berechneEffektiveSteuerRate,
+  istHandyAlsBetriebsausgabe,
+  berechneKonsumNutzenwertProJahr,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -1116,5 +1120,153 @@ describe("berechnePrivatVergleichZeitreihe", () => {
     expect(letztesJahr.gesamtwertMitKonsum).toBeCloseTo(endwert.gesamtwertMitKonsum);
     const kumulierteSteuernAusZeitreihe = zeitreihe.reduce((sum, jahr) => sum + jahr.gesamtSteuer, 0);
     expect(kumulierteSteuernAusZeitreihe).toBeCloseTo(endwert.kumulierteSteuern);
+  });
+});
+
+// ─────────────────────────────────────────────────────────
+// Familienstiftung mode tests
+// ─────────────────────────────────────────────────────────
+
+describe("berechneEffektiveSteuerRate", () => {
+  it("returns GMBH_STEUER_GESAMT for gmbh modus", () => {
+    expect(berechneEffektiveSteuerRate("gmbh")).toBeCloseTo(GMBH_STEUER_GESAMT);
+  });
+
+  it("returns STIFTUNG_STEUER_GESAMT for familienstiftung modus", () => {
+    expect(berechneEffektiveSteuerRate("familienstiftung")).toBeCloseTo(STIFTUNG_STEUER_GESAMT);
+  });
+
+  it("returns GMBH_STEUER_GESAMT when modus is undefined (default)", () => {
+    expect(berechneEffektiveSteuerRate(undefined)).toBeCloseTo(GMBH_STEUER_GESAMT);
+  });
+
+  it("Stiftung rate is lower than GmbH rate (no GewSt)", () => {
+    expect(STIFTUNG_STEUER_GESAMT).toBeLessThan(GMBH_STEUER_GESAMT);
+  });
+});
+
+describe("istHandyAlsBetriebsausgabe", () => {
+  it("returns true for GmbH", () => {
+    expect(istHandyAlsBetriebsausgabe("gmbh")).toBe(true);
+  });
+
+  it("returns false for Familienstiftung", () => {
+    expect(istHandyAlsBetriebsausgabe("familienstiftung")).toBe(false);
+  });
+
+  it("returns true when modus is undefined (default GmbH behaviour)", () => {
+    expect(istHandyAlsBetriebsausgabe(undefined)).toBe(true);
+  });
+});
+
+describe("berechneKonsumNutzenwertProJahr – Stiftung mode", () => {
+  const benefits: BenefitConfig = { tankgutschein: 50, strategieessen: 0, bav: 0 };
+
+  it("excludes handy in Stiftung mode", () => {
+    const handyConfig = { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: true, anschaffungskosten: 1000, erstanschaffungJahr: 1, ersatzzyklusJahre: 3 };
+    const stiftungWert = berechneKonsumNutzenwertProJahr(1, benefits, handyConfig, "familienstiftung");
+    const gmbhWert = berechneKonsumNutzenwertProJahr(1, benefits, handyConfig, "gmbh");
+    // Stiftung: tankgutschein only (600 €); GmbH: tankgutschein + handy (1600 €)
+    expect(stiftungWert).toBeCloseTo(50 * 12); // 600
+    expect(gmbhWert).toBeCloseTo(50 * 12 + 1000); // 1600
+    expect(stiftungWert).toBeLessThan(gmbhWert);
+  });
+
+  it("includes tankgutschein in both modes", () => {
+    const noHandyConfig = { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false };
+    const gmbhWert = berechneKonsumNutzenwertProJahr(1, benefits, noHandyConfig, "gmbh");
+    const stiftungWert = berechneKonsumNutzenwertProJahr(1, benefits, noHandyConfig, "familienstiftung");
+    expect(gmbhWert).toBeCloseTo(stiftungWert);
+    expect(stiftungWert).toBeCloseTo(600);
+  });
+});
+
+describe("berechneBetriebsErgebnisse – Familienstiftung vs GmbH", () => {
+  const baseDarlehen: DarlehenConfig = {
+    betrag: 25000,
+    zinssatz: 3,
+    monatlicherZuschuss: 0,
+    endfaellig: true,
+  };
+
+  const baseState: BetriebState = {
+    startkapital: 12500,
+    jaehrlicherCashZuschuss: 2400,
+    simulierterGewinn: 20000,
+    geschaeftsfuehrergehalt: 0,
+    darlehen: baseDarlehen,
+    etfRendite: 5,
+    laufzeitJahre: 5,
+    kosten: [],
+    benefits: { tankgutschein: 0, strategieessen: 0, bav: 0 },
+    firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+  };
+
+  it("Stiftung pays less tax than GmbH due to no GewSt", () => {
+    const gmbhState: BetriebState = { ...baseState, steuerModus: "gmbh" };
+    const stiftungState: BetriebState = { ...baseState, steuerModus: "familienstiftung" };
+
+    const gmbhErgebnisse = berechneBetriebsErgebnisse(gmbhState);
+    const stiftungErgebnisse = berechneBetriebsErgebnisse(stiftungState);
+
+    const gmbhSteuerGesamt = gmbhErgebnisse.reduce((sum, e) => sum + e.steuer, 0);
+    const stiftungSteuerGesamt = stiftungErgebnisse.reduce((sum, e) => sum + e.steuer, 0);
+
+    expect(stiftungSteuerGesamt).toBeLessThan(gmbhSteuerGesamt);
+  });
+
+  it("Stiftung accumulates more ETF wealth over time than GmbH (lower tax drag)", () => {
+    const gmbhState: BetriebState = { ...baseState, steuerModus: "gmbh" };
+    const stiftungState: BetriebState = { ...baseState, steuerModus: "familienstiftung" };
+
+    const gmbhErgebnisse = berechneBetriebsErgebnisse(gmbhState);
+    const stiftungErgebnisse = berechneBetriebsErgebnisse(stiftungState);
+
+    const gmbhEndWert = gmbhErgebnisse[gmbhErgebnisse.length - 1]?.details.etfWert ?? 0;
+    const stiftungEndWert = stiftungErgebnisse[stiftungErgebnisse.length - 1]?.details.etfWert ?? 0;
+
+    expect(stiftungEndWert).toBeGreaterThan(gmbhEndWert);
+  });
+
+  it("Stiftung with active handy does NOT include handy in Betriebsausgaben", () => {
+    const handyConfig = {
+      ...DEFAULT_FIRMENHANDY_CONFIG,
+      aktiv: true,
+      anschaffungskosten: 1000,
+      ersatzzyklusJahre: 3,
+      erstanschaffungJahr: 1,
+    };
+    const gmbhState: BetriebState = {
+      ...baseState,
+      steuerModus: "gmbh",
+      simulierterGewinn: 30000,
+      firmenhandy: handyConfig,
+    };
+    const stiftungState: BetriebState = {
+      ...baseState,
+      steuerModus: "familienstiftung",
+      simulierterGewinn: 30000,
+      firmenhandy: handyConfig,
+    };
+
+    const gmbhJahr1 = berechneBetriebsErgebnisse(gmbhState)[0];
+    const stiftungJahr1 = berechneBetriebsErgebnisse(stiftungState)[0];
+
+    // In GmbH the handy (1000 €) is a Betriebsausgabe.
+    expect(gmbhJahr1?.details.handyNettoKosten).toBe(1000);
+    // In Stiftung the handy is private – no Betriebsausgabe.
+    expect(stiftungJahr1?.details.handyNettoKosten).toBe(0);
+  });
+
+  it("Stiftung GmbhSteuer per year equals STIFTUNG_STEUER_GESAMT applied to taxable profit", () => {
+    const stiftungState: BetriebState = { ...baseState, steuerModus: "familienstiftung" };
+    const ergebnisse = berechneBetriebsErgebnisse(stiftungState);
+
+    for (const ergebnis of ergebnisse) {
+      const { gmbhSteuer, gewinnNachBetriebsausgaben } = ergebnis.details;
+      if (gewinnNachBetriebsausgaben > 0) {
+        expect(gmbhSteuer).toBeCloseTo(gewinnNachBetriebsausgaben * STIFTUNG_STEUER_GESAMT, 2);
+      }
+    }
   });
 });

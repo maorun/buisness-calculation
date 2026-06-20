@@ -34,6 +34,7 @@ const initialState: CalculatorState = {
     kosten: defaultGruendungskosten,
   },
   betrieb: {
+    steuerModus: 'gmbh',
     startkapital: 12500,
     jaehrlicherCashZuschuss: 2400,
     simulierterGewinn: 0,

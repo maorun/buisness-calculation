@@ -5,6 +5,7 @@ import { GruendungSection } from "@/components/GruendungSection";
 import { BetriebSection } from "@/components/BetriebSection";
 import { EndeSection } from "@/components/EndeSection";
 import { useCalculatorStore } from "@/store/calculatorStore";
+import { berechneEntityName } from "@/lib/calculations/gesamtvergleich";
 
 type Tab = "gruendung" | "betrieb" | "ende";
 const COPY_STATUS_RESET_DELAY_MS = 2500;
@@ -22,6 +23,7 @@ export default function Home() {
   const gruendung = useCalculatorStore((state) => state.gruendung);
   const betrieb = useCalculatorStore((state) => state.betrieb);
   const ende = useCalculatorStore((state) => state.ende);
+  const entityName = berechneEntityName(betrieb.steuerModus);
 
   useEffect(() => {
     return () => {
@@ -68,8 +70,8 @@ export default function Home() {
               BC
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">GmbH-Kalkulator</h1>
-              <p className="text-xs text-slate-600">Vermögensaufbau via GmbH</p>
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">{entityName}-Kalkulator</h1>
+              <p className="text-xs text-slate-600">Vermögensaufbau via {entityName}</p>
             </div>
           </div>
           <div>

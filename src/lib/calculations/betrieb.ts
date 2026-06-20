@@ -1,4 +1,4 @@
-import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig, StillerGesellschafterConfig, InvestitionsPosition, InvestitionsErgebnis } from "../types";
+import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig, StillerGesellschafterConfig, InvestitionsPosition, InvestitionsErgebnis, SteuerModus } from "../types";
 
 // 2024 Basiszins for Vorabpauschale calculation
 export const BASISZINS_2024 = 0.0229;
@@ -26,6 +26,13 @@ export const GEWERBESTEUER = 0.14;
 
 // Total GmbH tax rate on profits
 export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
+
+/**
+ * Familienstiftung: Körperschaftsteuer + Soli only.
+ * A purely asset-managing Familienstiftung does NOT conduct a Gewerbebetrieb and is
+ * therefore exempt from Gewerbesteuer (§ 3 Nr. 6 GewStG).
+ */
+export const STIFTUNG_STEUER_GESAMT = KST_GESAMT; // ~15.825%
 export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
@@ -75,6 +82,30 @@ export const DEFAULT_STILLER_GESELLSCHAFTER_CONFIG: StillerGesellschafterConfig 
   gewinnbeteiligungProzent: 20,
   zinssatz: 4,
 };
+
+/**
+ * Returns the effective corporate tax rate for the given entity mode.
+ * - 'gmbh' (or undefined): KSt + Soli + GewSt ≈ 29.825 % (default, backward-compatible)
+ * - 'familienstiftung': KSt + Soli only ≈ 15.825 % (no GewSt for asset-managing Stiftung)
+ * When `steuerModus` is undefined the function defaults to the GmbH rate for
+ * backward compatibility with existing call sites that do not set a mode.
+ */
+export function berechneEffektiveSteuerRate(steuerModus: SteuerModus | undefined): number {
+  return steuerModus === 'familienstiftung' ? STIFTUNG_STEUER_GESAMT : GMBH_STEUER_GESAMT;
+}
+
+/**
+ * Returns true when the Firmenhandy programme is treated as a corporate benefit.
+ * For a Familienstiftung the company-phone privilege (§ 3 Nr. 45 EStG) that ties
+ * the deduction to an employer-employee relationship does not apply in the same way,
+ * so the phone must be purchased privately – it therefore neither reduces the
+ * entity's taxable income nor counts as a consumer benefit of the entity.
+ * When `steuerModus` is undefined the function defaults to GmbH behaviour (phone
+ * is a Betriebsausgabe) for backward compatibility.
+ */
+export function istHandyAlsBetriebsausgabe(steuerModus: SteuerModus | undefined): boolean {
+  return steuerModus !== 'familienstiftung';
+}
 
 /**
  * Annual costs the GmbH pays to the silent partner:
@@ -372,9 +403,14 @@ export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number 
 export function berechneKonsumNutzenwertProJahr(
   jahr: number,
   benefits: BenefitConfig,
-  handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
+  handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
+  steuerModus?: SteuerModus
 ): number {
-  return berechneTankgutscheinJaehrlich(benefits) + berechneHandyNettoKostenProJahr(jahr, handyConfig);
+  // In Familienstiftung mode the phone is bought privately → no entity-level consumer benefit.
+  const handyBetrag = istHandyAlsBetriebsausgabe(steuerModus)
+    ? berechneHandyNettoKostenProJahr(jahr, handyConfig)
+    : 0;
+  return berechneTankgutscheinJaehrlich(benefits) + handyBetrag;
 }
 
 export function berechneGmbhKonsumwertProJahr(
@@ -382,9 +418,14 @@ export function berechneGmbhKonsumwertProJahr(
   benefits: BenefitConfig,
   handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
   steuerRate: number = GMBH_STEUER_GESAMT,
-  umsatzsteuerSatz: number = UMSATZSTEUER_SATZ
+  umsatzsteuerSatz: number = UMSATZSTEUER_SATZ,
+  steuerModus?: SteuerModus
 ): number {
   const tankgutscheinEffektiv = berechneTankgutscheinJaehrlich(benefits) * (1 - steuerRate);
+  // In Familienstiftung mode the phone is not a corporate benefit → 0.
+  if (!istHandyAlsBetriebsausgabe(steuerModus)) {
+    return tankgutscheinEffektiv;
+  }
   const handyKostenNominal = berechneHandyNettoKostenProJahr(jahr, handyConfig);
   const handyKostenNachVorsteuer = handyKostenNominal / (1 + umsatzsteuerSatz);
   const handyEffektiv = handyKostenNachVorsteuer * (1 - steuerRate);
@@ -397,7 +438,8 @@ export function berechneBetriebskostenPosten(
   handyNettoKosten: number,
   handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
   geschaeftsfuehrergehalt: number = 0,
-  stillerGesellschafterKosten: number = 0
+  stillerGesellschafterKosten: number = 0,
+  steuerModus?: SteuerModus
 ): { label: string; wert: number }[] {
   const kostenPosten = kosten.map((kostenPosition) => ({
     label: kostenPosition.bezeichnung,
@@ -409,7 +451,10 @@ export function berechneBetriebskostenPosten(
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
     { label: "bAV-Beitrag", wert: Math.max(0, benefits.bav ?? 0) },
-    { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
+    // Firmenhandy is only a corporate expense in GmbH mode; in Stiftung mode it is private.
+    ...(istHandyAlsBetriebsausgabe(steuerModus)
+      ? [{ label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten }]
+      : [{ label: "Firmenhandy (privat)", wert: 0 }]),
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
     ...(stillerGesellschafterKosten > 0
       ? [{ label: "Stiller Gesellschafter (Zinsen + Gewinnbeteiligung)", wert: stillerGesellschafterKosten }]
@@ -599,7 +644,8 @@ function simulierePrivatVergleich(state: BetriebState): {
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
       jahr,
       state.benefits,
-      state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
+      state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG,
+      state.steuerModus
     );
     const investitionsNettoCashflow = investitionsJahreswert?.nettoCashflow ?? 0;
     const sparplanNetto =
@@ -789,16 +835,24 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const investitionsCashAbfluss = Math.max(0, -investitionsNettoCashflowProJahr);
     cashReserve += investitionsCashZufluss;
 
-    // Vorabpauschale tax – GmbH uses 80% Teilfreistellung and corporate tax rate (KSt + GewSt)
+    // Vorabpauschale tax – entity uses 80% Teilfreistellung and corporate tax rate
     const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum);
     // Recompute costs inside the yearly loop so changed expense inputs are reflected directly.
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
-    // Phone costs are operating expenses (Betriebsausgabe), deducted from taxable profit.
+    // Resolve the effective corporate tax rate for this entity type.
+    const effektiveSteuerRate = berechneEffektiveSteuerRate(state.steuerModus);
+
+    // Phone costs are operating expenses (Betriebsausgabe) only in GmbH mode.
+    // In Familienstiftung mode the phone is bought privately – no deduction.
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
-    const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
+    const handyNettoKosten = istHandyAlsBetriebsausgabe(state.steuerModus)
+      ? berechneHandyNettoKostenProJahr(jahr, handyConfig)
+      : 0;
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
-    const konsumNutzenwert = berechneGmbhKonsumwertProJahr(jahr, state.benefits, handyConfig);
+    const konsumNutzenwert = berechneGmbhKonsumwertProJahr(
+      jahr, state.benefits, handyConfig, effektiveSteuerRate, UMSATZSTEUER_SATZ, state.steuerModus
+    );
     kumulierterKonsumwert += konsumNutzenwert;
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const gehaelterGesamt = geschaeftsfuehrergehalt;
@@ -814,7 +868,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       handyNettoKosten,
       handyConfig,
       geschaeftsfuehrergehalt,
-      stillerGesellschafterKosten
+      stillerGesellschafterKosten,
+      state.steuerModus
     );
 
     const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
@@ -858,18 +913,18 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
       const realisierterEtfErtragIter = verkaufIteration.etfGewinn;
       const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtragIter);
-      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
-      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
+      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
+      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
       const gewinnNachBetriebsausgabenIter =
         simulierterGewinn + realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
-      const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
-        ? gewinnNachBetriebsausgabenIter * GMBH_STEUER_GESAMT
+      const koerperschaftsteuerIter = gewinnNachBetriebsausgabenIter > 0
+        ? gewinnNachBetriebsausgabenIter * effektiveSteuerRate
         : 0;
       const benoetigterVerkauf = Math.min(
         etfWertNachWachstum,
         Math.max(
           0,
-          auszahlungenOhneVerkaufssteuern + vorabpauschalesteuerIter + gmbhSteuerIter + etfVerkaufssteuerIter - verfuegbareLiquiditaetVorEtfVerkauf
+          auszahlungenOhneVerkaufssteuern + vorabpauschalesteuerIter + koerperschaftsteuerIter + etfVerkaufssteuerIter - verfuegbareLiquiditaetVorEtfVerkauf
         )
       );
       if (Math.abs(benoetigterVerkauf - etfVerkauf) < SALE_CONVERGENCE_THRESHOLD) {
@@ -883,18 +938,18 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
     const realisierterEtfErtrag = verkauf.etfGewinn;
     const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtrag);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
       simulierterGewinn + realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
 
-    // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
+    // Corporate tax (KSt+Soli+GewSt for GmbH; KSt+Soli only for Stiftung) on positive profit
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * GMBH_STEUER_GESAMT
+      ? gewinnNachBetriebsausgaben * effektiveSteuerRate
       : 0;
 
     // Tax on realized ETF gain due to selling
-    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag);
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, effektiveSteuerRate);
     const gesamtauszahlungen =
       ungedeckteBetriebsausgaben + jaehrlicheZinsen + investitionsCashAbfluss + vorabpauschalesteuer + gmbhSteuer + etfVerkaufssteuer;
     const liquiditaetsabflussOhneEtfVerkauf = Math.min(gesamtauszahlungen, verfuegbareLiquiditaetVorEtfVerkauf);

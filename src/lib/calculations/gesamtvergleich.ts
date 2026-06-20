@@ -1,5 +1,5 @@
 import { berechneInvestitionsZusammenfassung, berechnePrivatVergleichErgebnis } from "./betrieb";
-import { BetriebState, JahresErgebnis } from "../types";
+import { BetriebState, JahresErgebnis, SteuerModus } from "../types";
 
 const PERCENT_REFERENCE_EPSILON = 0.01;
 
@@ -27,12 +27,18 @@ export function formatSignedPercent(value: number | null): string {
   })} % vs. Privat`;
 }
 
+/** Human-readable entity name for the given modus. */
+export function berechneEntityName(steuerModus: SteuerModus | undefined): string {
+  return steuerModus === 'familienstiftung' ? 'Familienstiftung' : 'GmbH';
+}
+
 export function berechneGesamtvergleichKpi(
   betrieb: BetriebState,
   endeLaufzeitJahre: number,
   endeErgebnisse: JahresErgebnis[],
   betriebsErgebnisse: JahresErgebnis[]
 ): GesamtvergleichKpi {
+  const entityName = berechneEntityName(betrieb.steuerModus);
   const endfaelligkeitsAbwicklungsjahre = betrieb.darlehen.endfaellig ? 1 : 0;
   const zeitraumJahre = Math.max(
     1,
@@ -57,7 +63,9 @@ export function berechneGesamtvergleichKpi(
   const vorteilProzent = Math.abs(privatGesamtwert) >= PERCENT_REFERENCE_EPSILON
     ? (vorteil / privatGesamtwert) * 100
     : null;
-  const gewinnerText = vorteil > 0 ? "GmbH gewinnt" : vorteil < 0 ? "Privat gewinnt" : "Unentschieden";
+  const gewinnerText = vorteil > 0
+    ? `${entityName} gewinnt`
+    : vorteil < 0 ? "Privat gewinnt" : "Unentschieden";
 
   return {
     gmbhGesamtwert,
