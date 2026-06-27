@@ -69,7 +69,8 @@ export function EndeSection() {
   const offeneDarlehensschuld = letzterBetriebsstand?.details.offenesDarlehen
     ?? Math.max(0, betrieb.darlehen.betrag);
   const aufgelaufeneZinsen = letzterBetriebsstand?.details.aufgelaufeneZinsen ?? 0;
-  const endfaellig = betrieb.darlehen.endfaellig;
+  const betriebDarlehenEndfaellig = betrieb.darlehen.endfaellig;
+  const endeDarlehenEndfaellig = ende.darlehenEndfaellig ?? false;
 
   const zinssatz = Math.max(0, betrieb.darlehen.zinssatz);
   const { zinsertragBrutto: zinsertragProJahr, tilgungsanteil: tilgungProJahr } = berechneDarlehensAuszahlung(
@@ -95,6 +96,7 @@ export function EndeSection() {
   const bereich2Ergebnisse = ergebnisse.filter((e) => e.details.bereich === 2);
   const bereich1Details = bereich1Ergebnisse[0]?.details;
   const bereich2Details = bereich2Ergebnisse[0]?.details;
+  const letzterBereich2Details = bereich2Ergebnisse[bereich2Ergebnisse.length - 1]?.details;
 
   const gehaltBereich1 = bereich1Details?.bruttoGehalt
     ?? Math.max(0, ende.gehaltBereich1);
@@ -173,7 +175,7 @@ export function EndeSection() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-3">Einmalige ETF-Aufstockung zum Start</h3>
-        <div className="max-w-sm">
+        <div className="max-w-sm space-y-4">
           <InputField
             label="Stammkapital-Erhöhung für ETF-Invest (einmalig)"
             value={ende.stammkapitalErhoehungEtf}
@@ -182,11 +184,23 @@ export function EndeSection() {
             hint="Wird einmalig zu Beginn der Ende-Phase in den ETF eingebracht. Default: 0 €."
             min={0}
           />
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="endeDarlehenEndfaellig"
+              checked={endeDarlehenEndfaellig}
+              onChange={(e) => setEnde({ darlehenEndfaellig: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="endeDarlehenEndfaellig" className="text-sm text-gray-700">
+              Darlehen in der Ende-Phase endfällig
+            </label>
+          </div>
         </div>
       </div>
 
       {/* Endfällig notice */}
-      {endfaellig && (
+      {betriebDarlehenEndfaellig && (
         <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
           <p className="text-sm font-semibold text-amber-800 mb-1">⚠ Endfälliges Darlehen aktiv</p>
           <p className="text-xs text-amber-700">
@@ -198,7 +212,7 @@ export function EndeSection() {
         </div>
       )}
 
-      {endfaellig && (
+      {betriebDarlehenEndfaellig && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -224,7 +238,7 @@ export function EndeSection() {
       )}
 
       {/* Bereich 1 – only shown when endfaellig */}
-      {endfaellig && (
+      {betriebDarlehenEndfaellig && (
         <div className="bg-white rounded-xl shadow-sm border-2 border-amber-300 p-4 md:p-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-600 mb-2">Ebene 1</p>
           <h3 className="font-semibold text-amber-800 mb-1">Bereich 1 – Rückzahlung & Neustart Gesellschafterdarlehen</h3>
@@ -328,12 +342,12 @@ export function EndeSection() {
       )}
 
       {/* Bereich 2 – regular payout */}
-      <div className={`bg-white rounded-xl shadow-sm p-4 md:p-6 ${endfaellig ? "border-2 border-blue-300" : "border border-gray-200"}`}>
-        {endfaellig && (
+      <div className={`bg-white rounded-xl shadow-sm p-4 md:p-6 ${betriebDarlehenEndfaellig ? "border-2 border-blue-300" : "border border-gray-200"}`}>
+        {betriebDarlehenEndfaellig && (
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-600 mb-2">Ebene 2</p>
         )}
-        <h3 className="font-semibold text-gray-700 mb-1">{endfaellig ? "Bereich 2 – Laufende Auszahlungsphase" : "Auszahlungsphase"}</h3>
-        {endfaellig && (
+        <h3 className="font-semibold text-gray-700 mb-1">{betriebDarlehenEndfaellig ? "Bereich 2 – Laufende Auszahlungsphase" : "Auszahlungsphase"}</h3>
+        {betriebDarlehenEndfaellig && (
           <p className="text-xs text-slate-500 mb-4">
             Das neue Gesellschafterdarlehen aus Bereich 1 bleibt in der GmbH, verzinst sich mit {REINVESTIERTES_DARLEHEN_ZINSSATZ.toLocaleString("de-DE")} %
             und wird nur soweit getilgt, wie das Zielnetto sonst nicht erreicht würde.
@@ -341,7 +355,7 @@ export function EndeSection() {
         )}
 
         {/* Zielnetto Bereich 2 */}
-        {endfaellig && (
+        {betriebDarlehenEndfaellig && !endeDarlehenEndfaellig && (
           <div className="mb-4 max-w-xs">
             <InputField
               label="Zielnetto Bereich 2 (€/Jahr)"
@@ -353,11 +367,16 @@ export function EndeSection() {
             />
           </div>
         )}
+        {betriebDarlehenEndfaellig && endeDarlehenEndfaellig && (
+          <p className="mb-4 text-xs text-slate-500">
+            Zielnetto Bereich 2 ist bei endfälligem Ende-Darlehen deaktiviert, da Tilgung und Zinsen erst im letzten Jahr ausgezahlt werden.
+          </p>
+        )}
 
         {/* GF Salary */}
         <div className="mb-4">
           <h4 className="font-semibold text-gray-600 mb-3">
-            Geschäftsführergehalt {endfaellig ? "Bereich 2" : ""}
+            Geschäftsführergehalt {betriebDarlehenEndfaellig ? "Bereich 2" : ""}
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField
@@ -384,7 +403,7 @@ export function EndeSection() {
           </div>
         </div>
 
-        {endfaellig && (
+        {betriebDarlehenEndfaellig && (
           <div className="mb-4">
             <h4 className="font-semibold text-gray-600 mb-3">Bereich 2 (erstes Jahr)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -432,7 +451,7 @@ export function EndeSection() {
         )}
 
         {/* Darlehensauszahlung – only relevant when not endfaellig */}
-        {!endfaellig && (
+        {!endeDarlehenEndfaellig && (
           <div className="mb-4">
             <h4 className="font-semibold text-gray-600 mb-1">Darlehensauszahlung (aus GmbH an Gesellschafter)</h4>
             <p className="text-xs text-slate-500 mb-3">
@@ -476,6 +495,26 @@ export function EndeSection() {
             </div>
           </div>
         )}
+        {endeDarlehenEndfaellig && (
+          <div className="mb-4">
+            <h4 className="font-semibold text-gray-600 mb-1">Darlehensauszahlung (endfällig am Laufzeitende)</h4>
+            <p className="text-xs text-slate-500 mb-3">
+              Während der Ende-Phase erfolgen keine laufenden Auszahlungen aus dem Darlehen. Zinsen werden bis zum letzten Jahr aufgestaut und dann zusammen mit der Darlehenstilgung ausgezahlt.
+            </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs text-amber-700 font-medium">Ausgangswerte Endjahr</p>
+              <p className="text-lg font-bold text-amber-900">
+                {((letzterBereich2Details?.darlehenGesamtauszahlungNetto ?? 0)).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr netto
+              </p>
+              <p className="text-xs text-amber-600 mt-1">
+                Endfällige Tilgung: {(letzterBereich2Details?.darlehenTilgung ?? 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              </p>
+              <p className="text-xs text-amber-600 mt-1">
+                Aufgelaufene Zinsen: {(letzterBereich2Details?.darlehenZinsen ?? 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Profit distribution */}
         <div className="mb-4">
@@ -502,7 +541,7 @@ export function EndeSection() {
 
         {/* Duration */}
         <div className="mb-4">
-          <h4 className="font-semibold text-gray-600 mb-3">Zeitraum {endfaellig ? "Bereich 2" : ""}</h4>
+          <h4 className="font-semibold text-gray-600 mb-3">Zeitraum {betriebDarlehenEndfaellig ? "Bereich 2" : ""}</h4>
           <div className="max-w-xs">
             <InputField
               label="Laufzeit Auszahlungsphase (Jahre)"
@@ -515,7 +554,7 @@ export function EndeSection() {
 
         {/* Results Bereich 2 */}
         {bereich2Ergebnisse.length > 0 && (
-          <JahresUebersicht ergebnisse={bereich2Ergebnisse} title={endfaellig ? "Bereich 2 – Laufende Zins- und Tilgungsphase" : "Jahresergebnisse Auszahlungsphase"} />
+          <JahresUebersicht ergebnisse={bereich2Ergebnisse} title={betriebDarlehenEndfaellig ? "Bereich 2 – Laufende Zins- und Tilgungsphase" : "Jahresergebnisse Auszahlungsphase"} />
         )}
       </div>
 
@@ -552,9 +591,9 @@ export function EndeSection() {
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
         <div className="text-xs text-gray-600 space-y-1">
-          {endfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Progressive Einkommensteuer auf Zinsen + Gehalt (kombiniert, § 32d Abs. 2 Nr. 1b EStG)</p>}
-          {endfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Frei konfigurierbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
-          {endfaellig && <p><span className="font-medium">Bereich 2 – Darlehen:</span> Neues Gesellschafterdarlehen mit 3 % Zins; Tilgung wird flexibel nur bei Zielnetto-Lücke ausgezahlt.</p>}
+          {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Progressive Einkommensteuer auf Zinsen + Gehalt (kombiniert, § 32d Abs. 2 Nr. 1b EStG)</p>}
+          {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Frei konfigurierbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
+          {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 2 – Darlehen:</span> Neues Gesellschafterdarlehen mit 3 % Zins; Tilgung wird flexibel nur bei Zielnetto-Lücke ausgezahlt.</p>}
           <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
           <p><span className="font-medium">Gesetzliche Krankenversicherung:</span> Beitrag aus Gehalt + sonstigen Einnahmen (z. B. Zinsen, Ausschüttung) und vollständig aus dem Netto zu zahlen</p>
           <p><span className="font-medium">Darlehen (Zinsen):</span> Progressive Einkommensteuer (Marginalsteuersatz), Tilgungsanteil steuerfrei (§ 32d Abs. 2 Nr. 1b EStG)</p>

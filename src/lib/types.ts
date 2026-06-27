@@ -143,6 +143,8 @@ export interface EndeState {
   zielnettoBereich1: number;
   /** Target net income per year for Bereich 2 (regular payout years, darlehen = 0). */
   zielnettoBereich2: number;
+  /** Whether the payout-phase shareholder loan should be endfällig (settled at the end). */
+  darlehenEndfaellig?: boolean;
 }
 
 export interface CalculatorState {
