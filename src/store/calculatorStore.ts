@@ -1,7 +1,12 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
-import { berechneBetriebsErgebnisse, DEFAULT_FIRMENHANDY_CONFIG, DEFAULT_STILLER_GESELLSCHAFTER_CONFIG } from "@/lib/calculations/betrieb";
+import {
+  berechneBetriebsErgebnisse,
+  DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
+  DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
+} from "@/lib/calculations/betrieb";
 import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
 import { berechneGesamtkosten } from "@/lib/calculations/gruendung";
 import { JahresErgebnis } from "@/lib/types";
@@ -51,7 +56,7 @@ const initialState: CalculatorState = {
     benefits: {
       tankgutschein: 50,
       strategieessen: 0,
-      essenszuschussProTag: 0,
+      essenszuschussProTag: DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
       essenszuschussTageProJahr: 0,
       bav: 0,
     },

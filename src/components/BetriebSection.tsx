@@ -11,7 +11,7 @@ import {
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
-  MAX_ESSENSZUSCHUSS_PRO_TAG,
+  DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneAlleInvestitionsErgebnisse,
@@ -27,7 +27,6 @@ import { JahresUebersicht } from "./JahresUebersicht";
 
 const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
-  essenszuschussProTag: MAX_ESSENSZUSCHUSS_PRO_TAG,
   essenszuschussTageProJahr: 366,
 } as const;
 const DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS = 2400;
@@ -266,6 +265,12 @@ export function BetriebSection() {
     gewinnerText = "Privat gewinnt";
   }
   const gesamtvergleich = berechneGesamtvergleichKpi(betrieb, ende.laufzeitJahre, endeErgebnisse, ergebnisse);
+  const formattedEssenszuschussReferenzwert = DEFAULT_ESSENSZUSCHUSS_PRO_TAG.toLocaleString("de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const mealSubsidyExceedsReferenceValue =
+    betrieb.benefits.essenszuschussProTag > DEFAULT_ESSENSZUSCHUSS_PRO_TAG;
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -469,8 +474,8 @@ export function BetriebSection() {
         <h3 className="font-semibold text-gray-700 mb-2">Steuervorteile (Benefits)</h3>
         <p className="text-xs text-slate-500 mb-4">
           Benefits werden als Betriebsausgaben behandelt und reduzieren damit den steuerpflichtigen Gewinn.
-          Sachbezüge sind auf 50 €/Monat begrenzt (§ 8 Abs. 2 EStG). Der Essenszuschuss wird hier
-          mit maximal 7,67 € pro gefördertem Tag kalkuliert. Das Firmenhandy wird separat als
+          Sachbezüge sind auf 50 €/Monat begrenzt (§ 8 Abs. 2 EStG). Der Essenszuschuss startet hier
+          mit 7,67 € pro gefördertem Tag als Default-Wert. Das Firmenhandy wird separat als
           Betriebsausgabe berücksichtigt.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -487,8 +492,7 @@ export function BetriebSection() {
             value={betrieb.benefits.essenszuschussProTag}
             onChange={(v) => updateBenefits("essenszuschussProTag", v)}
             suffix="€/Tag"
-            hint={`Max. ${MAX_ESSENSZUSCHUSS_PRO_TAG.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € pro gefördertem Tag`}
-            max={MAX_ESSENSZUSCHUSS_PRO_TAG}
+            hint={`Default: ${formattedEssenszuschussReferenzwert} € pro gefördertem Tag · aktuell steuerfrei bis zu diesem Wert`}
           />
           <InputField
             label="Geförderte Tage Essenszuschuss (pro Jahr)"
@@ -513,6 +517,16 @@ export function BetriebSection() {
             hint={`Arbeitgeberbeitrag zur betrieblichen Altersvorsorge (§ 3 Nr. 63 EStG). Voll abzugsfähige Betriebsausgabe; bis zu ${BAV_MAX_STEUERFREIER_BEITRAG.toLocaleString("de-DE")} €/Jahr steuer- und sozialabgabenfrei für den GF.`}
           />
         </div>
+        {mealSubsidyExceedsReferenceValue && (
+          <p
+            className="text-xs text-amber-700 mt-3"
+            role="alert"
+            aria-label="Warnhinweis zur steuerlichen Behandlung des Essenszuschusses"
+          >
+            Hinweis: Über {formattedEssenszuschussReferenzwert} €/Tag
+            kann die steuerliche Behandlung abweichen. Der eingegebene Wert wird hier bewusst unverändert übernommen.
+          </p>
+        )}
       </div>
 
       {/* Firmenhandy */}

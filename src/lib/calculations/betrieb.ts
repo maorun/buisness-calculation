@@ -30,7 +30,10 @@ export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
-export const MAX_ESSENSZUSCHUSS_PRO_TAG = 7.67;
+// Current tax-free reference value for the meal subsidy under German tax guidance.
+// The UI uses it as the default starting value, but it is intentionally not
+// enforced as a hard cap so the calculator can adapt when that threshold changes.
+export const DEFAULT_ESSENSZUSCHUSS_PRO_TAG = 7.67;
 export const MAX_ESSENSZUSCHUSS_TAGE_PRO_JAHR = 366;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
@@ -343,7 +346,7 @@ function berechneKostenPositionJahresBetrag(kostenPosition: KostenPosition): num
 /**
  * Tax saving from benefits in a GmbH:
  * - Tankgutschein (fuel voucher): up to 50 €/month tax-free as Sachbezug
- * - Essenszuschuss: up to 7.67 €/day tax-free employer meal subsidy
+ * - Essenszuschuss: employer meal subsidy (defaults to 7.67 €/day in the UI)
  * - Strategieessen (annual strategy dinner): fully deductible business expense
  *
  * Returns the annual tax saving (at GmbH tax rate) from deductible benefits.
@@ -374,7 +377,7 @@ export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number 
 }
 
 export function berechneEssenszuschussJaehrlich(benefits: BenefitConfig): number {
-  const proTag = Math.min(Math.max(benefits.essenszuschussProTag ?? 0, 0), MAX_ESSENSZUSCHUSS_PRO_TAG);
+  const proTag = Math.max(benefits.essenszuschussProTag ?? 0, 0);
   const tage = Math.min(
     Math.max(Math.floor(benefits.essenszuschussTageProJahr ?? 0), 0),
     MAX_ESSENSZUSCHUSS_TAGE_PRO_JAHR

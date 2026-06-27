@@ -240,7 +240,7 @@ describe("berechneBenefitsSteuerersparnis", () => {
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
   });
 
-  it("includes meal subsidy capped at 7.67€/day", () => {
+  it("includes meal subsidy using the configured daily amount", () => {
     const benefits: BenefitConfig = {
       tankgutschein: 0,
       strategieessen: 0,
@@ -248,7 +248,7 @@ describe("berechneBenefitsSteuerersparnis", () => {
       essenszuschussTageProJahr: 220,
       bav: 0,
     };
-    const expected = (7.67 * 220) * GMBH_STEUER_GESAMT;
+    const expected = (8 * 220) * GMBH_STEUER_GESAMT;
     expect(berechneBenefitsSteuerersparnis(benefits)).toBeCloseTo(expected);
   });
 });
@@ -282,7 +282,7 @@ describe("berechneBenefitsKosten", () => {
 });
 
 describe("berechneEssenszuschussJaehrlich", () => {
-  it("caps daily subsidy and floors annual days", () => {
+  it("keeps the daily subsidy and floors annual days", () => {
     const benefits: BenefitConfig = {
       tankgutschein: 0,
       strategieessen: 0,
@@ -290,7 +290,7 @@ describe("berechneEssenszuschussJaehrlich", () => {
       essenszuschussTageProJahr: 220.9,
       bav: 0,
     };
-    expect(berechneEssenszuschussJaehrlich(benefits)).toBeCloseTo(7.67 * 220);
+    expect(berechneEssenszuschussJaehrlich(benefits)).toBeCloseTo(9 * 220);
   });
 });
 

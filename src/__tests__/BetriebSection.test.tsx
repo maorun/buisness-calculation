@@ -96,6 +96,26 @@ describe("BetriebSection", () => {
     render(<BetriebSection />);
     expect(screen.getByText("Essenszuschuss (€/Tag)")).toBeTruthy();
     expect(screen.getByText("Geförderte Tage Essenszuschuss (pro Jahr)")).toBeTruthy();
+    expect(screen.getByText("Default: 7,67 € pro gefördertem Tag · aktuell steuerfrei bis zu diesem Wert")).toBeTruthy();
+  });
+
+  it("shows a hint when the meal subsidy exceeds the current reference value", () => {
+    useCalculatorStore.setState((state) => ({
+      ...state,
+      betrieb: {
+        ...state.betrieb,
+        benefits: {
+          ...state.betrieb.benefits,
+          essenszuschussProTag: 8,
+        },
+      },
+    }));
+
+    render(<BetriebSection />);
+
+    expect(
+      screen.getByText(/Hinweis: Über 7,67 €\/Tag kann die steuerliche Behandlung abweichen\./)
+    ).toBeTruthy();
   });
 
   it("merges the overall Betrieb-und-Ende KPI into the existing decision area", () => {
