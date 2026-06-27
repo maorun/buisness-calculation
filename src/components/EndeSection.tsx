@@ -15,6 +15,7 @@ import {
 } from "@/lib/calculations/ende";
 import {
   berechneBenefitsSteuerersparnis,
+  berechneEssenszuschussJaehrlich,
   DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
 import {
@@ -86,6 +87,7 @@ export function EndeSection() {
   const handyAnschaffung = handyConfig.anschaffungskosten.toLocaleString("de-DE");
   const handyZyklus = handyConfig.ersatzzyklusJahre;
   const handyVerkaufsquote = (handyConfig.restwertQuote * 100).toLocaleString("de-DE");
+  const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(betrieb.benefits);
 
   const nettoGehalt = berechneNettoGehalt(ende.geschaeftsfuehrergehalt);
   const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung);
@@ -564,7 +566,7 @@ export function EndeSection() {
         <p className="text-xs text-slate-500 mb-4">
           Konfiguriert im Betrieb-Bereich – reduzieren auch in der Auszahlungsphase die Steuerlast
         </p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
             <p className="text-xs text-slate-600 mb-1">Firmenhandy</p>
             <p className="font-bold text-gray-800">{handyAnschaffung} € alle {handyZyklus} Jahre</p>
@@ -577,6 +579,15 @@ export function EndeSection() {
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
             <p className="text-xs text-slate-600 mb-1">Strategieessen</p>
             <p className="font-bold text-gray-800">{betrieb.benefits.strategieessen} €/Jahr</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-600 mb-1">Essenszuschuss</p>
+            <p className="font-bold text-gray-800">
+              {betrieb.benefits.essenszuschussProTag.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/Tag
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              {betrieb.benefits.essenszuschussTageProJahr} Tage/Jahr · {essenszuschussJaehrlich.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/Jahr
+            </p>
           </div>
         </div>
         <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">

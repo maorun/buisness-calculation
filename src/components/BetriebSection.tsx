@@ -11,6 +11,7 @@ import {
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
+  DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneAlleInvestitionsErgebnisse,
@@ -26,6 +27,7 @@ import { JahresUebersicht } from "./JahresUebersicht";
 
 const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
+  essenszuschussTageProJahr: 366,
 } as const;
 const DEFAULT_JAEHRLICHER_CASH_ZUSCHUSS = 2400;
 const RECOMMENDED_MIN_LAUFZEIT_JAHRE = 12;
@@ -263,6 +265,12 @@ export function BetriebSection() {
     gewinnerText = "Privat gewinnt";
   }
   const gesamtvergleich = berechneGesamtvergleichKpi(betrieb, ende.laufzeitJahre, endeErgebnisse, ergebnisse);
+  const formattedEssenszuschussReferenzwert = DEFAULT_ESSENSZUSCHUSS_PRO_TAG.toLocaleString("de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const mealSubsidyExceedsReferenceValue =
+    betrieb.benefits.essenszuschussProTag > DEFAULT_ESSENSZUSCHUSS_PRO_TAG;
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -275,7 +283,9 @@ export function BetriebSection() {
 
   const updateBenefits = (field: keyof typeof betrieb.benefits, value: string) => {
     const parsed = parseFloat(value) || 0;
-    const normalized = Math.max(0, parsed);
+    const normalized = field === "essenszuschussTageProJahr"
+      ? Math.max(0, Math.floor(parsed))
+      : Math.max(0, parsed);
     const maxValue = field in BENEFIT_MAX_VALUES
       ? BENEFIT_MAX_VALUES[field as keyof typeof BENEFIT_MAX_VALUES]
       : undefined;
@@ -464,7 +474,9 @@ export function BetriebSection() {
         <h3 className="font-semibold text-gray-700 mb-2">Steuervorteile (Benefits)</h3>
         <p className="text-xs text-slate-500 mb-4">
           Benefits werden als Betriebsausgaben behandelt und reduzieren damit den steuerpflichtigen Gewinn.
-          Sachbezüge sind auf 50 €/Monat begrenzt (§ 8 Abs. 2 EStG). Das Firmenhandy wird separat als Betriebsausgabe berücksichtigt.
+          Sachbezüge sind auf 50 €/Monat begrenzt (§ 8 Abs. 2 EStG). Der Essenszuschuss startet hier
+          mit 7,67 € pro gefördertem Tag als Default-Wert. Das Firmenhandy wird separat als
+          Betriebsausgabe berücksichtigt.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InputField
@@ -474,6 +486,21 @@ export function BetriebSection() {
             suffix="€/Monat"
             hint="Max. 50 €/Monat steuerfrei"
             max={50}
+          />
+          <InputField
+            label="Essenszuschuss (€/Tag)"
+            value={betrieb.benefits.essenszuschussProTag}
+            onChange={(v) => updateBenefits("essenszuschussProTag", v)}
+            suffix="€/Tag"
+            hint={`Default: ${formattedEssenszuschussReferenzwert} € pro gefördertem Tag · aktuell steuerfrei bis zu diesem Wert`}
+          />
+          <InputField
+            label="Geförderte Tage Essenszuschuss (pro Jahr)"
+            value={betrieb.benefits.essenszuschussTageProJahr}
+            onChange={(v) => updateBenefits("essenszuschussTageProJahr", v)}
+            suffix="Tage/Jahr"
+            hint="Anzahl der Tage mit Essenszuschuss pro Jahr"
+            max={366}
           />
           <InputField
             label="Strategieessen (€/Jahr)"
@@ -490,6 +517,16 @@ export function BetriebSection() {
             hint={`Arbeitgeberbeitrag zur betrieblichen Altersvorsorge (§ 3 Nr. 63 EStG). Voll abzugsfähige Betriebsausgabe; bis zu ${BAV_MAX_STEUERFREIER_BEITRAG.toLocaleString("de-DE")} €/Jahr steuer- und sozialabgabenfrei für den GF.`}
           />
         </div>
+        {mealSubsidyExceedsReferenceValue && (
+          <p
+            className="text-xs text-amber-700 mt-3"
+            role="alert"
+            aria-label="Warnhinweis zur steuerlichen Behandlung des Essenszuschusses"
+          >
+            Hinweis: Über {formattedEssenszuschussReferenzwert} €/Tag
+            kann die steuerliche Behandlung abweichen. Der eingegebene Wert wird hier bewusst unverändert übernommen.
+          </p>
+        )}
       </div>
 
       {/* Firmenhandy */}
@@ -1023,8 +1060,8 @@ export function BetriebSection() {
           <p>Vergleichslogik:</p>
           <ul className="list-disc pl-4 space-y-1">
             <li>Anfangskapital = Startkapital + Darlehensbetrag</li>
-            <li>Tankgutschein und Firmenhandy werden separat als verkonsumierter Wert ausgewiesen</li>
-            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss + simulierter Gewinn nach ESt/Soli minus Tankgutschein minus Firmenhandy</li>
+            <li>Tankgutschein, Essenszuschuss und Firmenhandy werden separat als verkonsumierter Wert ausgewiesen</li>
+            <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss + simulierter Gewinn nach ESt/Soli minus Tankgutschein minus Essenszuschuss minus Firmenhandy</li>
             <li>In der GmbH wird der Konsumwert steuerbereinigt gezeigt (inkl. Vorsteuerabzug beim Firmenhandy)</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
             <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>

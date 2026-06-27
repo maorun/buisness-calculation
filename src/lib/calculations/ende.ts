@@ -249,7 +249,13 @@ export function berechneEndeErgebnisse(
   endfaellig: boolean = false,
   etfRenditePercent: number = 0,
   kosten: KostenPosition[] = [],
-  benefits: BenefitConfig = { tankgutschein: 0, strategieessen: 0, bav: 0 },
+  benefits: BenefitConfig = {
+    tankgutschein: 0,
+    strategieessen: 0,
+    essenszuschussProTag: 0,
+    essenszuschussTageProJahr: 0,
+    bav: 0,
+  },
   firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];

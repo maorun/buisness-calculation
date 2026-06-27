@@ -33,6 +33,8 @@ function setStoreState(partialState?: Partial<ReturnType<typeof useCalculatorSto
       benefits: {
         tankgutschein: 50,
         strategieessen: 0,
+        essenszuschussProTag: 0,
+        essenszuschussTageProJahr: 0,
         bav: 0,
       },
       firmenhandy: {
@@ -85,6 +87,27 @@ describe("EndeSection", () => {
     expect(screen.getByText("Gesamtvergleich Betrieb + Ende")).toBeTruthy();
     expect(screen.getByText(`${formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat`)).toBeTruthy();
     expect(screen.getByText(`Relativ: ${formatSignedPercent(gesamtvergleich.vorteilProzent)}`)).toBeTruthy();
+  });
+
+  it("shows meal subsidy in the benefits overview", () => {
+    setStoreState({
+      betrieb: {
+        ...useCalculatorStore.getState().betrieb,
+        benefits: {
+          tankgutschein: 50,
+          strategieessen: 0,
+          essenszuschussProTag: 7.67,
+          essenszuschussTageProJahr: 220,
+          bav: 0,
+        },
+      },
+    });
+
+    render(<EndeSection />);
+
+    expect(screen.getByText("Essenszuschuss")).toBeTruthy();
+    expect(screen.getByText("7,67 €/Tag")).toBeTruthy();
+    expect(screen.getByText("220 Tage/Jahr · 1.687,40 €/Jahr")).toBeTruthy();
   });
 
   it("keeps investments in the overall comparison on both GmbH and private sides", () => {

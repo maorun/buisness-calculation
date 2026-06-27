@@ -1,7 +1,12 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
-import { berechneBetriebsErgebnisse, DEFAULT_FIRMENHANDY_CONFIG, DEFAULT_STILLER_GESELLSCHAFTER_CONFIG } from "@/lib/calculations/betrieb";
+import {
+  berechneBetriebsErgebnisse,
+  DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
+  DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
+} from "@/lib/calculations/betrieb";
 import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
 import { berechneGesamtkosten } from "@/lib/calculations/gruendung";
 import { JahresErgebnis } from "@/lib/types";
@@ -51,6 +56,8 @@ const initialState: CalculatorState = {
     benefits: {
       tankgutschein: 50,
       strategieessen: 0,
+      essenszuschussProTag: DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
+      essenszuschussTageProJahr: 0,
       bav: 0,
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
@@ -217,7 +224,44 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }),
     {
       name: "gmbh-kalkulator",
+      version: 1,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<CalculatorState>;
+        return {
+          ...initialState,
+          ...state,
+          gruendung: {
+            ...initialState.gruendung,
+            ...state?.gruendung,
+          },
+          betrieb: {
+            ...initialState.betrieb,
+            ...state?.betrieb,
+            darlehen: {
+              ...initialState.betrieb.darlehen,
+              ...state?.betrieb?.darlehen,
+            },
+            benefits: {
+              ...initialState.betrieb.benefits,
+              ...state?.betrieb?.benefits,
+            },
+            firmenhandy: {
+              ...initialState.betrieb.firmenhandy,
+              ...state?.betrieb?.firmenhandy,
+            },
+            stillerGesellschafter: {
+              ...initialState.betrieb.stillerGesellschafter,
+              ...state?.betrieb?.stillerGesellschafter,
+            },
+            investitionen: state?.betrieb?.investitionen ?? initialState.betrieb.investitionen,
+          },
+          ende: {
+            ...initialState.ende,
+            ...state?.ende,
+          },
+        };
+      },
       partialize: (state) => ({
         gruendung: state.gruendung,
         betrieb: state.betrieb,
