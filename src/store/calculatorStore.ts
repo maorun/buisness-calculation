@@ -51,6 +51,8 @@ const initialState: CalculatorState = {
     benefits: {
       tankgutschein: 50,
       strategieessen: 0,
+      essenszuschussProTag: 0,
+      essenszuschussTageProJahr: 0,
       bav: 0,
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
@@ -217,7 +219,44 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }),
     {
       name: "gmbh-kalkulator",
+      version: 1,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<CalculatorState>;
+        return {
+          ...initialState,
+          ...state,
+          gruendung: {
+            ...initialState.gruendung,
+            ...state?.gruendung,
+          },
+          betrieb: {
+            ...initialState.betrieb,
+            ...state?.betrieb,
+            darlehen: {
+              ...initialState.betrieb.darlehen,
+              ...state?.betrieb?.darlehen,
+            },
+            benefits: {
+              ...initialState.betrieb.benefits,
+              ...state?.betrieb?.benefits,
+            },
+            firmenhandy: {
+              ...initialState.betrieb.firmenhandy,
+              ...state?.betrieb?.firmenhandy,
+            },
+            stillerGesellschafter: {
+              ...initialState.betrieb.stillerGesellschafter,
+              ...state?.betrieb?.stillerGesellschafter,
+            },
+            investitionen: state?.betrieb?.investitionen ?? initialState.betrieb.investitionen,
+          },
+          ende: {
+            ...initialState.ende,
+            ...state?.ende,
+          },
+        };
+      },
       partialize: (state) => ({
         gruendung: state.gruendung,
         betrieb: state.betrieb,

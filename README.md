@@ -22,7 +22,7 @@ Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft 
 - Simulierbarer **jährlicher Betriebsgewinn**: wird zuerst mit Betriebskosten verrechnet; Überschüsse werden nach Steuern als zusätzlicher ETF-Zufluss investiert
 - **Zielnetto-Abgleich im Betrieb** für den Gesellschafter (Netto-Darlehenszinsen + Netto-GF-Gehalt)
 - Konfigurierbares **GF-Gehalt im Betrieb** als zusätzliche Betriebskostenposition
-- Steuerliche **Benefits**: Tankgutschein (max. 50 €/Monat, steuerfrei gem. § 8 Abs. 2 EStG) und Strategieessen
+- Steuerliche **Benefits**: Tankgutschein (max. 50 €/Monat, steuerfrei gem. § 8 Abs. 2 EStG), Essenszuschuss (bis zu 7,67 € pro Tag) und Strategieessen
 - Automatische Berücksichtigung von **Firmenhandy-Kosten** als Betriebsausgabe
 - Transparente Darstellung aller **Steuerparameter** (KSt 15 %, Solidaritätszuschlag, GewSt ca. 14 %, Abgeltungsteuer, Vorabpauschale, Teilfreistellung)
 - **Jahresergebnisse**: Übersicht über Gesamtvermögen, Gewinn, Steuern und Nettogewinn pro Jahr

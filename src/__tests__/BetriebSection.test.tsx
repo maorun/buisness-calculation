@@ -34,6 +34,8 @@ function setStoreState() {
       benefits: {
         tankgutschein: 50,
         strategieessen: 0,
+        essenszuschussProTag: 0,
+        essenszuschussTageProJahr: 0,
         bav: 0,
       },
       firmenhandy: {
@@ -88,6 +90,12 @@ describe("BetriebSection", () => {
   it("renders the personal marginal tax rate input for private comparison", () => {
     render(<BetriebSection />);
     expect(screen.getByText("Persönlicher Grenzsteuersatz des Gesellschafters (%)")).toBeTruthy();
+  });
+
+  it("renders meal subsidy inputs", () => {
+    render(<BetriebSection />);
+    expect(screen.getByText("Essenszuschuss (€/Tag)")).toBeTruthy();
+    expect(screen.getByText("Geförderte Tage Essenszuschuss (pro Jahr)")).toBeTruthy();
   });
 
   it("merges the overall Betrieb-und-Ende KPI into the existing decision area", () => {

@@ -30,6 +30,8 @@ export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
+export const MAX_ESSENSZUSCHUSS_PRO_TAG = 7.67;
+export const MAX_ESSENSZUSCHUSS_TAGE_PRO_JAHR = 366;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
 export const MONATE_PRO_JAHR = 12;
@@ -341,6 +343,7 @@ function berechneKostenPositionJahresBetrag(kostenPosition: KostenPosition): num
 /**
  * Tax saving from benefits in a GmbH:
  * - Tankgutschein (fuel voucher): up to 50 €/month tax-free as Sachbezug
+ * - Essenszuschuss: up to 7.67 €/day tax-free employer meal subsidy
  * - Strategieessen (annual strategy dinner): fully deductible business expense
  *
  * Returns the annual tax saving (at GmbH tax rate) from deductible benefits.
@@ -359,9 +362,10 @@ export function berechneBenefitsSteuerersparnis(
  */
 export function berechneBenefitsKosten(benefits: BenefitConfig): number {
   const tankJahr = berechneTankgutscheinJaehrlich(benefits);
+  const essenszuschussJahr = berechneEssenszuschussJaehrlich(benefits);
   const strategieessen = benefits.strategieessen;
   const bav = Math.max(0, benefits.bav ?? 0);
-  return tankJahr + strategieessen + bav;
+  return tankJahr + essenszuschussJahr + strategieessen + bav;
 }
 
 export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number {
@@ -369,12 +373,23 @@ export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number 
   return clampedTankMonthly * MONATE_PRO_JAHR;
 }
 
+export function berechneEssenszuschussJaehrlich(benefits: BenefitConfig): number {
+  const proTag = Math.min(Math.max(benefits.essenszuschussProTag ?? 0, 0), MAX_ESSENSZUSCHUSS_PRO_TAG);
+  const tage = Math.min(
+    Math.max(Math.floor(benefits.essenszuschussTageProJahr ?? 0), 0),
+    MAX_ESSENSZUSCHUSS_TAGE_PRO_JAHR
+  );
+  return proTag * tage;
+}
+
 export function berechneKonsumNutzenwertProJahr(
   jahr: number,
   benefits: BenefitConfig,
   handyConfig: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
 ): number {
-  return berechneTankgutscheinJaehrlich(benefits) + berechneHandyNettoKostenProJahr(jahr, handyConfig);
+  return berechneTankgutscheinJaehrlich(benefits)
+    + berechneEssenszuschussJaehrlich(benefits)
+    + berechneHandyNettoKostenProJahr(jahr, handyConfig);
 }
 
 export function berechneGmbhKonsumwertProJahr(
@@ -385,10 +400,11 @@ export function berechneGmbhKonsumwertProJahr(
   umsatzsteuerSatz: number = UMSATZSTEUER_SATZ
 ): number {
   const tankgutscheinEffektiv = berechneTankgutscheinJaehrlich(benefits) * (1 - steuerRate);
+  const essenszuschussEffektiv = berechneEssenszuschussJaehrlich(benefits) * (1 - steuerRate);
   const handyKostenNominal = berechneHandyNettoKostenProJahr(jahr, handyConfig);
   const handyKostenNachVorsteuer = handyKostenNominal / (1 + umsatzsteuerSatz);
   const handyEffektiv = handyKostenNachVorsteuer * (1 - steuerRate);
-  return tankgutscheinEffektiv + handyEffektiv;
+  return tankgutscheinEffektiv + essenszuschussEffektiv + handyEffektiv;
 }
 
 export function berechneBetriebskostenPosten(
@@ -405,8 +421,10 @@ export function berechneBetriebskostenPosten(
   }));
 
   const tankgutscheinJaehrlich = berechneTankgutscheinJaehrlich(benefits);
+  const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(benefits);
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
+    { label: "Essenszuschuss", wert: essenszuschussJaehrlich },
     { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
     { label: "bAV-Beitrag", wert: Math.max(0, benefits.bav ?? 0) },
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
