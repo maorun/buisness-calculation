@@ -394,9 +394,11 @@ export function berechneEndeErgebnisse(
     });
   }
 
+  const endeDarlehenEndfaelligAktiv = state.darlehenEndfaellig ?? false;
   // --- Bereich 2: regular payout years (darlehen = 0 after Bereich 1, or normal flow) ---
   // When endfaellig, Bereich 1 creates a new shareholder loan at 3%; otherwise use the given restschuld.
   let restdarlehen = endfaellig ? reinvestiertesDarlehen : Math.max(0, darlehenRestschuldAnfang);
+  let aufgelaufeneEndeDarlehenszinsen = 0;
   const bereich2StartJahr = endfaellig ? 2 : 1;
 
   for (let i = 1; i <= state.laufzeitJahre; i++) {
@@ -418,12 +420,13 @@ export function berechneEndeErgebnisse(
     endePhaseJahr++;
 
     const verbleibendeJahre = state.laufzeitJahre - i + 1;
+    const darlehenZinssatz = endfaellig ? REINVESTIERTES_DARLEHEN_ZINSSATZ : darlehenZinssatzPercent;
     const {
       zinsertragBrutto: berechneteDarlehenZinsen,
       tilgungsanteil: berechneteDarlehenTilgung,
     } = berechneDarlehensAuszahlung(
       restdarlehen,
-      endfaellig ? REINVESTIERTES_DARLEHEN_ZINSSATZ : darlehenZinssatzPercent,
+      darlehenZinssatz,
       verbleibendeJahre,
       state.tilgungsrate
     );
@@ -432,7 +435,13 @@ export function berechneEndeErgebnisse(
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
 
-    const darlehenZinsen = berechneteDarlehenZinsen;
+    const istLetztesBereich2Jahr = i === state.laufzeitJahre;
+    if (endeDarlehenEndfaelligAktiv && restdarlehen > 0) {
+      aufgelaufeneEndeDarlehenszinsen += restdarlehen * (Math.max(0, darlehenZinssatz) / 100);
+    }
+    const darlehenZinsen = endeDarlehenEndfaelligAktiv
+      ? (istLetztesBereich2Jahr ? aufgelaufeneEndeDarlehenszinsen : 0)
+      : berechneteDarlehenZinsen;
     const darlehenZinsenSteuer = berechneDarlehensZinsenSteuer(darlehenZinsen, bruttoGehalt);
     const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
 
@@ -445,9 +454,11 @@ export function berechneEndeErgebnisse(
     );
     const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto;
     const konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
-    const darlehenTilgung = endfaellig
-      ? berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen)
-      : berechneteDarlehenTilgung;
+    const darlehenTilgung = endeDarlehenEndfaelligAktiv
+      ? (istLetztesBereich2Jahr ? restdarlehen : 0)
+      : (endfaellig
+        ? berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen)
+        : berechneteDarlehenTilgung);
     const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
@@ -486,6 +497,7 @@ export function berechneEndeErgebnisse(
         darlehenGesamtauszahlungBrutto,
         darlehenGesamtauszahlungNetto,
         restdarlehen,
+        aufgelaufeneEndeDarlehenszinsen: endeDarlehenEndfaelligAktiv ? aufgelaufeneEndeDarlehenszinsen : 0,
         neuesDarlehenZinssatz: endfaellig ? REINVESTIERTES_DARLEHEN_ZINSSATZ : darlehenZinssatzPercent,
         beitragspflichtigeEinnahmenGkv,
         gesetzlicheKrankenversicherungBeitrag,

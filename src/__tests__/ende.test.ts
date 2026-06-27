@@ -686,5 +686,25 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[1].details.betriebsausgabenGesamt).toBeCloseTo(0);
       expect(results[2].details.betriebsausgabenGesamt).toBeCloseTo(0);
     });
+
+    it("defers Ende-darlehen payout to the final year when ende.darlehenEndfaellig is active", () => {
+      const state: EndeState = {
+        ...baseState,
+        geschaeftsfuehrergehalt: 0,
+        gewinnausschuettung: 0,
+        laufzeitJahre: 3,
+        darlehenEndfaellig: true,
+      };
+      const darlehenStart = 12000;
+      const zinssatz = 5;
+      const results = berechneEndeErgebnisse(state, 0, darlehenStart, zinssatz);
+
+      expect(results[0].details.darlehenGesamtauszahlungBrutto).toBeCloseTo(0);
+      expect(results[1].details.darlehenGesamtauszahlungBrutto).toBeCloseTo(0);
+      expect(results[2].details.darlehenTilgung).toBeCloseTo(darlehenStart);
+      const erwarteteZinsen = Array.from({ length: state.laufzeitJahre })
+        .reduce((sum) => sum + (darlehenStart * (zinssatz / 100)), 0);
+      expect(results[2].details.darlehenZinsen).toBeCloseTo(erwarteteZinsen);
+    });
   });
 });

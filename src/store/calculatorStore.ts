@@ -66,6 +66,7 @@ const initialState: CalculatorState = {
     laufzeitJahre: 5,
     zielnettoBereich1: 17000,
     zielnettoBereich2: 17000,
+    darlehenEndfaellig: false,
   },
 };
 
@@ -199,14 +200,14 @@ export const useCalculatorStore = create<CalculatorStore>()(
     const offenesDarlehen = letztesBetriebsergebnis?.details.offenesDarlehen
       ?? Math.max(0, get().betrieb.darlehen.betrag);
     const aufgelaufeneZinsen = letztesBetriebsergebnis?.details.aufgelaufeneZinsen ?? 0;
-    const endfaellig = get().betrieb.darlehen.endfaellig;
+    const betriebDarlehenEndfaellig = get().betrieb.darlehen.endfaellig;
     return berechneEndeErgebnisse(
       get().ende,
       letzterEtfWert,
       offenesDarlehen,
       get().betrieb.darlehen.zinssatz,
       aufgelaufeneZinsen,
-      endfaellig,
+      betriebDarlehenEndfaellig,
       get().betrieb.etfRendite,
       get().betrieb.kosten,
       get().betrieb.benefits,
