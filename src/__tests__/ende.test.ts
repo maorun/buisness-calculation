@@ -270,25 +270,26 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[0].details.restdarlehen).toBeCloseTo(0);
   });
 
-  it("re-lends principal in ETF when no tilgungsrate configured (non-endfaellig): tilgung = 0 until final year", () => {
-    // No tilgungsrate → loan is re-lent back to the GmbH so the ETF keeps the full
-    // principal compounding. Only at the final year is the principal fully returned.
+  it("re-lends principal in ETF when no tilgungsrate configured (non-endfaellig): tilgung = 0 in all years", () => {
+    // No tilgungsrate → loan is perpetually re-lent back to the GmbH so the ETF keeps the
+    // full principal compounding. The principal is never forcefully repaid; restdarlehen stays
+    // positive throughout, reflecting the outstanding shareholder loan.
     const darlehenStart = 12000;
     const zinssatz = 6;
     const state = { ...defaultState, geschaeftsfuehrergehalt: 0, gewinnausschuettung: 0, laufzeitJahre: 3 };
     const results = berechneEndeErgebnisse(state, 100000, darlehenStart, zinssatz);
 
-    // Non-final years: tilgung = 0, principal stays re-lent → restdarlehen unchanged
+    // All years: tilgung = 0, principal stays re-lent → restdarlehen unchanged throughout
     expect(results[0].details.darlehenTilgung).toBeCloseTo(0);
     expect(results[0].details.restdarlehen).toBeCloseTo(darlehenStart);
     expect(results[1].details.darlehenTilgung).toBeCloseTo(0);
     expect(results[1].details.restdarlehen).toBeCloseTo(darlehenStart);
 
-    // Final year: full principal repaid
-    expect(results[2].details.darlehenTilgung).toBeCloseTo(darlehenStart);
-    expect(results[2].details.restdarlehen).toBeCloseTo(0);
+    // Final year: still re-lent, no forced repayment
+    expect(results[2].details.darlehenTilgung).toBeCloseTo(0);
+    expect(results[2].details.restdarlehen).toBeCloseTo(darlehenStart);
 
-    // Annual interest on the constant principal each non-final year
+    // Annual interest on the constant principal each year
     expect(results[0].details.darlehenZinsen).toBeCloseTo(darlehenStart * zinssatz / 100);
     expect(results[1].details.darlehenZinsen).toBeCloseTo(darlehenStart * zinssatz / 100);
   });
@@ -381,12 +382,15 @@ describe("berechneEndeErgebnisse", () => {
     );
   });
 
-  it("calculates gesamtvermoegen as private assets + current firm net assets per year", () => {
+  it("calculates gesamtvermoegen as private assets + gross firm ETF per year", () => {
+    // gesamtvermoegen = privatvermoegen + firmenEtfVermoegen (gross ETF, not net of restdarlehen).
+    // The shareholder loan is internal: the GmbH holds it as an ETF asset and the shareholder
+    // holds it as a receivable – both cancel out in the consolidated total wealth view.
     const results = berechneEndeErgebnisse(defaultState, 100000, 12000, 6);
     let privatvermoegen = 0;
     for (const r of results) {
       privatvermoegen += r.nettogewinn;
-      expect(r.gesamtvermoegen).toBeCloseTo(privatvermoegen + r.details.firmenNettovermoegen);
+      expect(r.gesamtvermoegen).toBeCloseTo(privatvermoegen + r.details.firmenEtfVermoegen);
     }
   });
 
