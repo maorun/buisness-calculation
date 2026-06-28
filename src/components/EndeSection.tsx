@@ -440,15 +440,19 @@ export function EndeSection() {
                 </p>
               </div>
             </div>
-            <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
-              <p className="text-xs font-medium text-slate-600">Bereich-2 Zielabgleich</p>
-              <p className="mt-1 text-lg font-bold text-slate-800">
-                {bereich2GesamtNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
-              </p>
-              <p className={`text-xs mt-1 ${bereich2ZielDiff >= 0 ? "text-green-700" : "text-red-700"}`}>
-                {bereich2ZielDiff >= 0 ? "Überschuss" : "Fehlbetrag"}: {Math.abs(bereich2ZielDiff).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
-              </p>
-            </div>
+          </div>
+        )}
+        {!endeDarlehenEndfaellig && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-medium text-slate-600">
+              {betriebDarlehenEndfaellig ? "Bereich-2 Zielabgleich" : "Zielabgleich Auszahlungsphase"}
+            </p>
+            <p className="mt-1 text-lg font-bold text-slate-800">
+              {bereich2GesamtNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € netto
+            </p>
+            <p className={`text-xs mt-1 ${bereich2ZielDiff >= 0 ? "text-green-700" : "text-red-700"}`}>
+              {bereich2ZielDiff >= 0 ? "Überschuss" : "Fehlbetrag"}: {Math.abs(bereich2ZielDiff).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+            </p>
           </div>
         )}
 

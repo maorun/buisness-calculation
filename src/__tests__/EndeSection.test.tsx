@@ -200,5 +200,6 @@ describe("EndeSection", () => {
     render(<EndeSection />);
 
     expect(screen.queryByText("Zielnetto Bereich 2 (€/Jahr)")).not.toBeNull();
+    expect(screen.queryByText("Zielabgleich Auszahlungsphase")).not.toBeNull();
   });
 });
