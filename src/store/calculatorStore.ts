@@ -224,10 +224,13 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }),
     {
       name: "gmbh-kalkulator",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
-      migrate: (persistedState) => {
+      migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;
+        const shouldMigrateMealDaysDefault =
+          (persistedVersion ?? 0) < 2
+          && (state?.betrieb?.benefits?.essenszuschussTageProJahr ?? 0) === 0;
         return {
           ...initialState,
           ...state,
@@ -245,6 +248,9 @@ export const useCalculatorStore = create<CalculatorStore>()(
             benefits: {
               ...initialState.betrieb.benefits,
               ...state?.betrieb?.benefits,
+              ...(shouldMigrateMealDaysDefault
+                ? { essenszuschussTageProJahr: initialState.betrieb.benefits.essenszuschussTageProJahr }
+                : {}),
             },
             firmenhandy: {
               ...initialState.betrieb.firmenhandy,
