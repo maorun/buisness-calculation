@@ -57,7 +57,7 @@ const initialState: CalculatorState = {
       tankgutschein: 50,
       strategieessen: 0,
       essenszuschussProTag: DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
-      essenszuschussTageProJahr: 0,
+      essenszuschussTageProJahr: 220,
       bav: 0,
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
