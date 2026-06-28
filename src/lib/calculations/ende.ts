@@ -4,6 +4,7 @@ import {
   berechneVorabpauschalesteuer,
   berechneBetriebskosten,
   berechneBetriebskostenPosten,
+  berechneEssenszuschussJaehrlich,
   berechneHandyNettoKostenProJahr,
   berechneBenefitsKosten,
   DEFAULT_FIRMENHANDY_CONFIG,
@@ -285,6 +286,7 @@ export function berechneEndeErgebnisse(
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
     const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKostenB1 = berechneBenefitsKosten(benefits);
+    const essenszuschussNutzenB1 = berechneEssenszuschussJaehrlich(benefits) * (1 - GMBH_STEUER_GESAMT);
     const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
     const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
@@ -310,14 +312,16 @@ export function berechneEndeErgebnisse(
       beitragspflichtigeEinnahmenGkv
     );
     const zielnettoBereich1 = state.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
-    const konsumVorAutomatischerTilgungBereich1 = nettoGehalt + zinsenNetto - gesetzlicheKrankenversicherungBeitrag;
+    const konsumVorAutomatischerTilgungBereich1 =
+      nettoGehalt + zinsenNetto + essenszuschussNutzenB1 - gesetzlicheKrankenversicherungBeitrag;
     const teiltilgungBereich1 = berechneFlexibleTilgung(
       zielnettoBereich1,
       konsumVorAutomatischerTilgungBereich1,
       darlehensrueckzahlung
     );
     reinvestiertesDarlehen = Math.max(0, darlehensrueckzahlung - teiltilgungBereich1);
-    const konsumierbaresNettoBereich1VorGkv = nettoGehalt + zinsenNetto + teiltilgungBereich1;
+    const konsumierbaresNettoBereich1VorGkv =
+      nettoGehalt + zinsenNetto + teiltilgungBereich1 + essenszuschussNutzenB1;
     const konsumierbaresNettoBereich1 = konsumierbaresNettoBereich1VorGkv - gesetzlicheKrankenversicherungBeitrag;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
     const gesamtSteuer = zinsSteuer + einkommensteuer + soli + vorabpauschalesteuerB1 + gmbhSteuerB1;
@@ -370,6 +374,7 @@ export function berechneEndeErgebnisse(
         darlehenGesamtauszahlungNetto: darlehenNettoAuszahlung,
         konsumierbaresNettoBereich1VorGkv,
         konsumierbaresNettoBereich1,
+        essenszuschussNutzen: essenszuschussNutzenB1,
         restdarlehen: reinvestiertesDarlehen,
         neuesDarlehenStart: reinvestiertesDarlehen,
         neuesDarlehenZinssatz: REINVESTIERTES_DARLEHEN_ZINSSATZ,
@@ -421,6 +426,7 @@ export function berechneEndeErgebnisse(
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
     const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKosten = berechneBenefitsKosten(benefits);
+    const essenszuschussNutzen = berechneEssenszuschussJaehrlich(benefits) * (1 - GMBH_STEUER_GESAMT);
     const betriebskostenPosten = berechneBetriebskostenPosten(kosten, benefits, handyNettoKosten, firmenhandy);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
     endePhaseJahr++;
@@ -458,7 +464,7 @@ export function berechneEndeErgebnisse(
     const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
       beitragspflichtigeEinnahmenGkv
     );
-    const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto;
+    const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + essenszuschussNutzen;
     const konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
     const darlehenTilgung = endeDarlehenEndfaelligAktiv
       ? (istLetztesBereich2Jahr ? restdarlehen : 0)
@@ -475,7 +481,7 @@ export function berechneEndeErgebnisse(
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
     const gesamtNetto =
-      nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto - gesetzlicheKrankenversicherungBeitrag;
+      nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto + essenszuschussNutzen - gesetzlicheKrankenversicherungBeitrag;
     const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer;
 
     privatvermoegen += gesamtNetto;
@@ -507,6 +513,7 @@ export function berechneEndeErgebnisse(
         neuesDarlehenZinssatz: endfaellig ? REINVESTIERTES_DARLEHEN_ZINSSATZ : darlehenZinssatzPercent,
         beitragspflichtigeEinnahmenGkv,
         gesetzlicheKrankenversicherungBeitrag,
+        essenszuschussNutzen,
         konsumVorTilgungVorGkv,
         konsumVorTilgung,
         firmenGesamtabfluss,
