@@ -453,7 +453,7 @@ export function berechneEndeErgebnisse(
 
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
-    const zielnetto = endfaellig ? (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2) : 0;
+    const zielnetto = endeDarlehenEndfaelligAktiv ? 0 : (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2);
     const beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + state.gewinnausschuettung;
     const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
       beitragspflichtigeEinnahmenGkv

@@ -181,4 +181,24 @@ describe("EndeSection", () => {
     expect(gesamtvergleich.privatGesamtwert).toBeCloseTo(10000);
     expect(gesamtvergleich.vorteil).toBeCloseTo(0);
   });
+
+  it("shows Zielnetto Bereich 2 when Ende loan is non-endfällig", () => {
+    setStoreState({
+      betrieb: {
+        ...useCalculatorStore.getState().betrieb,
+        darlehen: {
+          ...useCalculatorStore.getState().betrieb.darlehen,
+          endfaellig: false,
+        },
+      },
+      ende: {
+        ...useCalculatorStore.getState().ende,
+        darlehenEndfaellig: false,
+      },
+    });
+
+    render(<EndeSection />);
+
+    expect(screen.queryByText("Zielnetto Bereich 2 (€/Jahr)")).not.toBeNull();
+  });
 });

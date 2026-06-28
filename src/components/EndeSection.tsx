@@ -357,7 +357,7 @@ export function EndeSection() {
         )}
 
         {/* Zielnetto Bereich 2 */}
-        {betriebDarlehenEndfaellig && !endeDarlehenEndfaellig && (
+        {!endeDarlehenEndfaellig && (
           <div className="mb-4 max-w-xs">
             <InputField
               label="Zielnetto Bereich 2 (€/Jahr)"
@@ -369,7 +369,7 @@ export function EndeSection() {
             />
           </div>
         )}
-        {betriebDarlehenEndfaellig && endeDarlehenEndfaellig && (
+        {endeDarlehenEndfaellig && (
           <p className="mb-4 text-xs text-slate-500">
             Zielnetto Bereich 2 ist bei endfälligem Ende-Darlehen deaktiviert, da Tilgung und Zinsen erst im letzten Jahr ausgezahlt werden.
           </p>
