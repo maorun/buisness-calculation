@@ -268,6 +268,12 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[0].details.restdarlehen).toBeCloseTo(0);
   });
 
+  it("stores configured zielnetto for non-endfällige payout years", () => {
+    const state = { ...defaultState, zielnettoBereich2: 17000 };
+    const results = berechneEndeErgebnisse(state, 0, 12000, 6);
+    expect(results[0].details.zielnetto).toBe(17000);
+  });
+
   it("tax includes einkommensteuer + soli + kst + ausschuettungsteuer + darlehenZinsenSteuer", () => {
     const results = berechneEndeErgebnisse(defaultState, 0, 12000, 6);
     for (const r of results) {
