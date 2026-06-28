@@ -13,6 +13,7 @@ import {
   MIDIJOB_JAHR_MAX,
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
+import { GMBH_STEUER_GESAMT } from "@/lib/calculations/betrieb";
 import { EndeState } from "@/lib/types";
 
 describe("berechneEinkommensteuer", () => {
@@ -623,6 +624,68 @@ describe("berechneEndeErgebnisse", () => {
       );
       // betriebsausgabenGesamt reflects the monthly kosten (500 * 12 = 6000)
       expect(resultsWithKosten[0].details.jaehrlicheKosten).toBeCloseTo(6000);
+    });
+
+    it("Bereich 2: includes Essenszuschuss-Benefit in net payout", () => {
+      const state = { ...baseState, geschaeftsfuehrergehalt: 0, gewinnausschuettung: 0, laufzeitJahre: 1 };
+      const benefitsMitEssenszuschuss = {
+        tankgutschein: 0,
+        strategieessen: 0,
+        essenszuschussProTag: 7.67,
+        essenszuschussTageProJahr: 220,
+        bav: 0,
+      };
+      const resultsOhneBenefit = berechneEndeErgebnisse(state, 100000, 0, 0, 0, false, 0, []);
+      const resultsMitBenefit = berechneEndeErgebnisse(
+        state,
+        100000,
+        0,
+        0,
+        0,
+        false,
+        0,
+        [],
+        benefitsMitEssenszuschuss
+      );
+      const erwarteterEssenszuschussNutzen = (7.67 * 220) * (1 - GMBH_STEUER_GESAMT);
+      const deltaNetto = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
+      expect(deltaNetto).toBeCloseTo(erwarteterEssenszuschussNutzen);
+      expect(resultsMitBenefit[0].details.essenszuschussNutzen).toBeCloseTo(erwarteterEssenszuschussNutzen);
+    });
+
+    it("Bereich 1: includes Essenszuschuss-Benefit in net payout", () => {
+      const state = {
+        ...baseState,
+        geschaeftsfuehrergehalt: 0,
+        gehaltBereich1: 0,
+        gewinnausschuettung: 0,
+        laufzeitJahre: 1,
+        zielnettoBereich1: 0,
+      };
+      const benefitsMitEssenszuschuss = {
+        tankgutschein: 0,
+        strategieessen: 0,
+        essenszuschussProTag: 7.67,
+        essenszuschussTageProJahr: 220,
+        bav: 0,
+      };
+      const resultsOhneBenefit = berechneEndeErgebnisse(state, 100000, 0, 0, 0, true, 0, []);
+      const resultsMitBenefit = berechneEndeErgebnisse(
+        state,
+        100000,
+        0,
+        0,
+        0,
+        true,
+        0,
+        [],
+        benefitsMitEssenszuschuss
+      );
+      const erwarteterEssenszuschussNutzen = (7.67 * 220) * (1 - GMBH_STEUER_GESAMT);
+      const deltaNettoBereich1 = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
+      expect(resultsMitBenefit[0].details.bereich).toBe(1);
+      expect(deltaNettoBereich1).toBeCloseTo(erwarteterEssenszuschussNutzen);
+      expect(resultsMitBenefit[0].details.essenszuschussNutzen).toBeCloseTo(erwarteterEssenszuschussNutzen);
     });
 
     it("Bereich 2: vorabpauschale and gmbhSteuer are non-zero with positive rendite and ETF", () => {
