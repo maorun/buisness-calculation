@@ -466,11 +466,17 @@ export function berechneEndeErgebnisse(
     );
     const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + essenszuschussNutzen;
     const konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
+    // When the Ende-phase loan is non-endfällig and no explicit tilgungsrate is configured,
+    // the shareholder re-lends the principal back to the GmbH each year so the ETF keeps the
+    // full loan amount compounding. Only in the final year is the full principal repaid.
+    // When a tilgungsrate is explicitly set, use that configured annual repayment instead.
     const darlehenTilgung = endeDarlehenEndfaelligAktiv
       ? (istLetztesBereich2Jahr ? restdarlehen : 0)
       : (endfaellig
         ? berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen)
-        : berechneteDarlehenTilgung);
+        : (state.tilgungsrate > 0
+          ? berechneteDarlehenTilgung
+          : (istLetztesBereich2Jahr ? restdarlehen : 0)));
     const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 

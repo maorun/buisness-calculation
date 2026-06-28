@@ -239,10 +239,11 @@ describe("berechneEndeErgebnisse", () => {
 
   it("includes calculated loan interest and repayment (progressive Einkommensteuer on interest)", () => {
     const results = berechneEndeErgebnisse(defaultState, 0, 12000, 6);
-    const zinsen = 720; // 12000 * 6% / 3 years = first year: 12000 * 0.06 = 720
+    const zinsen = 720; // 12000 * 6% = 720 annual interest (principal stays constant – re-lent)
     const expectedZinsenSteuer = berechneDarlehensZinsenSteuer(zinsen, defaultState.geschaeftsfuehrergehalt);
     expect(results[0].details.darlehenZinsen).toBeCloseTo(720);
-    expect(results[0].details.darlehenTilgung).toBeCloseTo(4000);
+    // No tilgungsrate configured → principal re-lent until final year; no tilgung in year 1
+    expect(results[0].details.darlehenTilgung).toBeCloseTo(0);
     expect(results[0].details.darlehenZinsenSteuer).toBeCloseTo(expectedZinsenSteuer);
     expect(results[0].details.darlehenZinsenNetto).toBeCloseTo(zinsen - expectedZinsenSteuer);
   });
@@ -267,6 +268,46 @@ describe("berechneEndeErgebnisse", () => {
     const results = berechneEndeErgebnisse(state, 0, 12000, 6);
     expect(results[0].details.darlehenTilgung).toBeCloseTo(12000);
     expect(results[0].details.restdarlehen).toBeCloseTo(0);
+  });
+
+  it("re-lends principal in ETF when no tilgungsrate configured (non-endfaellig): tilgung = 0 until final year", () => {
+    // No tilgungsrate → loan is re-lent back to the GmbH so the ETF keeps the full
+    // principal compounding. Only at the final year is the principal fully returned.
+    const darlehenStart = 12000;
+    const zinssatz = 6;
+    const state = { ...defaultState, geschaeftsfuehrergehalt: 0, gewinnausschuettung: 0, laufzeitJahre: 3 };
+    const results = berechneEndeErgebnisse(state, 100000, darlehenStart, zinssatz);
+
+    // Non-final years: tilgung = 0, principal stays re-lent → restdarlehen unchanged
+    expect(results[0].details.darlehenTilgung).toBeCloseTo(0);
+    expect(results[0].details.restdarlehen).toBeCloseTo(darlehenStart);
+    expect(results[1].details.darlehenTilgung).toBeCloseTo(0);
+    expect(results[1].details.restdarlehen).toBeCloseTo(darlehenStart);
+
+    // Final year: full principal repaid
+    expect(results[2].details.darlehenTilgung).toBeCloseTo(darlehenStart);
+    expect(results[2].details.restdarlehen).toBeCloseTo(0);
+
+    // Annual interest on the constant principal each non-final year
+    expect(results[0].details.darlehenZinsen).toBeCloseTo(darlehenStart * zinssatz / 100);
+    expect(results[1].details.darlehenZinsen).toBeCloseTo(darlehenStart * zinssatz / 100);
+  });
+
+  it("re-lent loan keeps ETF higher than non-re-lent over multiple years", () => {
+    // With re-lending (tilgungsrate = 0), the ETF is not reduced by tilgung in non-final years.
+    // With an explicit tilgungsrate, the ETF shrinks as principal is repaid annually.
+    const stateReLent = { ...defaultState, geschaeftsfuehrergehalt: 0, gewinnausschuettung: 0, laufzeitJahre: 3 };
+    const stateRepay = { ...stateReLent, tilgungsrate: 4000 };
+    const etfStart = 100000;
+    const darlehenStart = 12000;
+
+    const resultsReLent = berechneEndeErgebnisse(stateReLent, etfStart, darlehenStart, 6, 0, false, 7);
+    const resultsRepay = berechneEndeErgebnisse(stateRepay, etfStart, darlehenStart, 6, 0, false, 7);
+
+    // After year 1, the re-lent ETF is higher (no principal drained from it)
+    expect(resultsReLent[0].details.firmenEtfVermoegen).toBeGreaterThan(
+      resultsRepay[0].details.firmenEtfVermoegen
+    );
   });
 
   it("stores configured zielnetto for non-endfällige payout years", () => {
