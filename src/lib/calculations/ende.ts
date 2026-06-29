@@ -338,14 +338,15 @@ export function berechneEndeErgebnisse(
 
     // Only the consumable net (salary + net interest + teiltilgung - GKV) accrues to the
     // shareholder's wealth here. The reinvested principal (reinvestiertesDarlehen) is NOT
-    // a new gain – it is the same loan reorganised into a new 3%-instrument and will be
-    // counted when it is actually repaid in Bereich 2.
+    // a new gain – it is the same loan reorganised into a new 3%-instrument.
+    // gesamtvermoegen = private consumed + gross firm ETF (the shareholder loan is internal
+    // and nets out: ETF contains it as asset, restdarlehen tracks it as liability).
     privatvermoegen += konsumierbaresNettoBereich1;
     const firmenNettovermoegenBereich1 = firmenEtfVermoegen - reinvestiertesDarlehen;
 
     ergebnisse.push({
       jahr: 1,
-      gesamtvermoegen: privatvermoegen + firmenNettovermoegenBereich1,
+      gesamtvermoegen: privatvermoegen + firmenEtfVermoegen,
       gewinn: gesamtBrutto,
       steuer: gesamtSteuer,
       nettogewinn: konsumierbaresNettoBereich1,
@@ -466,11 +467,24 @@ export function berechneEndeErgebnisse(
     );
     const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + essenszuschussNutzen;
     const konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
-    const darlehenTilgung = endeDarlehenEndfaelligAktiv
-      ? (istLetztesBereich2Jahr ? restdarlehen : 0)
-      : (endfaellig
-        ? berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen)
-        : berechneteDarlehenTilgung);
+    // When the Ende-phase loan is non-endfällig and no explicit tilgungsrate is configured,
+    // the shareholder perpetually re-lends the principal back to the GmbH so the ETF keeps the
+    // full loan amount compounding. The principal is never forcefully repaid – it stays in the
+    // ETF as an asset, while restdarlehen tracks the outstanding liability. The shareholder's
+    // total wealth is correctly captured via gesamtvermoegen = privatvermoegen + firmenEtfVermoegen,
+    // since the internal loan receivable and the ETF asset cancel each other out in a consolidated view.
+    // When a tilgungsrate is explicitly set, use that configured annual repayment instead.
+    let darlehenTilgung: number;
+    if (endeDarlehenEndfaelligAktiv) {
+      darlehenTilgung = istLetztesBereich2Jahr ? restdarlehen : 0;
+    } else if (endfaellig) {
+      darlehenTilgung = berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen);
+    } else if (state.tilgungsrate > 0) {
+      darlehenTilgung = berechneteDarlehenTilgung;
+    } else {
+      // tilgungsrate = 0 (non-endfällig): perpetually re-lent, ETF balance stays positive
+      darlehenTilgung = 0;
+    }
     const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
@@ -491,7 +505,7 @@ export function berechneEndeErgebnisse(
 
     ergebnisse.push({
       jahr,
-      gesamtvermoegen: privatvermoegen + firmenNettovermoegen,
+      gesamtvermoegen: privatvermoegen + firmenEtfVermoegen,
       gewinn: gesamtBrutto,
       steuer: gesamtSteuer,
       nettogewinn: gesamtNetto,
