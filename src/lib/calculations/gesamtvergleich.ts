@@ -48,8 +48,15 @@ export function berechneGesamtvergleichKpi(
     : undefined;
   const gmbhBetriebKonsumwert = letzterBetriebsstand?.details.kumulierterKonsumwert ?? 0;
   const gmbhBetriebNettovermoegen = letzterBetriebsstand?.details.nettovermoegen ?? 0;
+  const endeFirmenDarlehensverbindlichkeit = Math.max(
+    0,
+    letzterEndeStand?.details.firmenDarlehensverbindlichkeit ?? 0
+  );
+  const gmbhEndeNettovermoegen = letzterEndeStand
+    ? letzterEndeStand.gesamtvermoegen - endeFirmenDarlehensverbindlichkeit
+    : gmbhBetriebNettovermoegen;
   const gmbhGesamtwert =
-    (letzterEndeStand?.gesamtvermoegen ?? gmbhBetriebNettovermoegen) +
+    gmbhEndeNettovermoegen +
     gmbhBetriebKonsumwert +
     (letzterEndeStand ? investitionsZusammenfassung.nettovermoegen : 0);
   const privatGesamtwert = privatVergleich.gesamtwertMitKonsum;
