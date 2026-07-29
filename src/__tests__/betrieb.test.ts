@@ -12,6 +12,7 @@ import {
   berechneEssenszuschussJaehrlich,
   berechneHandyNettoKostenProJahr,
   berechneGmbhKonsumwertProJahr,
+  berechneKonsumNutzenwertProJahr,
   berechneBetriebsErgebnisse,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
@@ -874,8 +875,8 @@ describe("berechneBetriebsErgebnisse", () => {
     );
     expect(firmenhandyJahr1?.wert).toBeCloseTo(HANDY_ANSCHAFFUNGSKOSTEN); // first purchase: no trade-in
     expect(firmenhandyJahr2?.wert).toBe(0);
-    const erwarteterKonsumwertJahr1 = berechneGmbhKonsumwertProJahr(1, state.benefits, state.firmenhandy);
-    const erwarteterKonsumwertJahr2 = berechneGmbhKonsumwertProJahr(2, state.benefits, state.firmenhandy);
+    const erwarteterKonsumwertJahr1 = berechneKonsumNutzenwertProJahr(1, state.benefits, state.firmenhandy);
+    const erwarteterKonsumwertJahr2 = berechneKonsumNutzenwertProJahr(2, state.benefits, state.firmenhandy);
     expect(jahr1.details.konsumNutzenwert).toBeCloseTo(erwarteterKonsumwertJahr1);
     expect(jahr2.details.konsumNutzenwert).toBeCloseTo(erwarteterKonsumwertJahr2);
     expect(jahr2.details.kumulierterKonsumwert).toBeCloseTo(erwarteterKonsumwertJahr1 + erwarteterKonsumwertJahr2);
@@ -900,7 +901,7 @@ describe("berechneBetriebsErgebnisse", () => {
     const essenszuschussPosten = result.betriebskostenPosten?.find((posten) => posten.label === "Essenszuschuss");
 
     expect(result.details.benefitsKosten).toBeCloseTo(1687.4);
-    expect(result.details.konsumNutzenwert).toBeCloseTo(berechneGmbhKonsumwertProJahr(1, benefits, state.firmenhandy));
+    expect(result.details.konsumNutzenwert).toBeCloseTo(berechneKonsumNutzenwertProJahr(1, benefits, state.firmenhandy));
     expect(essenszuschussPosten?.wert).toBeCloseTo(1687.4);
   });
 

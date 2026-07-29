@@ -819,7 +819,11 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
-    const konsumNutzenwert = berechneGmbhKonsumwertProJahr(jahr, state.benefits, handyConfig);
+    // Use the nominal consumption value (what the shareholder actually receives) rather than the
+    // GmbH's net cost after tax deduction.  The tax saving on benefits is already reflected in a
+    // lower gmbhSteuer → higher ETF value, so crediting only the after-tax cost would zero-out
+    // the benefit advantage instead of correctly showing the tax saving as a GmbH gain.
+    const konsumNutzenwert = berechneKonsumNutzenwertProJahr(jahr, state.benefits, handyConfig);
     kumulierterKonsumwert += konsumNutzenwert;
     const geschaeftsfuehrergehalt = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
     const gehaelterGesamt = geschaeftsfuehrergehalt;
