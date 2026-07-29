@@ -286,7 +286,9 @@ export function berechneEndeErgebnisse(
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
     const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKostenB1 = berechneBenefitsKosten(benefits);
-    const essenszuschussNutzenB1 = berechneEssenszuschussJaehrlich(benefits) * (1 - GMBH_STEUER_GESAMT);
+    // Nominal benefit value received by the shareholder; the GmbH tax saving is already
+    // captured in the lower gmbhSteuerB1 (benefits are deductible Betriebsausgaben).
+    const essenszuschussNutzenB1 = berechneEssenszuschussJaehrlich(benefits);
     const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
     const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
@@ -427,7 +429,9 @@ export function berechneEndeErgebnisse(
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
     const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
     const benefitsKosten = berechneBenefitsKosten(benefits);
-    const essenszuschussNutzen = berechneEssenszuschussJaehrlich(benefits) * (1 - GMBH_STEUER_GESAMT);
+    // Nominal benefit value received by the shareholder; the GmbH tax saving is already
+    // captured in the lower gmbhSteuer (benefits are deductible Betriebsausgaben).
+    const essenszuschussNutzen = berechneEssenszuschussJaehrlich(benefits);
     const betriebskostenPosten = berechneBetriebskostenPosten(kosten, benefits, handyNettoKosten, firmenhandy);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
     endePhaseJahr++;

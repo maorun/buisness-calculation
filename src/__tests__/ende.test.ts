@@ -698,7 +698,7 @@ describe("berechneEndeErgebnisse", () => {
         [],
         benefitsMitEssenszuschuss
       );
-      const erwarteterEssenszuschussNutzen = (7.67 * 220) * (1 - GMBH_STEUER_GESAMT);
+      const erwarteterEssenszuschussNutzen = 7.67 * 220;
       const deltaNetto = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
       expect(deltaNetto).toBeCloseTo(erwarteterEssenszuschussNutzen);
       expect(resultsMitBenefit[0].details.essenszuschussNutzen).toBeCloseTo(erwarteterEssenszuschussNutzen);
@@ -732,7 +732,7 @@ describe("berechneEndeErgebnisse", () => {
         [],
         benefitsMitEssenszuschuss
       );
-      const erwarteterEssenszuschussNutzen = (7.67 * 220) * (1 - GMBH_STEUER_GESAMT);
+      const erwarteterEssenszuschussNutzen = 7.67 * 220;
       const deltaNettoBereich1 = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
       expect(resultsMitBenefit[0].details.bereich).toBe(1);
       expect(deltaNettoBereich1).toBeCloseTo(erwarteterEssenszuschussNutzen);
