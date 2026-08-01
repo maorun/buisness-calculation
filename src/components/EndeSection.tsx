@@ -20,9 +20,11 @@ import {
 } from "@/lib/calculations/betrieb";
 import {
   berechneGesamtvergleichKpi,
+  berechneGesamtvergleichZeitreihe,
   formatSignedEuro,
   formatSignedPercent,
 } from "@/lib/calculations/gesamtvergleich";
+import { VergleichsDiagramm } from "./VergleichsDiagramm";
 
 function InputField({
   label,
@@ -139,6 +141,14 @@ export function EndeSection() {
   const bereich2ZielDiff = bereich2GesamtNetto - zielnettoBereich2;
   const gesamtvergleich = berechneGesamtvergleichKpi(betrieb, ende.laufzeitJahre, ergebnisse, betriebsErgebnisse);
   const overlayProzentText = formatSignedPercent(gesamtvergleich.vorteilProzent);
+  const vergleichsZeitreihe = React.useMemo(
+    () => berechneGesamtvergleichZeitreihe(betrieb, ende.laufzeitJahre, ergebnisse, betriebsErgebnisse),
+    [betrieb, ende.laufzeitJahre, ergebnisse, betriebsErgebnisse]
+  );
+  const gesamtBreakEvenJahr = (() => {
+    const index = vergleichsZeitreihe.findIndex((punkt) => punkt.gmbh >= punkt.privat);
+    return index >= 0 ? vergleichsZeitreihe[index].jahr : null;
+  })();
 
   return (
     <div className="space-y-6 pb-28 md:pb-32">
@@ -173,6 +183,20 @@ export function EndeSection() {
           Zeitraum: {gesamtvergleich.zeitraumJahre} Jahre. Vergleichswert Privat wird über den gleichen Gesamtzeitraum simuliert.
           GmbH-Gesamtwert kombiniert Endvermögen aus der Ende-Phase mit dem kumulierten Betriebskonsumwert.
         </p>
+        {vergleichsZeitreihe.length > 0 && (
+          <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
+            <VergleichsDiagramm
+              punkte={vergleichsZeitreihe}
+              breakEvenJahr={gesamtBreakEvenJahr}
+              title="Entwicklung über den Gesamtzeitraum: GmbH vs. Privat (Betrieb + Ende)"
+            />
+            {gesamtBreakEvenJahr != null && (
+              <p className="mt-2 text-[11px] text-amber-700">
+                Gestrichelte Linie: Break-even ab Jahr {gesamtBreakEvenJahr} – ab hier liegt die GmbH gleichauf oder vorne.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">

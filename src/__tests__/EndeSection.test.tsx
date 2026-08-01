@@ -89,6 +89,16 @@ describe("EndeSection", () => {
     expect(screen.getByText(`Relativ: ${formatSignedPercent(gesamtvergleich.vorteilProzent)}`)).toBeTruthy();
   });
 
+  it("renders the GmbH-vs-Privat development chart across the full horizon", () => {
+    render(<EndeSection />);
+
+    expect(
+      screen.getByText("Entwicklung über den Gesamtzeitraum: GmbH vs. Privat (Betrieb + Ende)")
+    ).toBeTruthy();
+    expect(screen.getByTestId("linie-gmbh")).toBeTruthy();
+    expect(screen.getByTestId("linie-privat")).toBeTruthy();
+  });
+
   it("shows meal subsidy in the benefits overview", () => {
     setStoreState({
       betrieb: {

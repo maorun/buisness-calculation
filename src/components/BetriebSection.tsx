@@ -24,6 +24,7 @@ import {
 } from "@/lib/calculations/gesamtvergleich";
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
+import { VergleichsDiagramm } from "./VergleichsDiagramm";
 
 const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
@@ -209,6 +210,17 @@ export function BetriebSection() {
     });
     return index >= 0 ? gmbhZeitreihe[index].jahr : null;
   })();
+  const diagrammPunkte = React.useMemo(
+    () =>
+      breakEvenBerechenbar
+        ? privatZeitreihe.map((privatJahr, index) => ({
+            jahr: privatJahr.jahr,
+            gmbh: gmbhZeitreihe[index].gesamtwertMitKonsum,
+            privat: privatJahr.gesamtwertMitKonsum,
+          }))
+        : [],
+    [breakEvenBerechenbar, privatZeitreihe, gmbhZeitreihe]
+  );
   const lohntSichGmbH = differenzVergleich > 0;
   const kennzahlProzent = privatVergleich.gesamtwertMitKonsum !== 0
     ? (differenzVergleich / privatVergleich.gesamtwertMitKonsum) * 100
@@ -1094,6 +1106,14 @@ export function BetriebSection() {
               Gesamtwert inkl. Konsum: {privatVergleich.gesamtwertMitKonsum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
             </p>
           </div>
+        </div>
+        <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
+          <VergleichsDiagramm punkte={diagrammPunkte} breakEvenJahr={breakEvenJahr} />
+          {breakEvenJahr != null && diagrammPunkte.length > 0 && (
+            <p className="mt-2 text-[11px] text-amber-700">
+              Gestrichelte Linie: Break-even ab Jahr {breakEvenJahr} – ab hier liegt die GmbH gleichauf oder vorne.
+            </p>
+          )}
         </div>
         <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
           <h4 className="text-sm font-semibold text-slate-800 mb-2">Private Rechnung pro Jahr (Vergleichsprüfung)</h4>
