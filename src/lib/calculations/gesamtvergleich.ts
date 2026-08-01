@@ -1,4 +1,8 @@
-import { berechneInvestitionsZusammenfassung, berechnePrivatVergleichErgebnis } from "./betrieb";
+import {
+  berechneInvestitionsZusammenfassung,
+  berechnePrivatVergleichErgebnis,
+  berechnePrivatVergleichZeitreihe,
+} from "./betrieb";
 import { BetriebState, JahresErgebnis } from "../types";
 
 const PERCENT_REFERENCE_EPSILON = 0.01;
@@ -10,6 +14,12 @@ export interface GesamtvergleichKpi {
   vorteilProzent: number | null;
   gewinnerText: string;
   zeitraumJahre: number;
+}
+
+export interface GesamtvergleichZeitreihePunkt {
+  jahr: number;
+  gmbh: number;
+  privat: number;
 }
 
 export function formatSignedEuro(value: number): string {
@@ -74,4 +84,63 @@ export function berechneGesamtvergleichKpi(
     gewinnerText,
     zeitraumJahre,
   };
+}
+
+/**
+ * Builds a per-year GmbH-vs-Privat wealth timeline across the full horizon
+ * (Betrieb + Ende phase). The GmbH series stitches together the operating-phase
+ * net worth incl. accumulated benefit consumption with the Ende-phase total
+ * wealth (net of the internal shareholder loan, plus the carried-over Betrieb
+ * consumption value and investment net worth). Its final value matches
+ * `berechneGesamtvergleichKpi(...).gmbhGesamtwert`; the private series' final
+ * value matches `privatGesamtwert`.
+ *
+ * Returns an empty array when the assembled GmbH series and the private series
+ * do not cover the same number of years (so the caller can hide the chart
+ * instead of showing misaligned data).
+ */
+export function berechneGesamtvergleichZeitreihe(
+  betrieb: BetriebState,
+  endeLaufzeitJahre: number,
+  endeErgebnisse: JahresErgebnis[],
+  betriebsErgebnisse: JahresErgebnis[]
+): GesamtvergleichZeitreihePunkt[] {
+  const endfaelligkeitsAbwicklungsjahre = betrieb.darlehen.endfaellig ? 1 : 0;
+  const zeitraumJahre = Math.max(
+    1,
+    Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
+  );
+  const privatZeitreihe = berechnePrivatVergleichZeitreihe({ ...betrieb, laufzeitJahre: zeitraumJahre });
+  const investitionsNettovermoegen = berechneInvestitionsZusammenfassung(
+    betrieb.investitionen,
+    zeitraumJahre
+  ).nettovermoegen;
+  const gmbhBetriebKonsumwert =
+    betriebsErgebnisse.length > 0
+      ? betriebsErgebnisse[betriebsErgebnisse.length - 1].details.kumulierterKonsumwert ?? 0
+      : 0;
+
+  const gmbhWerte: number[] = [
+    ...betriebsErgebnisse.map(
+      (e) => (e.details.nettovermoegen ?? 0) + (e.details.kumulierterKonsumwert ?? 0)
+    ),
+    ...endeErgebnisse.map((e) => {
+      const firmenDarlehensverbindlichkeit = Math.max(
+        0,
+        e.details.firmenDarlehensverbindlichkeit ?? 0
+      );
+      const gmbhEndeNettovermoegen = e.gesamtvermoegen - firmenDarlehensverbindlichkeit;
+      return gmbhEndeNettovermoegen + gmbhBetriebKonsumwert + investitionsNettovermoegen;
+    }),
+  ];
+
+  if (gmbhWerte.length !== privatZeitreihe.length) {
+    return [];
+  }
+
+  return gmbhWerte.map((gmbh, index) => ({
+    jahr: index + 1,
+    gmbh,
+    privat: privatZeitreihe[index].gesamtwertMitKonsum,
+  }));
 }
