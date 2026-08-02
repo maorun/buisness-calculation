@@ -74,6 +74,8 @@ const initialState: CalculatorState = {
     zielnettoBereich1: 17000,
     zielnettoBereich2: 17000,
     darlehenEndfaellig: false,
+    privatDarlehenBetrag: 0,
+    privatDarlehenZinssatz: 3,
   },
 };
 
@@ -224,7 +226,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }),
     {
       name: "gmbh-kalkulator",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;

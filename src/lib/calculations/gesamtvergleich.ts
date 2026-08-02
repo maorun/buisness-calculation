@@ -37,6 +37,38 @@ export function formatSignedPercent(value: number | null): string {
   })} % vs. Privat`;
 }
 
+/**
+ * Builds per-year override arrays for the private comparison from the Ende results.
+ *
+ * For Betrieb years: no override (private comparison uses its own salary/interest logic).
+ * For Ende years: use the GmbH Ende-phase net income (nettogewinn) as entnahmenVorSteuern so
+ *   the private person "consumes" the same amount as the GmbH shareholder each year.
+ *   The firmenDarlehensverbindlichkeit is used to override offenesDarlehen so the outstanding
+ *   loan balance stays in sync between the GmbH and private comparison (critical for endfällig
+ *   loans where Bereich 1 settles the old loan and Bereich 2 starts a smaller new one).
+ */
+function berechnePrivatVergleichOverrides(
+  betriebLaufzeitJahre: number,
+  endeErgebnisse: JahresErgebnis[]
+): {
+  entnahmenOverride: (number | undefined)[];
+  offeneDarlehenOverride: (number | undefined)[];
+} {
+  const zeitraumJahre = betriebLaufzeitJahre + endeErgebnisse.length;
+  const entnahmenOverride: (number | undefined)[] = new Array(zeitraumJahre).fill(undefined);
+  const offeneDarlehenOverride: (number | undefined)[] = new Array(zeitraumJahre).fill(undefined);
+
+  for (let i = 0; i < endeErgebnisse.length; i++) {
+    const idx = betriebLaufzeitJahre + i;
+    const e = endeErgebnisse[i];
+    entnahmenOverride[idx] = e.nettogewinn ?? 0;
+    const fdb = e.details.firmenDarlehensverbindlichkeit;
+    offeneDarlehenOverride[idx] = fdb !== undefined ? Math.max(0, fdb) : 0;
+  }
+
+  return { entnahmenOverride, offeneDarlehenOverride };
+}
+
 export function berechneGesamtvergleichKpi(
   betrieb: BetriebState,
   endeLaufzeitJahre: number,
@@ -48,7 +80,15 @@ export function berechneGesamtvergleichKpi(
     1,
     Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
   );
-  const privatVergleich = berechnePrivatVergleichErgebnis({ ...betrieb, laufzeitJahre: zeitraumJahre });
+  const { entnahmenOverride, offeneDarlehenOverride } = berechnePrivatVergleichOverrides(
+    betrieb.laufzeitJahre,
+    endeErgebnisse
+  );
+  const privatVergleich = berechnePrivatVergleichErgebnis(
+    { ...betrieb, laufzeitJahre: zeitraumJahre },
+    entnahmenOverride,
+    offeneDarlehenOverride
+  );
   const investitionsZusammenfassung = berechneInvestitionsZusammenfassung(betrieb.investitionen, zeitraumJahre);
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
     ? betriebsErgebnisse[betriebsErgebnisse.length - 1]
@@ -110,7 +150,15 @@ export function berechneGesamtvergleichZeitreihe(
     1,
     Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
   );
-  const privatZeitreihe = berechnePrivatVergleichZeitreihe({ ...betrieb, laufzeitJahre: zeitraumJahre });
+  const { entnahmenOverride, offeneDarlehenOverride } = berechnePrivatVergleichOverrides(
+    betrieb.laufzeitJahre,
+    endeErgebnisse
+  );
+  const privatZeitreihe = berechnePrivatVergleichZeitreihe(
+    { ...betrieb, laufzeitJahre: zeitraumJahre },
+    entnahmenOverride,
+    offeneDarlehenOverride
+  );
   const investitionsNettovermoegen = berechneInvestitionsZusammenfassung(
     betrieb.investitionen,
     zeitraumJahre

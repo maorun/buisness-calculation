@@ -415,6 +415,16 @@ export function berechneEndeErgebnisse(
   let aufgelaufeneEndeDarlehenszinsen = 0;
   const bereich2StartJahr = endfaellig ? 2 : 1;
 
+  // --- Privat-Darlehen: additional shareholder loan granted from private funds at start of Bereich 2 ---
+  const privatDarlehenBetrag = Math.max(0, state.privatDarlehenBetrag ?? 0);
+  const privatDarlehenZinssatz = Math.max(0, state.privatDarlehenZinssatz ?? 0);
+  // The capital is invested into the GmbH ETF; the outstanding principal stays constant
+  // (interest-only / endfällig treatment) until the end of the Ende phase.
+  const privatDarlehenRestschuld = privatDarlehenBetrag;
+  if (privatDarlehenBetrag > 0) {
+    firmenEtfVermoegen += privatDarlehenBetrag;
+  }
+
   for (let i = 1; i <= state.laufzeitJahre; i++) {
     const jahr = bereich2StartJahr + i - 1;
 
@@ -459,17 +469,31 @@ export function berechneEndeErgebnisse(
     const darlehenZinsen = endeDarlehenEndfaelligAktiv
       ? (istLetztesBereich2Jahr ? aufgelaufeneEndeDarlehenszinsen : 0)
       : berechneteDarlehenZinsen;
-    const darlehenZinsenSteuer = berechneDarlehensZinsenSteuer(darlehenZinsen, bruttoGehalt);
+
+    // Privat-Darlehen: annual interest payment (always paid, regardless of endeDarlehenEndfaelligAktiv)
+    const privatDarlehenZinsen = privatDarlehenRestschuld * (privatDarlehenZinssatz / 100);
+
+    // Combined interest tax (both loans are from the same shareholder → taxed together at progressive rate)
+    const gesamtDarlehenZinsen = darlehenZinsen + privatDarlehenZinsen;
+    const gesamtDarlehenZinsenSteuer = berechneDarlehensZinsenSteuer(gesamtDarlehenZinsen, bruttoGehalt);
+    // Split tax proportionally to individual loan interest amounts
+    const darlehenZinsenSteuer = gesamtDarlehenZinsen > 0
+      ? gesamtDarlehenZinsenSteuer * (darlehenZinsen / gesamtDarlehenZinsen)
+      : 0;
+    const privatDarlehenZinsenSteuer = gesamtDarlehenZinsen > 0
+      ? gesamtDarlehenZinsenSteuer * (privatDarlehenZinsen / gesamtDarlehenZinsen)
+      : 0;
     const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
+    const privatDarlehenZinsenNetto = privatDarlehenZinsen - privatDarlehenZinsenSteuer;
 
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
     const zielnetto = endeDarlehenEndfaelligAktiv ? 0 : (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2);
-    const beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + state.gewinnausschuettung;
+    const beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
     const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
       beitragspflichtigeEinnahmenGkv
     );
-    const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + essenszuschussNutzen;
+    const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
     const konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
     // When the Ende-phase loan is non-endfällig and no explicit tilgungsrate is configured,
     // the shareholder perpetually re-lends the principal back to the GmbH so the ETF keeps the
@@ -492,20 +516,20 @@ export function berechneEndeErgebnisse(
     const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
-    // GmbH tax on net ETF gain after Betriebskosten and deductible interest
-    const steuerpflichtigerGewinn = theoretischerEtfErtrag - betriebsausgabenGesamt - darlehenZinsen;
+    // GmbH tax on net ETF gain after Betriebskosten and deductible interest (both loans)
+    const steuerpflichtigerGewinn = theoretischerEtfErtrag - betriebsausgabenGesamt - darlehenZinsen - privatDarlehenZinsen;
     const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * GMBH_STEUER_GESAMT : 0;
 
-    const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto;
-    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
+    const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
+    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + gesamtDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
     const gesamtNetto =
-      nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto + essenszuschussNutzen - gesetzlicheKrankenversicherungBeitrag;
-    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer;
+      nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto + privatDarlehenZinsenNetto + essenszuschussNutzen - gesetzlicheKrankenversicherungBeitrag;
+    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer;
 
     privatvermoegen += gesamtNetto;
     firmenEtfVermoegen = Math.max(0, etfNachWachstum - firmenGesamtabfluss);
     restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
-    const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen;
+    const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen - privatDarlehenRestschuld;
 
     ergebnisse.push({
       jahr,
@@ -536,13 +560,19 @@ export function berechneEndeErgebnisse(
         konsumVorTilgung,
         firmenGesamtabfluss,
         firmenEtfVermoegen,
-        firmenDarlehensverbindlichkeit: restdarlehen,
+        // Total firm liability = existing loan + privat-Darlehen
+        firmenDarlehensverbindlichkeit: restdarlehen + privatDarlehenRestschuld,
         firmenNettovermoegen,
         stammkapitalErhoehungEtf,
         gewinnausschuettung: state.gewinnausschuettung,
         nettoAusschuettung,
         kstSteuer,
         ausschuettungsteuer,
+        // Privat-Darlehen details
+        privatDarlehenRestschuld,
+        privatDarlehenZinsen,
+        privatDarlehenZinsenSteuer,
+        privatDarlehenZinsenNetto,
         // ETF growth and Betriebskosten details
         theoretischerEtfErtrag,
         vorabpauschale,
