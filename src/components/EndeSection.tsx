@@ -149,6 +149,11 @@ export function EndeSection() {
     const index = vergleichsZeitreihe.findIndex((punkt) => punkt.gmbh >= punkt.privat);
     return index >= 0 ? vergleichsZeitreihe[index].jahr : null;
   })();
+  const endeVergleichsZeitreihe = React.useMemo(
+    () => vergleichsZeitreihe.slice(betriebsErgebnisse.length),
+    [vergleichsZeitreihe, betriebsErgebnisse.length]
+  );
+  const [zeigeAufschluss, setZeigeAufschluss] = React.useState(false);
 
   return (
     <div className="space-y-6 pb-28 md:pb-32">
@@ -194,6 +199,74 @@ export function EndeSection() {
               <p className="mt-2 text-[11px] text-amber-700">
                 Gestrichelte Linie: Break-even ab Jahr {gesamtBreakEvenJahr} – ab hier liegt die GmbH gleichauf oder vorne.
               </p>
+            )}
+          </div>
+        )}
+        {ergebnisse.length > 0 && endeVergleichsZeitreihe.length === ergebnisse.length && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setZeigeAufschluss(!zeigeAufschluss)}
+              className="text-xs font-medium text-slate-600 hover:text-slate-800 underline"
+            >
+              {zeigeAufschluss ? "▲ Jahresaufschlüsselung ausblenden" : "▼ Jahresaufschlüsselung Endphase anzeigen"}
+            </button>
+            {zeigeAufschluss && (
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700">
+                      <th className="text-left px-2 py-1 border border-slate-200 whitespace-nowrap">Jahr</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Gehalt (brutto)</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">ESt + SolZ</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Gehalt (netto)</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Betriebskosten</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">GmbH Gesamt-Abfluss</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">GmbH Netto-Auszahlung</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Privat-Entnahme</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">GmbH Vermögen</th>
+                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Privat Vermögen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ergebnisse.map((e, idx) => {
+                      const punkt = endeVergleichsZeitreihe[idx];
+                      if (!punkt) return null;
+                      const bruttoGehalt = e.details.bruttoGehalt ?? 0;
+                      const einkommensteuer = e.details.einkommensteuer ?? 0;
+                      const soli = e.details.soli ?? 0;
+                      const estSoli = einkommensteuer + soli;
+                      const nettoGehalt = e.details.nettoGehalt ?? 0;
+                      const betriebskosten = e.details.betriebsausgabenGesamt ?? 0;
+                      const abfluss = e.details.firmenGesamtabfluss ?? 0;
+                      const bereich = e.details.bereich;
+                      const fmt = (n: number) =>
+                        n.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " €";
+                      return (
+                        <tr key={e.jahr} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                          <td className="px-2 py-1 border border-slate-200 whitespace-nowrap">
+                            J{punkt.jahr}{bereich === 1 && <span className="ml-1 text-amber-600 font-semibold">(B1)</span>}
+                          </td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono">{fmt(bruttoGehalt)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-red-700">−{fmt(estSoli)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-green-700">{fmt(nettoGehalt)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-red-700">−{fmt(betriebskosten)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-red-800 font-semibold">−{fmt(abfluss)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-blue-700">{fmt(e.nettogewinn)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-emerald-700">{fmt(e.nettogewinn)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-blue-800">{fmt(punkt.gmbh)}</td>
+                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-emerald-800">{fmt(punkt.privat)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Gehalt (brutto) und Betriebskosten werden jährlich vom GmbH-ETF abgezogen. ESt + SolZ werden auf das Gehalt fällig.
+                  Die GmbH Netto-Auszahlung entspricht der Privat-Entnahme: der Privatvergleich entnimmt denselben Nettobetrag aus dem privaten ETF.
+                  Vermögenswerte enthalten kumulierten Konsumwert (Betrieb) und aufgelaufene Netto-Auszahlungen (Ende).
+                </p>
+              </div>
             )}
           </div>
         )}
