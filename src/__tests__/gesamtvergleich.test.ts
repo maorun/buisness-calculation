@@ -106,10 +106,13 @@ describe("berechneGesamtvergleichZeitreihe", () => {
     expect(zeitreihe[0].gmbh).toBe(25000);
     // Ende year: (gesamtvermoegen - Darlehen) + Betriebskonsumwert + investitions
     expect(zeitreihe[1].gmbh).toBe(75000);
-    // Private comparison mirrors the standalone private timeline over the same horizon.
+    // Betrieb year (year 1): no override → private comparison uses normal salary/interest logic.
+    // With all-zero basisBetrieb, gesamtwertMitKonsum = 0.
     const privat = berechnePrivatVergleichZeitreihe({ ...basisBetrieb, laufzeitJahre: 2 });
     expect(zeitreihe[0].privat).toBe(privat[0].gesamtwertMitKonsum);
-    expect(zeitreihe[1].privat).toBe(privat[1].gesamtwertMitKonsum);
+    // Ende year (year 2): offeneDarlehenOverride = 30000; ETF = 0, kumulierterKonsumwert = 1000
+    // (default firmenhandy adds 1000 in year 1) → gesamtwertMitKonsum = 0 + 1000 - 30000 = -29000.
+    expect(zeitreihe[1].privat).toBe(-29000);
   });
 
   it("matches the aggregate KPI in the final year", () => {

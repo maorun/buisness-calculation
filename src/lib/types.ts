@@ -147,6 +147,15 @@ export interface EndeState {
   zielnettoBereich2: number;
   /** Whether the payout-phase shareholder loan should be endfällig (settled at the end). */
   darlehenEndfaellig?: boolean;
+  /**
+   * Additional shareholder loan granted to the GmbH from private funds at the start of Bereich 2.
+   * The capital is invested into the ETF; interest is paid annually and taxed at the progressive
+   * Einkommensteuer rate (§ 32d Abs. 2 Nr. 1b EStG). The principal remains in the GmbH until
+   * the end of the Ende phase and is tracked as a liability (firmenDarlehensverbindlichkeit).
+   */
+  privatDarlehenBetrag?: number;
+  /** Annual interest rate on the private-side shareholder loan (% p.a., e.g. 3 means 3 %). */
+  privatDarlehenZinssatz?: number;
 }
 
 export interface CalculatorState {

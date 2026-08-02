@@ -225,6 +225,32 @@ export function EndeSection() {
         </div>
       </div>
 
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-3">Privatdarlehen von Privatseite</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Sie können der GmbH ein zusätzliches Darlehen aus Ihrem Privatvermögen gewähren.
+          Die GmbH zahlt Ihnen jährlich Zinsen, die Sie als Privatperson versteuern.
+        </p>
+        <div className="max-w-sm space-y-4">
+          <InputField
+            label="Privatdarlehen Betrag"
+            value={ende.privatDarlehenBetrag ?? 0}
+            onChange={(v) => setEnde({ privatDarlehenBetrag: Math.max(0, parseFloat(v) || 0) })}
+            suffix="€"
+            hint="Einmaliger Darlehensbetrag, den Sie der GmbH zu Beginn der Ende-Phase geben. Default: 0 €."
+            min={0}
+          />
+          <InputField
+            label="Zinssatz Privatdarlehen"
+            value={ende.privatDarlehenZinssatz ?? 3}
+            onChange={(v) => setEnde({ privatDarlehenZinssatz: Math.max(0, parseFloat(v) || 0) })}
+            suffix="%"
+            hint="Jährlicher Zinssatz für das Privatdarlehen. Default: 3 %."
+            min={0}
+          />
+        </div>
+      </div>
+
       {/* Endfällig notice */}
       {betriebDarlehenEndfaellig && (
         <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
