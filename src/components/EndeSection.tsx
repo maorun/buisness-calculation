@@ -202,7 +202,7 @@ export function EndeSection() {
             )}
           </div>
         )}
-        {ergebnisse.length > 0 && endeVergleichsZeitreihe.length === ergebnisse.length && (
+        {ergebnisse.length > 0 && (
           <div className="mt-3">
             <button
               type="button"
@@ -224,14 +224,17 @@ export function EndeSection() {
                       <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">GmbH Gesamt-Abfluss</th>
                       <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">GmbH Netto-Auszahlung</th>
                       <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Privat-Entnahme</th>
-                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">GmbH Vermögen</th>
-                      <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Privat Vermögen</th>
+                      {endeVergleichsZeitreihe.length === ergebnisse.length && (
+                        <>
+                          <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">GmbH Vermögen</th>
+                          <th className="text-right px-2 py-1 border border-slate-200 whitespace-nowrap">Privat Vermögen</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {ergebnisse.map((e, idx) => {
                       const punkt = endeVergleichsZeitreihe[idx];
-                      if (!punkt) return null;
                       const bruttoGehalt = e.details.bruttoGehalt ?? 0;
                       const einkommensteuer = e.details.einkommensteuer ?? 0;
                       const soli = e.details.soli ?? 0;
@@ -245,7 +248,7 @@ export function EndeSection() {
                       return (
                         <tr key={e.jahr} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
                           <td className="px-2 py-1 border border-slate-200 whitespace-nowrap">
-                            J{punkt.jahr}{bereich === 1 && <span className="ml-1 text-amber-600 font-semibold">(B1)</span>}
+                            J{e.jahr}{bereich === 1 && <span className="ml-1 text-amber-600 font-semibold">(B1)</span>}
                           </td>
                           <td className="px-2 py-1 border border-slate-200 text-right font-mono">{fmt(bruttoGehalt)}</td>
                           <td className="px-2 py-1 border border-slate-200 text-right font-mono text-red-700">−{fmt(estSoli)}</td>
@@ -254,8 +257,12 @@ export function EndeSection() {
                           <td className="px-2 py-1 border border-slate-200 text-right font-mono text-red-800 font-semibold">−{fmt(abfluss)}</td>
                           <td className="px-2 py-1 border border-slate-200 text-right font-mono text-blue-700">{fmt(e.nettogewinn)}</td>
                           <td className="px-2 py-1 border border-slate-200 text-right font-mono text-emerald-700">{fmt(e.nettogewinn)}</td>
-                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-blue-800">{fmt(punkt.gmbh)}</td>
-                          <td className="px-2 py-1 border border-slate-200 text-right font-mono text-emerald-800">{fmt(punkt.privat)}</td>
+                          {punkt && (
+                            <>
+                              <td className="px-2 py-1 border border-slate-200 text-right font-mono text-blue-800">{fmt(punkt.gmbh)}</td>
+                              <td className="px-2 py-1 border border-slate-200 text-right font-mono text-emerald-800">{fmt(punkt.privat)}</td>
+                            </>
+                          )}
                         </tr>
                       );
                     })}
