@@ -621,21 +621,27 @@ function simulierePrivatVergleich(
       berechneSimulierterGewinnSteuerPrivat(simulierterGewinn, state.persoenlicherGrenzsteuersatz);
     const simulierterGewinnNetto = simulierterGewinn - simulierterGewinnSteuer - simulierterGewinnSoli;
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
-    const konsumNutzenwert = berechneKonsumNutzenwertProJahr(
-      jahr,
-      state.benefits,
-      state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
-    );
+
+    // Allow the caller to override the annual withdrawal amount for specific years (e.g. Ende phase).
+    // When an override is present, we skip the normal salary/interest/sparplan components and use
+    // the override value directly as entnahmenVorSteuern.
+    const jahresOverride = entnahmenOverride ? entnahmenOverride[jahr - 1] : undefined;
+
+    // The benefit consumption value (Tankgutschein, Essenszuschuss, Firmenhandy) is only relevant
+    // for genuine Betrieb-phase years, where it reduces the private sparplan (real cost of buying
+    // the same goods privately) and is credited back via kumulierterKonsumwert for a fair
+    // like-for-like comparison. In override years (Ende phase) the withdrawal already matches the
+    // GmbH's actual net payout for that year 1:1, so crediting the benefit value again here would
+    // double-count it without any matching cost ever being deducted from the private ETF.
+    const konsumNutzenwert = jahresOverride === undefined
+      ? berechneKonsumNutzenwertProJahr(jahr, state.benefits, state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG)
+      : 0;
     const investitionsNettoCashflow = investitionsJahreswert?.nettoCashflow ?? 0;
     const sparplanNetto =
       jaehrlicherCashZuschuss + simulierterGewinnNetto + darlehensZuschussJaehrlich + investitionsNettoCashflow - konsumNutzenwert;
     kumulierterSparplan += sparplanNetto;
     kumulierterKonsumwert += konsumNutzenwert;
 
-    // Allow the caller to override the annual withdrawal amount for specific years (e.g. Ende phase).
-    // When an override is present, we skip the normal salary/interest/sparplan components and use
-    // the override value directly as entnahmenVorSteuern.
-    const jahresOverride = entnahmenOverride ? entnahmenOverride[jahr - 1] : undefined;
     let gehaltsEntnahme: number;
     let zinsEntnahme: number;
     let entnahmeAusSparplanDefizit: number;

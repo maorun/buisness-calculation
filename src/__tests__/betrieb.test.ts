@@ -998,6 +998,25 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(result.verbleibenderEtfWert).toBeCloseTo(0);
   });
 
+  it("does not credit benefit consumption value again for override (Ende-phase) years", () => {
+    const state: BetriebState = {
+      ...basisState,
+      startkapital: 0,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      laufzeitJahre: 1,
+      benefits: { tankgutschein: 50, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0, bav: 0 },
+    };
+
+    // Simulate an Ende-phase year: the private withdrawal is overridden to match the GmbH's
+    // actual net payout for that year, so no separate benefit credit should be layered on top
+    // (it would otherwise inflate the private total without any matching cost).
+    const result = berechnePrivatVergleichErgebnis(state, [5000], [0]);
+
+    expect(result.kumulierterKonsumwert).toBe(0);
+    expect(result.kumulierteEntnahmen).toBe(5000);
+    expect(result.gesamtwertMitKonsum).toBeCloseTo(0);
+  });
+
   it("subtracts active firmenhandy costs from private savings plan and tracks them as consumption value", () => {
     const state: BetriebState = {
       ...basisState,
