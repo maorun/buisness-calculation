@@ -677,8 +677,8 @@ describe("berechneEndeErgebnisse", () => {
       expect(resultsWithKosten[0].details.jaehrlicheKosten).toBeCloseTo(6000);
     });
 
-    it("Bereich 2: includes Essenszuschuss-Benefit in net payout", () => {
-      const state = { ...baseState, geschaeftsfuehrergehalt: 0, gewinnausschuettung: 0, laufzeitJahre: 1 };
+    it("Bereich 2: includes Essenszuschuss-Benefit in net payout when GF salary is active", () => {
+      const state = { ...baseState, geschaeftsfuehrergehalt: 24000, gewinnausschuettung: 0, laufzeitJahre: 1 };
       const benefitsMitEssenszuschuss = {
         tankgutschein: 0,
         strategieessen: 0,
@@ -704,11 +704,35 @@ describe("berechneEndeErgebnisse", () => {
       expect(resultsMitBenefit[0].details.essenszuschussNutzen).toBeCloseTo(erwarteterEssenszuschussNutzen);
     });
 
-    it("Bereich 1: includes Essenszuschuss-Benefit in net payout", () => {
+    it("Bereich 2: excludes benefits when GF salary is 0", () => {
+      const state = { ...baseState, geschaeftsfuehrergehalt: 0, gewinnausschuettung: 0, laufzeitJahre: 1 };
+      const benefitsMitEssenszuschuss = {
+        tankgutschein: 50,
+        strategieessen: 0,
+        essenszuschussProTag: 7.67,
+        essenszuschussTageProJahr: 220,
+        bav: 0,
+      };
+      const results = berechneEndeErgebnisse(
+        state,
+        100000,
+        0,
+        0,
+        0,
+        false,
+        0,
+        [],
+        benefitsMitEssenszuschuss
+      );
+      expect(results[0].details.essenszuschussNutzen).toBe(0);
+      expect(results[0].nettogewinn).toBe(0);
+    });
+
+    it("Bereich 1: includes Essenszuschuss-Benefit in net payout when GF salary is active", () => {
       const state = {
         ...baseState,
-        geschaeftsfuehrergehalt: 0,
-        gehaltBereich1: 0,
+        geschaeftsfuehrergehalt: 24000,
+        gehaltBereich1: 24000,
         gewinnausschuettung: 0,
         laufzeitJahre: 1,
         zielnettoBereich1: 0,
@@ -737,6 +761,37 @@ describe("berechneEndeErgebnisse", () => {
       expect(resultsMitBenefit[0].details.bereich).toBe(1);
       expect(deltaNettoBereich1).toBeCloseTo(erwarteterEssenszuschussNutzen);
       expect(resultsMitBenefit[0].details.essenszuschussNutzen).toBeCloseTo(erwarteterEssenszuschussNutzen);
+    });
+
+    it("Bereich 1: excludes benefits when GF salary is 0", () => {
+      const state = {
+        ...baseState,
+        geschaeftsfuehrergehalt: 0,
+        gehaltBereich1: 0,
+        gewinnausschuettung: 0,
+        laufzeitJahre: 1,
+        zielnettoBereich1: 0,
+      };
+      const benefitsMitEssenszuschuss = {
+        tankgutschein: 50,
+        strategieessen: 0,
+        essenszuschussProTag: 7.67,
+        essenszuschussTageProJahr: 220,
+        bav: 0,
+      };
+      const results = berechneEndeErgebnisse(
+        state,
+        100000,
+        0,
+        0,
+        0,
+        true,
+        0,
+        [],
+        benefitsMitEssenszuschuss
+      );
+      expect(results[0].details.bereich).toBe(1);
+      expect(results[0].details.essenszuschussNutzen).toBe(0);
     });
 
     it("Bereich 2: vorabpauschale and gmbhSteuer are non-zero with positive rendite and ETF", () => {

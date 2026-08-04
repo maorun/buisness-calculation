@@ -285,10 +285,12 @@ export function berechneEndeErgebnisse(
     // Betriebskosten for Bereich 1 (running GmbH costs continue in Ende phase)
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
     const handyNettoKostenB1 = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
-    const benefitsKostenB1 = berechneBenefitsKosten(benefits);
+    // Benefits (Essenszuschuss, Tankgutschein etc.) are only granted when a GF salary is paid.
+    // Without an active GF relationship (bruttoGehalt = 0), benefits do not apply.
+    const benefitsKostenB1 = bruttoGehalt > 0 ? berechneBenefitsKosten(benefits) : 0;
     // Nominal benefit value received by the shareholder; the GmbH tax saving is already
     // captured in the lower gmbhSteuerB1 (benefits are deductible Betriebsausgaben).
-    const essenszuschussNutzenB1 = berechneEssenszuschussJaehrlich(benefits);
+    const essenszuschussNutzenB1 = bruttoGehalt > 0 ? berechneEssenszuschussJaehrlich(benefits) : 0;
     const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
     const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
@@ -438,10 +440,13 @@ export function berechneEndeErgebnisse(
     // Betriebskosten for this year (running GmbH costs continue in Ende phase)
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
     const handyNettoKosten = berechneHandyNettoKostenProJahr(endePhaseJahr, firmenhandy);
-    const benefitsKosten = berechneBenefitsKosten(benefits);
+    const bruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
+    // Benefits (Essenszuschuss, Tankgutschein etc.) are only granted when a GF salary is paid.
+    // Without an active GF relationship (bruttoGehalt = 0), benefits do not apply.
+    const benefitsKosten = bruttoGehalt > 0 ? berechneBenefitsKosten(benefits) : 0;
     // Nominal benefit value received by the shareholder; the GmbH tax saving is already
     // captured in the lower gmbhSteuer (benefits are deductible Betriebsausgaben).
-    const essenszuschussNutzen = berechneEssenszuschussJaehrlich(benefits);
+    const essenszuschussNutzen = bruttoGehalt > 0 ? berechneEssenszuschussJaehrlich(benefits) : 0;
     const betriebskostenPosten = berechneBetriebskostenPosten(kosten, benefits, handyNettoKosten, firmenhandy);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
     endePhaseJahr++;
@@ -457,7 +462,6 @@ export function berechneEndeErgebnisse(
       verbleibendeJahre,
       state.tilgungsrate
     );
-    const bruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
     const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
     const soli = berechneSoli(einkommensteuer);
