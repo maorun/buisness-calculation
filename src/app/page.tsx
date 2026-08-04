@@ -8,6 +8,7 @@ import { useCalculatorStore } from "@/store/calculatorStore";
 
 type Tab = "gruendung" | "betrieb" | "ende";
 const COPY_STATUS_RESET_DELAY_MS = 2500;
+const LOAD_STATUS_RESET_DELAY_MS = 2500;
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "gruendung", label: "Gründung" },
@@ -18,15 +19,21 @@ const tabs: { id: Tab; label: string }[] = [
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("gruendung");
   const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
+  const [loadStatus, setLoadStatus] = useState<"idle" | "success" | "error">("idle");
   const resetCopyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetLoadStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gruendung = useCalculatorStore((state) => state.gruendung);
   const betrieb = useCalculatorStore((state) => state.betrieb);
   const ende = useCalculatorStore((state) => state.ende);
+  const loadState = useCalculatorStore((state) => state.loadState);
 
   useEffect(() => {
     return () => {
       if (resetCopyStatusTimerRef.current) {
         clearTimeout(resetCopyStatusTimerRef.current);
+      }
+      if (resetLoadStatusTimerRef.current) {
+        clearTimeout(resetLoadStatusTimerRef.current);
       }
     };
   }, []);
@@ -55,6 +62,25 @@ export default function Home() {
     );
   };
 
+  const handleLoadParameters = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const parsed = JSON.parse(text);
+      loadState(parsed);
+      setLoadStatus("success");
+    } catch {
+      setLoadStatus("error");
+    }
+
+    if (resetLoadStatusTimerRef.current) {
+      clearTimeout(resetLoadStatusTimerRef.current);
+    }
+    resetLoadStatusTimerRef.current = setTimeout(
+      () => setLoadStatus("idle"),
+      LOAD_STATUS_RESET_DELAY_MS
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -72,20 +98,35 @@ export default function Home() {
               <p className="text-xs text-slate-600">Vermögensaufbau via GmbH</p>
             </div>
           </div>
-          <div>
-            <button
-              type="button"
-              onClick={handleCopyParameters}
-              className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
-            >
-              Parameter kopieren
-            </button>
-            <div className="mt-1 text-right text-[11px]" role="status" aria-live="polite">
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCopyParameters}
+                className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
+              >
+                Parameter kopieren
+              </button>
+              <button
+                type="button"
+                onClick={handleLoadParameters}
+                className="inline-flex items-center rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-800 hover:bg-green-100 transition-colors"
+              >
+                Parameter laden
+              </button>
+            </div>
+            <div className="text-right text-[11px]" role="status" aria-live="polite">
               {copyStatus === "success" && (
                 <p className="text-green-700">In Zwischenablage kopiert.</p>
               )}
               {copyStatus === "error" && (
                 <p className="text-red-700">Kopieren fehlgeschlagen.</p>
+              )}
+              {loadStatus === "success" && (
+                <p className="text-green-700">Parameter geladen.</p>
+              )}
+              {loadStatus === "error" && (
+                <p className="text-red-700">Laden fehlgeschlagen.</p>
               )}
             </div>
           </div>
