@@ -61,7 +61,13 @@ function berechnePrivatVergleichOverrides(
   for (let i = 0; i < endeErgebnisse.length; i++) {
     const idx = betriebLaufzeitJahre + i;
     const e = endeErgebnisse[i];
-    entnahmenOverride[idx] = e.nettogewinn ?? 0;
+    // For Ende phase override, exclude benefits (essenszuschussNutzen) from the withdrawal amount
+    // because benefits are not cash withdrawals. The GmbH pays for them (reducing its ETF),
+    // but the shareholder doesn't receive cash that needs to be replicated via private ETF sales.
+    const nettoGewinnRaw = e.nettogewinn ?? 0;
+    const essenszuschussNutzen = e.details.essenszuschussNutzen ?? 0;
+    const cashOnlyNettogewinn = Math.max(0, nettoGewinnRaw - essenszuschussNutzen);
+    entnahmenOverride[idx] = cashOnlyNettogewinn;
     const fdb = e.details.firmenDarlehensverbindlichkeit;
     offeneDarlehenOverride[idx] = fdb !== undefined ? Math.max(0, fdb) : 0;
   }
