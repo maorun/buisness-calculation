@@ -84,6 +84,7 @@ interface CalculatorStore extends CalculatorState {
   setGruendung: (state: Partial<GruendungState>) => void;
   setBetrieb: (state: Partial<BetriebState>) => void;
   setEnde: (state: Partial<EndeState>) => void;
+  loadState: (state: Partial<CalculatorState>) => void;
 
   // Kosten list management
   addGruendungskosten: (position: Omit<KostenPosition, "id">) => void;
@@ -117,6 +118,26 @@ export const useCalculatorStore = create<CalculatorStore>()(
 
   setEnde: (partial) =>
     set((state) => ({ ende: { ...state.ende, ...partial } })),
+
+  loadState: (partial) =>
+    set((state) => ({
+      gruendung: partial.gruendung
+        ? { ...state.gruendung, ...partial.gruendung }
+        : state.gruendung,
+      betrieb: partial.betrieb
+        ? ({
+            ...state.betrieb,
+            ...partial.betrieb,
+            darlehen: { ...state.betrieb.darlehen, ...(partial.betrieb.darlehen ?? {}) },
+            benefits: { ...state.betrieb.benefits, ...(partial.betrieb.benefits ?? {}) },
+            firmenhandy: { ...initialState.betrieb.firmenhandy, ...(partial.betrieb.firmenhandy ?? {}) },
+            stillerGesellschafter: { ...initialState.betrieb.stillerGesellschafter, ...(partial.betrieb.stillerGesellschafter ?? {}) },
+          } as BetriebState)
+        : state.betrieb,
+      ende: partial.ende
+        ? { ...state.ende, ...partial.ende }
+        : state.ende,
+    })),
 
   addGruendungskosten: (position) =>
     set((state) => ({
