@@ -677,7 +677,7 @@ describe("berechneEndeErgebnisse", () => {
       expect(resultsWithKosten[0].details.jaehrlicheKosten).toBeCloseTo(6000);
     });
 
-    it("Bereich 2: includes Essenszuschuss-Benefit in net payout", () => {
+    it("Bereich 2: tracks Essenszuschuss-Benefit in details but not in nettogewinn", () => {
       const state = { ...baseState, geschaeftsfuehrergehalt: 0, gewinnausschuettung: 0, laufzeitJahre: 1 };
       const benefitsMitEssenszuschuss = {
         tankgutschein: 0,
@@ -699,12 +699,13 @@ describe("berechneEndeErgebnisse", () => {
         benefitsMitEssenszuschuss
       );
       const erwarteterEssenszuschussNutzen = 7.67 * 220;
-      const deltaNetto = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
-      expect(deltaNetto).toBeCloseTo(erwarteterEssenszuschussNutzen);
+      // Benefits are tracked in details but must not inflate the displayed nettogewinn
       expect(resultsMitBenefit[0].details.essenszuschussNutzen).toBeCloseTo(erwarteterEssenszuschussNutzen);
+      const deltaNetto = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
+      expect(deltaNetto).toBeCloseTo(0);
     });
 
-    it("Bereich 1: includes Essenszuschuss-Benefit in net payout", () => {
+    it("Bereich 1: tracks Essenszuschuss-Benefit in details but not in nettogewinn", () => {
       const state = {
         ...baseState,
         geschaeftsfuehrergehalt: 0,
@@ -733,10 +734,11 @@ describe("berechneEndeErgebnisse", () => {
         benefitsMitEssenszuschuss
       );
       const erwarteterEssenszuschussNutzen = 7.67 * 220;
-      const deltaNettoBereich1 = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
       expect(resultsMitBenefit[0].details.bereich).toBe(1);
-      expect(deltaNettoBereich1).toBeCloseTo(erwarteterEssenszuschussNutzen);
+      // Benefits are tracked in details but must not inflate the displayed nettogewinn
       expect(resultsMitBenefit[0].details.essenszuschussNutzen).toBeCloseTo(erwarteterEssenszuschussNutzen);
+      const deltaNettoBereich1 = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
+      expect(deltaNettoBereich1).toBeCloseTo(0);
     });
 
     it("Bereich 2: vorabpauschale and gmbhSteuer are non-zero with positive rendite and ETF", () => {
