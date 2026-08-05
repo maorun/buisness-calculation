@@ -1218,8 +1218,8 @@ export function BetriebSection() {
           </p>
         </div>
       </div>
-      <div className="fixed bottom-0 inset-x-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-        <div className="mx-auto max-w-4xl px-4 py-3 space-y-2">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur shadow-[0_-6px_24px_rgba(15,23,42,0.08)]">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <div>
             <p className="text-xs text-slate-600">Betriebsphase</p>
             <p className={`text-sm font-bold ${differenzVergleich >= 0 ? "text-green-800" : "text-orange-800"}`}>
@@ -1227,7 +1227,7 @@ export function BetriebSection() {
             </p>
             <p className="text-xs text-slate-700">{overlayProzent}</p>
           </div>
-          <div className="border-t border-slate-200 pt-2">
+          <div className="text-right">
             <p className="text-xs text-slate-600">Gesamtvergleich Betrieb + Ende</p>
             <p className={`text-sm font-bold ${gesamtvergleich.vorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>
               {formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat
