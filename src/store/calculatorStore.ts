@@ -65,6 +65,7 @@ const initialState: CalculatorState = {
   },
   ende: {
     geschaeftsfuehrergehalt: 0,
+    simulierterGewinn: 0,
     stammkapitalErhoehungEtf: 0,
     gehaltBereich1: 0,
     teiltilgungBereich1: 0,

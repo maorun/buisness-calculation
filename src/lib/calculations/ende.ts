@@ -261,6 +261,7 @@ export function berechneEndeErgebnisse(
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
+  const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
   let privatvermoegen = 0;
   let firmenEtfVermoegen = Math.max(0, etfWertAnfang) + stammkapitalErhoehungEtf;
   let reinvestiertesDarlehen = 0;
@@ -291,7 +292,7 @@ export function berechneEndeErgebnisse(
     const essenszuschussNutzenB1 = berechneEssenszuschussJaehrlich(benefits);
     const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
-    const gewinnNachBetriebsausgabenB1 = theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
+    const gewinnNachBetriebsausgabenB1 = simulierterGewinn + theoretischerEtfErtragB1 - betriebsausgabenGesamtB1;
     const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * GMBH_STEUER_GESAMT : 0;
     endePhaseJahr++;
 
@@ -335,7 +336,7 @@ export function berechneEndeErgebnisse(
     // The shareholder immediately relends the reinvestiertesDarlehen portion back to the GmbH.
     // The re-lending is a separate cash inflow and must be added AFTER the floor clamp so that
     // it is never zeroed out when the ETF cannot cover all other outflows on its own.
-    const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1 + vorabpauschalesteuerB1 + gmbhSteuerB1;
+    const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1 + vorabpauschalesteuerB1 + gmbhSteuerB1 - simulierterGewinn;
     firmenEtfVermoegen = Math.max(0, etfNachWachstumB1 - firmenGesamtabfluss) + reinvestiertesDarlehen;
     const firmenGuVGehaltAufwand = bruttoGehalt;
     const firmenGuVZinsaufwand = aufgelaufeneZinsenNorm;
@@ -521,7 +522,7 @@ export function berechneEndeErgebnisse(
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
     // GmbH tax on net ETF gain after Betriebskosten and deductible interest (both loans)
-    const steuerpflichtigerGewinn = theoretischerEtfErtrag - betriebsausgabenGesamt - darlehenZinsen - privatDarlehenZinsen;
+    const steuerpflichtigerGewinn = simulierterGewinn + theoretischerEtfErtrag - betriebsausgabenGesamt - darlehenZinsen - privatDarlehenZinsen;
     const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * GMBH_STEUER_GESAMT : 0;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
@@ -530,7 +531,7 @@ export function berechneEndeErgebnisse(
     // used only internally (zielnetto gap check, GmbH cost accounting).
     const gesamtNetto =
       nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto + privatDarlehenZinsenNetto - gesetzlicheKrankenversicherungBeitrag;
-    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer;
+    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer - simulierterGewinn;
 
     privatvermoegen += gesamtNetto;
     firmenEtfVermoegen = Math.max(0, etfNachWachstum - firmenGesamtabfluss);
@@ -585,6 +586,7 @@ export function berechneEndeErgebnisse(
         vorabpauschalesteuer,
         jaehrlicheKosten,
         betriebsausgabenGesamt,
+        simulierterGewinn,
         gmbhSteuer,
       },
       betriebskostenPosten,

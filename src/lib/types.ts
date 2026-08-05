@@ -132,6 +132,8 @@ export interface BetriebState {
 
 export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary for Bereich 2 (regular payout phase)
+  /** Annual simulated operating profit during Ende phase (before Betriebsausgaben and benefits). */
+  simulierterGewinn?: number;
   /** One-time equity increase invested into ETF at the start of the Ende phase. */
   stammkapitalErhoehungEtf: number;
   /** Annual gross salary for Bereich 1 settlement year (frei konfigurierbar, nur >= 0). */
