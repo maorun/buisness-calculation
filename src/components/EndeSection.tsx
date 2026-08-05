@@ -555,6 +555,21 @@ export function EndeSection() {
           </div>
         </div>
 
+        {/* Simulated profit */}
+        <div className="mb-4">
+          <h4 className="font-semibold text-gray-600 mb-3">Simulierter Gewinn</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField
+              label="Simulierter Gewinn (€/Jahr)"
+              value={ende.simulierterGewinn ?? 0}
+              onChange={(v) => setEnde({ simulierterGewinn: Math.max(0, parseFloat(v) || 0) })}
+              suffix="€/Jahr"
+              hint="Betriebsgewinn vor Betriebsausgaben und Benefits"
+              min={0}
+            />
+          </div>
+        </div>
+
         {betriebDarlehenEndfaellig && (
           <div className="mb-4">
             <h4 className="font-semibold text-gray-600 mb-3">Bereich 2 (erstes Jahr)</h4>
