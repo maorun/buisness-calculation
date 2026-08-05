@@ -962,6 +962,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
       ? gewinnNachBetriebsausgaben * GMBH_STEUER_GESAMT
       : 0;
+    const gmbhSteuerKst = gewinnNachBetriebsausgaben > 0
+      ? gewinnNachBetriebsausgaben * KST_GESAMT
+      : 0;
+    const gmbhSteuerGewSt = gewinnNachBetriebsausgaben > 0
+      ? gewinnNachBetriebsausgaben * GEWERBESTEUER
+      : 0;
 
     // Tax on realized ETF gain due to selling
     const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag);
@@ -1098,6 +1104,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         vorabpauschalesteuer,
         etfVerkaufssteuer,
         gmbhSteuer,
+        gmbhSteuerKst,
+        gmbhSteuerGewSt,
         deckungssaldoNachAusgabenUndSteuern,
         cashReserve,
         cashReserveZugang,
