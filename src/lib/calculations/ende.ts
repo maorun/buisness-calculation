@@ -322,8 +322,11 @@ export function berechneEndeErgebnisse(
       darlehensrueckzahlung
     );
     reinvestiertesDarlehen = Math.max(0, darlehensrueckzahlung - teiltilgungBereich1);
+    // essenszuschussNutzen is excluded from the displayed net payout – it is a non-cash benefit
+    // used only internally (zielnetto gap check, GmbH cost accounting). Adding it to the
+    // displayed "Gesamt Netto" would make cash-free years appear to have positive income.
     const konsumierbaresNettoBereich1VorGkv =
-      nettoGehalt + zinsenNetto + teiltilgungBereich1 + essenszuschussNutzenB1;
+      nettoGehalt + zinsenNetto + teiltilgungBereich1;
     const konsumierbaresNettoBereich1 = konsumierbaresNettoBereich1VorGkv - gesetzlicheKrankenversicherungBeitrag;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
     const gesamtSteuer = zinsSteuer + einkommensteuer + soli + vorabpauschalesteuerB1 + gmbhSteuerB1;
@@ -522,8 +525,10 @@ export function berechneEndeErgebnisse(
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + gesamtDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
+    // essenszuschussNutzen is excluded from the displayed net payout – it is a non-cash benefit
+    // used only internally (zielnetto gap check, GmbH cost accounting).
     const gesamtNetto =
-      nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto + privatDarlehenZinsenNetto + essenszuschussNutzen - gesetzlicheKrankenversicherungBeitrag;
+      nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto + privatDarlehenZinsenNetto - gesetzlicheKrankenversicherungBeitrag;
     const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer;
 
     privatvermoegen += gesamtNetto;
