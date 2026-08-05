@@ -121,7 +121,10 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
         indent
       />
       {d.gmbhSteuer > 0 && (
-        <BilanzRow label="− Gewinnsteuer (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
+        <>
+          <BilanzRow label="− Körperschaftsteuer inkl. Soli (KSt)" value={d.gmbhSteuerKst} prefix="−" colorClass="text-red-600" indent />
+          <BilanzRow label="− Gewerbesteuer (GewSt)" value={d.gmbhSteuerGewSt} prefix="−" colorClass="text-red-600" indent />
+        </>
       )}
       <BilanzRow label="− Steuer auf ETF-Verkauf" value={d.etfVerkaufssteuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
@@ -137,6 +140,12 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       )}
 
       <SectionHeader label="Steuern (Finanzamt)" />
+      {d.gmbhSteuerKst > 0 && (
+        <BilanzRow label="− Körperschaftsteuer inkl. Soli (KSt)" value={d.gmbhSteuerKst} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.gmbhSteuerGewSt > 0 && (
+        <BilanzRow label="− Gewerbesteuer (GewSt)" value={d.gmbhSteuerGewSt} prefix="−" colorClass="text-red-600" indent />
+      )}
       <BilanzRow label="− Gesamtsteuer (KSt + GewSt + Vorabpauschale + ETF-Verkauf)" value={gesamtSteuer} prefix="−" colorClass="text-red-600" indent />
       <Divider />
       <BilanzRow
