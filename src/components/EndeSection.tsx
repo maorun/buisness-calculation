@@ -16,6 +16,7 @@ import {
 import {
   berechneBenefitsSteuerersparnis,
   berechneEssenszuschussJaehrlich,
+  berechnePrivatVergleichErgebnis,
   DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
 import {
@@ -154,6 +155,25 @@ export function EndeSection() {
     [vergleichsZeitreihe, betriebsErgebnisse.length]
   );
   const [zeigeAufschluss, setZeigeAufschluss] = React.useState(false);
+
+  const privatVergleich = React.useMemo(
+    () => berechnePrivatVergleichErgebnis(betrieb),
+    [betrieb]
+  );
+  const betriebLetztesJahrDetails = betriebsErgebnisse[betriebsErgebnisse.length - 1]?.details;
+  const betriebNettovermoegenStart = Math.max(0, betrieb.startkapital);
+  const betriebLetztesJahrNettovermoegen = betriebLetztesJahrDetails?.nettovermoegen ?? betriebNettovermoegenStart;
+  const betriebKumulierterKonsumwert = betriebLetztesJahrDetails?.kumulierterKonsumwert ?? 0;
+  const betriebGesamtwertMitKonsum = betriebLetztesJahrNettovermoegen + betriebKumulierterKonsumwert;
+  const differenzVergleich = betriebGesamtwertMitKonsum - privatVergleich.gesamtwertMitKonsum;
+  const overlayGewinner = differenzVergleich >= 0 ? "GmbH" : "Privat";
+  const kennzahlProzent = privatVergleich.gesamtwertMitKonsum !== 0
+    ? (differenzVergleich / privatVergleich.gesamtwertMitKonsum) * 100
+    : null;
+  const overlayProzent = kennzahlProzent === null
+    ? "nicht berechenbar"
+    : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+  const overlayGesamtProzent = formatSignedPercent(gesamtvergleich.vorteilProzent);
 
   return (
     <div className="space-y-6 pb-28 md:pb-32">
@@ -749,19 +769,18 @@ export function EndeSection() {
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur shadow-[0_-6px_24px_rgba(15,23,42,0.08)]">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <div>
+            <p className="text-xs text-slate-600">Betriebsphase</p>
+            <p className={`text-sm font-bold ${differenzVergleich >= 0 ? "text-green-800" : "text-orange-800"}`}>
+              {Math.abs(differenzVergleich).toLocaleString("de-DE", { minimumFractionDigits: 2 })} € mehr in {overlayGewinner}
+            </p>
+            <p className="text-xs text-slate-700">{overlayProzent}</p>
+          </div>
+          <div className="text-right">
             <p className="text-xs text-slate-600">Gesamtvergleich Betrieb + Ende</p>
             <p className={`text-sm font-bold ${gesamtvergleich.vorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>
               {formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat
             </p>
-          </div>
-          <div className="text-right">
-            <p className={`text-xs font-semibold ${gesamtvergleich.vorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
-              {gesamtvergleich.gewinnerText}
-            </p>
-            <p className="text-xs text-slate-700">{overlayProzentText}</p>
-            <p className="text-[11px] text-slate-500">
-              GmbH {gesamtvergleich.gmbhGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € · Privat {gesamtvergleich.privatGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €
-            </p>
+            <p className="text-xs text-slate-700">{overlayGesamtProzent}</p>
           </div>
         </div>
       </div>
