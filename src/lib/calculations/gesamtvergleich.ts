@@ -80,7 +80,7 @@ export function berechneGesamtvergleichKpi(
   endeErgebnisse: JahresErgebnis[],
   betriebsErgebnisse: JahresErgebnis[]
 ): GesamtvergleichKpi {
-  const endfaelligkeitsAbwicklungsjahre = betrieb.darlehen.endfaellig ? 1 : 0;
+  const endfaelligkeitsAbwicklungsjahre = endeErgebnisse.length > Math.max(0, endeLaufzeitJahre) ? 1 : 0;
   const zeitraumJahre = Math.max(
     1,
     Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
@@ -150,7 +150,7 @@ export function berechneGesamtvergleichZeitreihe(
   endeErgebnisse: JahresErgebnis[],
   betriebsErgebnisse: JahresErgebnis[]
 ): GesamtvergleichZeitreihePunkt[] {
-  const endfaelligkeitsAbwicklungsjahre = betrieb.darlehen.endfaellig ? 1 : 0;
+  const endfaelligkeitsAbwicklungsjahre = endeErgebnisse.length > Math.max(0, endeLaufzeitJahre) ? 1 : 0;
   const zeitraumJahre = Math.max(
     1,
     Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre

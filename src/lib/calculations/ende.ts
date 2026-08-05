@@ -269,7 +269,11 @@ export function berechneEndeErgebnisse(
   let endePhaseJahr = 1;
 
   // --- Bereich 1: settlement year for endfällig deferred interest ---
-  if (endfaellig) {
+  // Skip Bereich 1 entirely when there is no actual loan to settle (betrag = 0 means no principal
+  // and no accrued interest), so that endfaellig=true with a 0 € loan produces the same result as
+  // endfaellig=false.
+  const hasLoanToSettle = darlehenRestschuldAnfang > 0 || aufgelaufeneZinsen > 0;
+  if (endfaellig && hasLoanToSettle) {
     const aufgelaufeneZinsenNorm = Math.max(0, aufgelaufeneZinsen);
     const darlehensrueckzahlung = Math.max(0, darlehenRestschuldAnfang); // principal, tax-free
     const firmenEtfVermoegenVorBereich1 = firmenEtfVermoegen;

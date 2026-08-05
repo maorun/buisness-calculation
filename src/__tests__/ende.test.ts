@@ -734,13 +734,14 @@ describe("berechneEndeErgebnisse", () => {
         essenszuschussTageProJahr: 220,
         bav: 0,
       };
-      const resultsOhneBenefit = berechneEndeErgebnisse(state, 100000, 0, 0, 0, true, 0, []);
+      // Use a non-zero loan so Bereich 1 is actually triggered
+      const resultsOhneBenefit = berechneEndeErgebnisse(state, 100000, 10000, 3, 500, true, 0, []);
       const resultsMitBenefit = berechneEndeErgebnisse(
         state,
         100000,
-        0,
-        0,
-        0,
+        10000,
+        3,
+        500,
         true,
         0,
         [],
@@ -753,6 +754,25 @@ describe("berechneEndeErgebnisse", () => {
       const deltaNettoBereich1 = resultsMitBenefit[0].nettogewinn - resultsOhneBenefit[0].nettogewinn;
       expect(deltaNettoBereich1).toBeCloseTo(0);
     });
+
+    it("Bereich 1 wird übersprungen wenn Darlehen 0 € ist (endfaellig=true verhält sich wie false)", () => {
+      const state = {
+        ...baseState,
+        geschaeftsfuehrergehalt: 1000,
+        gehaltBereich1: 0,
+        gewinnausschuettung: 0,
+        laufzeitJahre: 5,
+      };
+      const resultsEndfaellig = berechneEndeErgebnisse(state, 100000, 0, 0, 0, true, 5, []);
+      const resultsNichtEndfaellig = berechneEndeErgebnisse(state, 100000, 0, 0, 0, false, 5, []);
+      // With 0 loan, both should produce the same number of years and same results
+      expect(resultsEndfaellig.length).toBe(resultsNichtEndfaellig.length);
+      expect(resultsEndfaellig[0].gesamtvermoegen).toBeCloseTo(resultsNichtEndfaellig[0].gesamtvermoegen);
+      expect(resultsEndfaellig[resultsEndfaellig.length - 1].gesamtvermoegen).toBeCloseTo(
+        resultsNichtEndfaellig[resultsNichtEndfaellig.length - 1].gesamtvermoegen
+      );
+    });
+
 
     it("Bereich 2: vorabpauschale and gmbhSteuer are non-zero with positive rendite and ETF", () => {
       const etfStart = 100000;
