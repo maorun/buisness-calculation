@@ -43,9 +43,11 @@ export function formatSignedPercent(value: number | null): string {
  * For Betrieb years: no override (private comparison uses its own salary/interest logic).
  * For Ende years: use the GmbH Ende-phase net income (nettogewinn) as entnahmenVorSteuern so
  *   the private person "consumes" the same amount as the GmbH shareholder each year.
- *   The firmenDarlehensverbindlichkeit is used to override offenesDarlehen so the outstanding
- *   loan balance stays in sync between the GmbH and private comparison (critical for endfällig
- *   loans where Bereich 1 settles the old loan and Bereich 2 starts a smaller new one).
+ *   The restdarlehen (original GmbH loan) is used to override offenesDarlehen so the outstanding
+ *   bank-loan balance stays in sync between the GmbH and private comparison (critical for
+ *   endfällig loans where Bereich 1 settles the old loan and Bereich 2 starts a smaller one).
+ *   Note: privatDarlehenRestschuld is intentionally excluded here – the private person never
+ *   gave that money to a GmbH, so it remains in the private ETF rather than as a liability.
  */
 function berechnePrivatVergleichOverrides(
   betriebLaufzeitJahre: number,
@@ -62,8 +64,11 @@ function berechnePrivatVergleichOverrides(
     const idx = betriebLaufzeitJahre + i;
     const e = endeErgebnisse[i];
     entnahmenOverride[idx] = e.nettogewinn ?? 0;
-    const fdb = e.details.firmenDarlehensverbindlichkeit;
-    offeneDarlehenOverride[idx] = fdb !== undefined ? Math.max(0, fdb) : 0;
+    // Use only the GmbH's original loan (restdarlehen) as the private comparison's outstanding
+    // debt. The privatDarlehen is the shareholder's own money given to the GmbH – in the private
+    // comparison that capital stays in the private ETF and is not a debt.
+    const restdarlehen = e.details.restdarlehen;
+    offeneDarlehenOverride[idx] = restdarlehen !== undefined ? Math.max(0, restdarlehen) : 0;
   }
 
   return { entnahmenOverride, offeneDarlehenOverride };

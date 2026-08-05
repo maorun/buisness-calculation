@@ -47,6 +47,7 @@ describe("berechneGesamtvergleichKpi", () => {
       nettogewinn: 0,
       details: {
         firmenDarlehensverbindlichkeit: 30000,
+        restdarlehen: 30000,
       },
     }];
 
@@ -94,6 +95,7 @@ describe("berechneGesamtvergleichZeitreihe", () => {
     nettogewinn: 0,
     details: {
       firmenDarlehensverbindlichkeit: 30000,
+      restdarlehen: 30000,
     },
   }];
 
