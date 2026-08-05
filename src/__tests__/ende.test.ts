@@ -581,6 +581,19 @@ describe("berechneEndeErgebnisse", () => {
       expect(bereich1.details.firmenNettovermoegen).toBeCloseTo(expectedEtf - reinvestiertesDarlehen);
     });
 
+    it("Bereich 1: firmenEtfVermoegen always includes full reinvestiertes Darlehen even when ETF starts at 0", () => {
+      // Regression: previously Math.max(0, etf - outflows + reinvested) could clip the re-lending
+      // to 0 when etf - outflows < 0, losing the reinvested principal from the firm's ETF.
+      // Use zielnettoBereich1: 0 to ensure no teiltilgung → reinvestiertesDarlehen = full principal.
+      const state = { ...endfaelligState, gehaltBereich1: 0, zielnettoBereich1: 0 };
+      const principal = 10000;
+      const results = berechneEndeErgebnisse(state, 0, principal, 0, 0, true);
+      const bereich1 = results[0];
+      // All principal is re-lent → ETF must hold exactly the reinvested amount
+      expect(bereich1.details.neuesDarlehenStart).toBeCloseTo(principal);
+      expect(bereich1.details.firmenEtfVermoegen).toBeGreaterThanOrEqual(principal);
+    });
+
     it("Bereich 2: uses the new 3%-loan instead of dropping restdarlehen to 0", () => {
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 2000, true);
       expect(results[1].details.neuesDarlehenZinssatz).toBe(REINVESTIERTES_DARLEHEN_ZINSSATZ);
