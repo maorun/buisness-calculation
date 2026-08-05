@@ -753,12 +753,12 @@ export function EndeSection() {
             <p className={`text-sm font-bold ${gesamtvergleich.vorteil >= 0 ? "text-green-800" : "text-orange-800"}`}>
               {formatSignedEuro(gesamtvergleich.vorteil)} Vorteil vs. Privat
             </p>
+            <p className="text-xs text-slate-700">{overlayProzentText}</p>
           </div>
           <div className="text-right">
             <p className={`text-xs font-semibold ${gesamtvergleich.vorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
               {gesamtvergleich.gewinnerText}
             </p>
-            <p className="text-xs text-slate-700">{overlayProzentText}</p>
             <p className="text-[11px] text-slate-500">
               GmbH {gesamtvergleich.gmbhGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € · Privat {gesamtvergleich.privatGesamtwert.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €
             </p>
