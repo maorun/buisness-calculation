@@ -853,6 +853,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     investitionsKumulierterNettoCashflow += investitionsNettoCashflowProJahr;
     const investitionsCashZufluss = Math.max(0, investitionsNettoCashflowProJahr);
     const investitionsCashAbfluss = Math.max(0, -investitionsNettoCashflowProJahr);
+    const cashReserveVorInvestition = cashReserve;
     cashReserve += investitionsCashZufluss;
 
     // Vorabpauschale tax – GmbH uses 80% Teilfreistellung and corporate tax rate (KSt + GewSt)
@@ -1028,9 +1029,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const zielnettoDifferenz = gesellschafterNetto - zielnettoGesellschafter;
 
     // Positive retained result is held as cash reserve (Aktiva).
-    // Investment cash (investitionsCashZufluss) is already in cashReserve from line 856; subtract it
-    // to avoid double-counting the investment net income in the reserve.
-    const cashReserveZugang = Math.max(0, nettogewinn - Math.max(0, investitionsNettoCashflowProJahr) - gewinnNachSteuernEtfZufluss);
+    // Investment cash (investitionsCashZufluss) is already in cashReserve from above; subtract only
+    // the portion that is still there (not consumed by expenses or taxes) to avoid double-counting.
+    const investitionsCashNochInReserve = Math.max(0, Math.min(investitionsCashZufluss, cashReserve - cashReserveVorInvestition));
+    const cashReserveZugang = Math.max(0, nettogewinn - investitionsCashNochInReserve - gewinnNachSteuernEtfZufluss);
     cashReserve += cashReserveZugang;
 
     // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
