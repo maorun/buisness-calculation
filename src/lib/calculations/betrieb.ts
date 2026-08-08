@@ -931,7 +931,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
       const gewinnNachBetriebsausgabenIter =
-        simulierterGewinn + realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
+        simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
       const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
         ? gewinnNachBetriebsausgabenIter * GMBH_STEUER_GESAMT
         : 0;
@@ -956,7 +956,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
-      simulierterGewinn + realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
+      simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
 
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
@@ -1028,7 +1028,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const zielnettoDifferenz = gesellschafterNetto - zielnettoGesellschafter;
 
     // Positive retained result is held as cash reserve (Aktiva).
-    const cashReserveZugang = Math.max(0, nettogewinn - gewinnNachSteuernEtfZufluss);
+    // Investment cash (investitionsCashZufluss) is already in cashReserve from line 856; subtract it
+    // to avoid double-counting the investment net income in the reserve.
+    const cashReserveZugang = Math.max(0, nettogewinn - Math.max(0, investitionsNettoCashflowProJahr) - gewinnNachSteuernEtfZufluss);
     cashReserve += cashReserveZugang;
 
     // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.
