@@ -853,6 +853,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     investitionsKumulierterNettoCashflow += investitionsNettoCashflowProJahr;
     const investitionsCashZufluss = Math.max(0, investitionsNettoCashflowProJahr);
     const investitionsCashAbfluss = Math.max(0, -investitionsNettoCashflowProJahr);
+    const cashReserveVorInvestition = cashReserve;
     cashReserve += investitionsCashZufluss;
 
     // Vorabpauschale tax – GmbH uses 80% Teilfreistellung and corporate tax rate (KSt + GewSt)
@@ -931,7 +932,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
       const gewinnNachBetriebsausgabenIter =
-        simulierterGewinn + realisierterEtfErtragIter - betriebsausgabenGesamt - jaehrlicheZinsen;
+        simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
       const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
         ? gewinnNachBetriebsausgabenIter * GMBH_STEUER_GESAMT
         : 0;
@@ -956,7 +957,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
-      simulierterGewinn + realisierterEtfErtrag - betriebsausgabenGesamt - jaehrlicheZinsen;
+      simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
 
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
@@ -1028,7 +1029,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const zielnettoDifferenz = gesellschafterNetto - zielnettoGesellschafter;
 
     // Positive retained result is held as cash reserve (Aktiva).
-    const cashReserveZugang = Math.max(0, nettogewinn - gewinnNachSteuernEtfZufluss);
+    // Investment cash (investitionsCashZufluss) is already in cashReserve from above; subtract only
+    // the portion that is still there (not consumed by expenses or taxes) to avoid double-counting.
+    const investitionsCashNochInReserve = Math.max(0, Math.min(investitionsCashZufluss, cashReserve - cashReserveVorInvestition));
+    const cashReserveZugang = Math.max(0, nettogewinn - investitionsCashNochInReserve - gewinnNachSteuernEtfZufluss);
     cashReserve += cashReserveZugang;
 
     // Update ETF value: after growth, deduct all cash outflows funded by ETF sales.

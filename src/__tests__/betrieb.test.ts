@@ -759,8 +759,9 @@ describe("berechneBetriebsErgebnisse", () => {
 
     expect(result.details.investitionsNettoCashflowProJahr).toBeCloseTo(1000);
     expect(result.details.etfVerkauf).toBeCloseTo(0);
-    expect(result.details.cashReserve).toBeCloseTo(1000);
-    expect(result.gesamtvermoegen).toBeCloseTo(11000);
+    // Investment income is taxed at GmbH rate (KSt + GewSt ≈ 29.825%); cash reserve holds the net amount.
+    expect(result.details.cashReserve).toBeCloseTo(701.75);
+    expect(result.gesamtvermoegen).toBeCloseTo(10701.75);
   });
 
   it("cash reserve accumulates only positive annual net profit", () => {
