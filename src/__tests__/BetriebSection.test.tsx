@@ -92,6 +92,11 @@ describe("BetriebSection", () => {
     expect(screen.getByText("Persönlicher Grenzsteuersatz des Gesellschafters (%)")).toBeTruthy();
   });
 
+  it("renders the capital gains tax input for private comparison", () => {
+    render(<BetriebSection />);
+    expect(screen.getByText("Kapitalertragsteuer für Privatvergleich (%)")).toBeTruthy();
+  });
+
   it("renders meal subsidy inputs", () => {
     render(<BetriebSection />);
     expect(screen.getByText("Essenszuschuss (€/Tag)")).toBeTruthy();

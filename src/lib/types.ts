@@ -109,6 +109,8 @@ export interface BetriebState {
   startkapital: number;
   /** Annual cash inflow that stays liquid and is not invested into ETFs. */
   jaehrlicherCashZuschuss: number;
+  /** Capital gains tax rate for private ETF taxation (in %, e.g. 15). */
+  kapitalertragsteuerSatz?: number;
   /** Annual simulated operating profit during Betrieb phase. */
   simulierterGewinn?: number;
   /** Personal marginal tax rate of the shareholder (in %, e.g. 42). Used only for private comparison of operating profit. */
