@@ -24,6 +24,7 @@ import {
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_KAPITALERTRAGSTEUER_SATZ,
   UMSATZSTEUER_SATZ,
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
@@ -1144,6 +1145,48 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(gmbhVorabsteuer).toBeGreaterThan(0);
     expect(privat.kumulierteVorabpauschalesteuer).not.toBeCloseTo(gmbhVorabsteuer);
     expect(privat.kumulierteVorabpauschalesteuer).toBeGreaterThan(gmbhVorabsteuer);
+  });
+
+  it("uses 15% capital gains tax as default when no private tax rate is provided", () => {
+    const stateOhneSatz: BetriebState = {
+      ...basisState,
+      startkapital: 100000,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      etfRendite: 7,
+      laufzeitJahre: 1,
+      geschaeftsfuehrergehalt: 20000,
+      kapitalertragsteuerSatz: undefined,
+    };
+    const stateMitDefaultSatz: BetriebState = {
+      ...stateOhneSatz,
+      kapitalertragsteuerSatz: DEFAULT_KAPITALERTRAGSTEUER_SATZ,
+    };
+
+    const ohneSatz = berechnePrivatVergleichErgebnis(stateOhneSatz);
+    const mitDefaultSatz = berechnePrivatVergleichErgebnis(stateMitDefaultSatz);
+    expect(ohneSatz.kumulierteSteuern).toBeCloseTo(mitDefaultSatz.kumulierteSteuern);
+  });
+
+  it("applies configured capital gains tax rate in private comparison", () => {
+    const basis: BetriebState = {
+      ...basisState,
+      startkapital: 100000,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      etfRendite: 7,
+      laufzeitJahre: 1,
+      geschaeftsfuehrergehalt: 20000,
+    };
+    const steuer15 = berechnePrivatVergleichErgebnis({
+      ...basis,
+      kapitalertragsteuerSatz: 15,
+    });
+    const steuer30 = berechnePrivatVergleichErgebnis({
+      ...basis,
+      kapitalertragsteuerSatz: 30,
+    });
+
+    expect(steuer15.kumulierteSteuern).toBeGreaterThan(0);
+    expect(steuer30.kumulierteSteuern).toBeGreaterThan(steuer15.kumulierteSteuern);
   });
 });
 

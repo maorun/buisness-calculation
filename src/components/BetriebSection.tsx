@@ -5,13 +5,13 @@ import { useCalculatorStore } from "@/store/calculatorStore";
 import {
   TEILFREISTELLUNG_AKTIEN_GMBH,
   TEILFREISTELLUNG_AKTIEN_PRIVAT,
-  ABGELTUNGSSTEUER_GESAMT,
   DEFAULT_FIRMENHANDY_CONFIG,
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
   BAV_MAX_STEUERFREIER_BEITRAG,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
+  DEFAULT_KAPITALERTRAGSTEUER_SATZ,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneAlleInvestitionsErgebnisse,
@@ -283,6 +283,10 @@ export function BetriebSection() {
   });
   const mealSubsidyExceedsReferenceValue =
     betrieb.benefits.essenszuschussProTag > DEFAULT_ESSENSZUSCHUSS_PRO_TAG;
+  const kapitalertragsteuerSatz = Math.max(
+    0,
+    Math.min(100, betrieb.kapitalertragsteuerSatz ?? DEFAULT_KAPITALERTRAGSTEUER_SATZ)
+  );
 
   const updateDarlehen = (field: string, value: string | boolean) => {
     setBetrieb({
@@ -429,6 +433,17 @@ export function BetriebSection() {
             }
             suffix="%"
             hint="Optional für den Privatvergleich: Versteuert den simulierten Gewinn mit dem persönlichen Grenzsteuersatz zzgl. Soli (z. B. 42 % bei Anstellung)."
+          />
+          <InputField
+            label="Kapitalertragsteuer für Privatvergleich (%)"
+            value={kapitalertragsteuerSatz}
+            onChange={(v) =>
+              setBetrieb({
+                kapitalertragsteuerSatz: Math.max(0, Math.min(100, parseFloat(v) || 0)),
+              })
+            }
+            suffix="%"
+            hint="Steuert Vorabpauschale- und ETF-Verkaufssteuer im Privatvergleich (Default: 15 %)."
           />
         </div>
       </div>
@@ -1076,7 +1091,7 @@ export function BetriebSection() {
             <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss + simulierter Gewinn nach ESt/Soli minus Tankgutschein minus Essenszuschuss minus Firmenhandy</li>
             <li>In der GmbH wird der Konsumwert steuerbereinigt gezeigt (inkl. Vorsteuerabzug beim Firmenhandy)</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
-            <li>Privat-Steuern: Abgeltungsteuer ({(ABGELTUNGSSTEUER_GESAMT * 100).toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
+            <li>Privat-Steuern: Kapitalertragsteuer ({kapitalertragsteuerSatz.toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
           </ul>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
