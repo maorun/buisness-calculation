@@ -12,6 +12,9 @@ import {
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_KAPITALERTRAGSTEUER_SATZ,
+  DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
+  DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
+  DEFAULT_GEWERBESTEUER_SATZ,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneAlleInvestitionsErgebnisse,
@@ -444,6 +447,39 @@ export function BetriebSection() {
             }
             suffix="%"
             hint="Steuert Vorabpauschale- und ETF-Verkaufssteuer im Privatvergleich (Default: 15 %)."
+          />
+          <InputField
+            label="Körperschaftsteuer GmbH (%)"
+            value={betrieb.koerperschaftsteuerSatz ?? DEFAULT_KOERPERSCHAFTSTEUER_SATZ}
+            onChange={(v) =>
+              setBetrieb({
+                koerperschaftsteuerSatz: Math.max(0, Math.min(100, parseFloat(v) || 0)),
+              })
+            }
+            suffix="%"
+            hint="Körperschaftsteuer-Satz der GmbH (Default: 15 %)."
+          />
+          <InputField
+            label="Solidaritätszuschlag auf KSt (%)"
+            value={betrieb.solidaritaetszuschlagSatz ?? DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ}
+            onChange={(v) =>
+              setBetrieb({
+                solidaritaetszuschlagSatz: Math.max(0, Math.min(100, parseFloat(v) || 0)),
+              })
+            }
+            suffix="%"
+            hint="Solidaritätszuschlag auf die Körperschaftsteuer (Default: 5.5 %)."
+          />
+          <InputField
+            label="Gewerbesteuer GmbH (%)"
+            value={betrieb.gewerbesteuerSatz ?? DEFAULT_GEWERBESTEUER_SATZ}
+            onChange={(v) =>
+              setBetrieb({
+                gewerbesteuerSatz: Math.max(0, Math.min(100, parseFloat(v) || 0)),
+              })
+            }
+            suffix="%"
+            hint="Effektiver Gewerbesteuer-Satz der GmbH (bundesweiter Durchschnitt ca. 14 %)."
           />
         </div>
       </div>

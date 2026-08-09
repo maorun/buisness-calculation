@@ -111,6 +111,12 @@ export interface BetriebState {
   jaehrlicherCashZuschuss: number;
   /** Capital gains tax rate for private ETF taxation (in %, e.g. 15). */
   kapitalertragsteuerSatz?: number;
+  /** Körperschaftsteuer rate for the GmbH (in %, e.g. 15). Default: 15. */
+  koerperschaftsteuerSatz?: number;
+  /** Solidaritätszuschlag rate applied on top of Körperschaftsteuer (in %, e.g. 5.5). Default: 5.5. */
+  solidaritaetszuschlagSatz?: number;
+  /** Gewerbesteuer rate for the GmbH (in %, e.g. 14). Default: 14. */
+  gewerbesteuerSatz?: number;
   /** Annual simulated operating profit during Betrieb phase. */
   simulierterGewinn?: number;
   /** Personal marginal tax rate of the shareholder (in %, e.g. 42). Used only for private comparison of operating profit. */

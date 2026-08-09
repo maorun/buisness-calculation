@@ -3,8 +3,12 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
 import {
   berechneBetriebsErgebnisse,
+  berechneGmbhSteuerRaten,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
+  DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
+  DEFAULT_GEWERBESTEUER_SATZ,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
 } from "@/lib/calculations/betrieb";
 import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
@@ -42,6 +46,9 @@ const initialState: CalculatorState = {
     startkapital: 12500,
     jaehrlicherCashZuschuss: 2400,
     kapitalertragsteuerSatz: 15,
+    koerperschaftsteuerSatz: 15,
+    solidaritaetszuschlagSatz: 5.5,
+    gewerbesteuerSatz: 14,
     simulierterGewinn: 0,
     zielnettoGesellschafter: 36000,
     geschaeftsfuehrergehalt: 17000,
@@ -233,6 +240,11 @@ export const useCalculatorStore = create<CalculatorStore>()(
       ?? Math.max(0, get().betrieb.darlehen.betrag);
     const aufgelaufeneZinsen = letztesBetriebsergebnis?.details.aufgelaufeneZinsen ?? 0;
     const betriebDarlehenEndfaellig = get().betrieb.darlehen.endfaellig;
+    const { gmbhSteuerGesamt } = berechneGmbhSteuerRaten(
+      get().betrieb.koerperschaftsteuerSatz ?? DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
+      get().betrieb.solidaritaetszuschlagSatz ?? DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
+      get().betrieb.gewerbesteuerSatz ?? DEFAULT_GEWERBESTEUER_SATZ,
+    );
     return berechneEndeErgebnisse(
       get().ende,
       letzterEtfWert,
@@ -243,13 +255,14 @@ export const useCalculatorStore = create<CalculatorStore>()(
       get().betrieb.etfRendite,
       get().betrieb.kosten,
       get().betrieb.benefits,
-      get().betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG
+      get().betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG,
+      gmbhSteuerGesamt
     );
   },
     }),
     {
       name: "gmbh-kalkulator",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;
