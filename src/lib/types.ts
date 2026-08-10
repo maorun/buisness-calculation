@@ -22,13 +22,21 @@ export interface DarlehenConfig {
 
 export interface BenefitConfig {
   tankgutschein: number; // monthly fuel voucher (tax-free up to 50€/month)
+  /** Whether the fuel-voucher benefit is active. Defaults to true. */
+  tankgutscheinAktiv?: boolean;
   strategieessen: number; // annual strategy dinner (deductible)
+  /** Whether the strategy-dinner benefit is active. Defaults to true. */
+  strategieessenAktiv?: boolean;
   essenszuschussProTag: number; // daily meal subsidy (UI default: 7.67€/day)
   essenszuschussTageProJahr: number; // subsidized meal days per year
+  /** Whether the meal-subsidy benefit is active. Defaults to true. */
+  essenszuschussAktiv?: boolean;
   /** Annual employer contribution to company pension scheme (bAV, § 3 Nr. 63 EStG).
    *  Tax-free for the GF up to 8% of the Beitragsbemessungsgrenze (BBG), fully
    *  deductible as a business expense for the GmbH. */
   bav: number;
+  /** Whether the bAV benefit is active. Defaults to true. */
+  bavAktiv?: boolean;
 }
 
 export interface StillerGesellschafterConfig {

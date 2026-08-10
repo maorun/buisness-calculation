@@ -315,6 +315,12 @@ export function BetriebSection() {
     });
   };
 
+  const toggleBenefitAktiv = (field: keyof typeof betrieb.benefits, checked: boolean) => {
+    setBetrieb({
+      benefits: { ...betrieb.benefits, [field]: checked },
+    });
+  };
+
   const updateFirmenhandy = (field: keyof NonNullable<typeof betrieb.firmenhandy>, value: string | boolean | number) => {
     const currentHandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     setBetrieb({
@@ -541,46 +547,117 @@ export function BetriebSection() {
           mit 7,67 € pro gefördertem Tag als Default-Wert. Das Firmenhandy wird separat als
           Betriebsausgabe berücksichtigt.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField
-            label="Tankgutschein (€/Monat)"
-            value={betrieb.benefits.tankgutschein}
-            onChange={(v) => updateBenefits("tankgutschein", v)}
-            suffix="€/Monat"
-            hint="Max. 50 €/Monat steuerfrei"
-            max={50}
-          />
-          <InputField
-            label="Essenszuschuss (€/Tag)"
-            value={betrieb.benefits.essenszuschussProTag}
-            onChange={(v) => updateBenefits("essenszuschussProTag", v)}
-            suffix="€/Tag"
-            hint={`Default: ${formattedEssenszuschussReferenzwert} € pro gefördertem Tag · aktuell steuerfrei bis zu diesem Wert`}
-          />
-          <InputField
-            label="Geförderte Tage Essenszuschuss (pro Jahr)"
-            value={betrieb.benefits.essenszuschussTageProJahr}
-            onChange={(v) => updateBenefits("essenszuschussTageProJahr", v)}
-            suffix="Tage/Jahr"
-            hint="Anzahl der Tage mit Essenszuschuss pro Jahr"
-            max={366}
-          />
-          <InputField
-            label="Strategieessen (€/Jahr)"
-            value={betrieb.benefits.strategieessen}
-            onChange={(v) => updateBenefits("strategieessen", v)}
-            suffix="€/Jahr"
-            hint="Voll abzugsfähige Betriebsausgabe"
-          />
-          <InputField
-            label="bAV-Beitrag (€/Jahr)"
-            value={betrieb.benefits.bav}
-            onChange={(v) => updateBenefits("bav", v)}
-            suffix="€/Jahr"
-            hint={`Arbeitgeberbeitrag zur betrieblichen Altersvorsorge (§ 3 Nr. 63 EStG). Voll abzugsfähige Betriebsausgabe; bis zu ${BAV_MAX_STEUERFREIER_BEITRAG.toLocaleString("de-DE")} €/Jahr steuer- und sozialabgabenfrei für den GF.`}
-          />
+
+        {/* Tankgutschein */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="tankgutscheinAktiv"
+              checked={betrieb.benefits.tankgutscheinAktiv ?? true}
+              onChange={(e) => toggleBenefitAktiv("tankgutscheinAktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="tankgutscheinAktiv" className="text-sm text-gray-700">Tankgutschein aktiv</label>
+          </div>
+          {(betrieb.benefits.tankgutscheinAktiv ?? true) && (
+            <div className="pl-7">
+              <InputField
+                label="Tankgutschein (€/Monat)"
+                value={betrieb.benefits.tankgutschein}
+                onChange={(v) => updateBenefits("tankgutschein", v)}
+                suffix="€/Monat"
+                hint="Max. 50 €/Monat steuerfrei"
+                max={50}
+              />
+            </div>
+          )}
         </div>
-        {mealSubsidyExceedsReferenceValue && (
+
+        {/* Essenszuschuss */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="essenszuschussAktiv"
+              checked={betrieb.benefits.essenszuschussAktiv ?? true}
+              onChange={(e) => toggleBenefitAktiv("essenszuschussAktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="essenszuschussAktiv" className="text-sm text-gray-700">Essenszuschuss aktiv</label>
+          </div>
+          {(betrieb.benefits.essenszuschussAktiv ?? true) && (
+            <div className="pl-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField
+                label="Essenszuschuss (€/Tag)"
+                value={betrieb.benefits.essenszuschussProTag}
+                onChange={(v) => updateBenefits("essenszuschussProTag", v)}
+                suffix="€/Tag"
+                hint={`Default: ${formattedEssenszuschussReferenzwert} € pro gefördertem Tag · aktuell steuerfrei bis zu diesem Wert`}
+              />
+              <InputField
+                label="Geförderte Tage Essenszuschuss (pro Jahr)"
+                value={betrieb.benefits.essenszuschussTageProJahr}
+                onChange={(v) => updateBenefits("essenszuschussTageProJahr", v)}
+                suffix="Tage/Jahr"
+                hint="Anzahl der Tage mit Essenszuschuss pro Jahr"
+                max={366}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Strategieessen */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="strategieessenAktiv"
+              checked={betrieb.benefits.strategieessenAktiv ?? true}
+              onChange={(e) => toggleBenefitAktiv("strategieessenAktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="strategieessenAktiv" className="text-sm text-gray-700">Strategieessen aktiv</label>
+          </div>
+          {(betrieb.benefits.strategieessenAktiv ?? true) && (
+            <div className="pl-7">
+              <InputField
+                label="Strategieessen (€/Jahr)"
+                value={betrieb.benefits.strategieessen}
+                onChange={(v) => updateBenefits("strategieessen", v)}
+                suffix="€/Jahr"
+                hint="Voll abzugsfähige Betriebsausgabe"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* bAV */}
+        <div className="mb-2">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="bavAktiv"
+              checked={betrieb.benefits.bavAktiv ?? true}
+              onChange={(e) => toggleBenefitAktiv("bavAktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="bavAktiv" className="text-sm text-gray-700">bAV aktiv</label>
+          </div>
+          {(betrieb.benefits.bavAktiv ?? true) && (
+            <div className="pl-7">
+              <InputField
+                label="bAV-Beitrag (€/Jahr)"
+                value={betrieb.benefits.bav}
+                onChange={(v) => updateBenefits("bav", v)}
+                suffix="€/Jahr"
+                hint={`Arbeitgeberbeitrag zur betrieblichen Altersvorsorge (§ 3 Nr. 63 EStG). Voll abzugsfähige Betriebsausgabe; bis zu ${BAV_MAX_STEUERFREIER_BEITRAG.toLocaleString("de-DE")} €/Jahr steuer- und sozialabgabenfrei für den GF.`}
+              />
+            </div>
+          )}
+        </div>
+
+        {mealSubsidyExceedsReferenceValue && (betrieb.benefits.essenszuschussAktiv ?? true) && (
           <p
             className="text-xs text-amber-700 mt-3"
             role="alert"

@@ -386,17 +386,19 @@ export function berechneBenefitsSteuerersparnis(
 export function berechneBenefitsKosten(benefits: BenefitConfig): number {
   const tankJahr = berechneTankgutscheinJaehrlich(benefits);
   const essenszuschussJahr = berechneEssenszuschussJaehrlich(benefits);
-  const strategieessen = benefits.strategieessen;
-  const bav = Math.max(0, benefits.bav ?? 0);
+  const strategieessen = (benefits.strategieessenAktiv ?? true) ? Math.max(0, benefits.strategieessen) : 0;
+  const bav = (benefits.bavAktiv ?? true) ? Math.max(0, benefits.bav ?? 0) : 0;
   return tankJahr + essenszuschussJahr + strategieessen + bav;
 }
 
 export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number {
+  if (!(benefits.tankgutscheinAktiv ?? true)) return 0;
   const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH);
   return clampedTankMonthly * MONATE_PRO_JAHR;
 }
 
 export function berechneEssenszuschussJaehrlich(benefits: BenefitConfig): number {
+  if (!(benefits.essenszuschussAktiv ?? true)) return 0;
   const proTag = Math.max(benefits.essenszuschussProTag ?? 0, 0);
   const tage = Math.min(
     Math.max(Math.floor(benefits.essenszuschussTageProJahr ?? 0), 0),
@@ -448,8 +450,8 @@ export function berechneBetriebskostenPosten(
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Essenszuschuss", wert: essenszuschussJaehrlich },
-    { label: "Strategieessen", wert: Math.max(0, benefits.strategieessen) },
-    { label: "bAV-Beitrag", wert: Math.max(0, benefits.bav ?? 0) },
+    { label: "Strategieessen", wert: (benefits.strategieessenAktiv ?? true) ? Math.max(0, benefits.strategieessen) : 0 },
+    { label: "bAV-Beitrag", wert: (benefits.bavAktiv ?? true) ? Math.max(0, benefits.bav ?? 0) : 0 },
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
     ...(stillerGesellschafterKosten > 0
