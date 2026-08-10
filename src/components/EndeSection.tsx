@@ -64,7 +64,7 @@ function InputField({
 }
 
 export function EndeSection() {
-  const { ende, setEnde, betrieb, getEndeErgebnisse, getBetriebsErgebnisse } = useCalculatorStore();
+  const { ende, setEnde, betrieb, setBetrieb, getEndeErgebnisse, getBetriebsErgebnisse } = useCalculatorStore();
   const ergebnisse = getEndeErgebnisse();
   const betriebsErgebnisse = getBetriebsErgebnisse();
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
@@ -174,6 +174,12 @@ export function EndeSection() {
     ? "nicht berechenbar"
     : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
   const overlayGesamtProzent = formatSignedPercent(gesamtvergleich.vorteilProzent);
+
+  const toggleBenefitAktiv = (field: keyof typeof betrieb.benefits, checked: boolean) => {
+    setBetrieb({
+      benefits: { ...betrieb.benefits, [field]: checked },
+    });
+  };
 
   return (
     <div className="space-y-6 pb-28 md:pb-32">
@@ -733,30 +739,86 @@ export function EndeSection() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Benefits & Firmenhandy</h3>
         <p className="text-xs text-slate-500 mb-4">
-          Konfiguriert im Betrieb-Bereich – reduzieren auch in der Auszahlungsphase die Steuerlast
+          Reduzieren auch in der Auszahlungsphase die Steuerlast – hier aktivieren/deaktivieren
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-            <p className="text-xs text-slate-600 mb-1">Firmenhandy</p>
-            <p className="font-bold text-gray-800">{handyAnschaffung} € alle {handyZyklus} Jahre</p>
-            <p className="text-xs text-slate-600 mt-1">{handyVerkaufsquote}% Verkaufserlös</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Tankgutschein */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-1">
+              <input
+                type="checkbox"
+                id="endeTankgutscheinAktiv"
+                checked={betrieb.benefits.tankgutscheinAktiv ?? true}
+                onChange={(e) => toggleBenefitAktiv("tankgutscheinAktiv", e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              <label htmlFor="endeTankgutscheinAktiv" className="text-sm font-medium text-gray-700">Tankgutschein aktiv</label>
+            </div>
+            <p className="text-xs text-slate-600 pl-7">{betrieb.benefits.tankgutschein} €/Monat</p>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-            <p className="text-xs text-slate-600 mb-1">Tankgutschein</p>
-            <p className="font-bold text-gray-800">{betrieb.benefits.tankgutschein} €/Monat</p>
-          </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-            <p className="text-xs text-slate-600 mb-1">Strategieessen</p>
-            <p className="font-bold text-gray-800">{betrieb.benefits.strategieessen} €/Jahr</p>
-          </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-            <p className="text-xs text-slate-600 mb-1">Essenszuschuss</p>
-            <p className="font-bold text-gray-800">
-              {betrieb.benefits.essenszuschussProTag.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/Tag
+
+          {/* Essenszuschuss */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-1">
+              <input
+                type="checkbox"
+                id="endeEssenszuschussAktiv"
+                checked={betrieb.benefits.essenszuschussAktiv ?? true}
+                onChange={(e) => toggleBenefitAktiv("essenszuschussAktiv", e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              <label htmlFor="endeEssenszuschussAktiv" className="text-sm font-medium text-gray-700">Essenszuschuss aktiv</label>
+            </div>
+            <p className="text-xs text-slate-600 pl-7">
+              {betrieb.benefits.essenszuschussProTag.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/Tag · {betrieb.benefits.essenszuschussTageProJahr} Tage/Jahr · {essenszuschussJaehrlich.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/Jahr
             </p>
-            <p className="text-xs text-slate-600 mt-1">
-              {betrieb.benefits.essenszuschussTageProJahr} Tage/Jahr · {essenszuschussJaehrlich.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/Jahr
-            </p>
+          </div>
+
+          {/* Strategieessen */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-1">
+              <input
+                type="checkbox"
+                id="endeStrategieessenAktiv"
+                checked={betrieb.benefits.strategieessenAktiv ?? true}
+                onChange={(e) => toggleBenefitAktiv("strategieessenAktiv", e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              <label htmlFor="endeStrategieessenAktiv" className="text-sm font-medium text-gray-700">Strategieessen aktiv</label>
+            </div>
+            <p className="text-xs text-slate-600 pl-7">{betrieb.benefits.strategieessen} €/Jahr</p>
+          </div>
+
+          {/* bAV */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-1">
+              <input
+                type="checkbox"
+                id="endeBavAktiv"
+                checked={betrieb.benefits.bavAktiv ?? true}
+                onChange={(e) => toggleBenefitAktiv("bavAktiv", e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              <label htmlFor="endeBavAktiv" className="text-sm font-medium text-gray-700">bAV aktiv</label>
+            </div>
+            <p className="text-xs text-slate-600 pl-7">{betrieb.benefits.bav} €/Jahr</p>
+          </div>
+
+          {/* Firmenhandy */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-1">
+              <input
+                type="checkbox"
+                id="endeHandyAktiv"
+                checked={betrieb.firmenhandy?.aktiv ?? DEFAULT_FIRMENHANDY_CONFIG.aktiv}
+                onChange={(e) =>
+                  setBetrieb({ firmenhandy: { ...(betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG), aktiv: e.target.checked } })
+                }
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              <label htmlFor="endeHandyAktiv" className="text-sm font-medium text-gray-700">Firmenhandy aktiv</label>
+            </div>
+            <p className="text-xs text-slate-600 pl-7">{handyAnschaffung} € alle {handyZyklus} Jahre · {handyVerkaufsquote}% Verkaufserlös</p>
           </div>
         </div>
         <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
