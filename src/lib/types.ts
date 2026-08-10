@@ -146,10 +146,25 @@ export interface BetriebState {
   investitionen?: InvestitionsPosition[];
 }
 
+/**
+ * Per-benefit active flags for the Ende (payout) phase.
+ * When a flag is undefined the value falls back to the corresponding Betrieb flag.
+ */
+export interface EndeBenefitAktivConfig {
+  tankgutscheinAktiv?: boolean;
+  essenszuschussAktiv?: boolean;
+  strategieessenAktiv?: boolean;
+  bavAktiv?: boolean;
+  /** Whether the company-phone programme counts in the Ende phase. */
+  firmenhandyAktiv?: boolean;
+}
+
 export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary for Bereich 2 (regular payout phase)
   /** Annual simulated operating profit during Ende phase (before Betriebsausgaben and benefits). */
   simulierterGewinn?: number;
+  /** Per-benefit active overrides for the Ende phase (independent from Betrieb toggles). */
+  benefitAktiv?: EndeBenefitAktivConfig;
   /** One-time equity increase invested into ETF at the start of the Ende phase. */
   stammkapitalErhoehungEtf: number;
   /** Annual gross salary for Bereich 1 settlement year (frei konfigurierbar, nur >= 0). */

@@ -115,9 +115,8 @@ describe("EndeSection", () => {
 
     render(<EndeSection />);
 
-    expect(screen.getByText("Essenszuschuss")).toBeTruthy();
-    expect(screen.getByText("7,67 €/Tag")).toBeTruthy();
-    expect(screen.getByText("220 Tage/Jahr · 1.687,40 €/Jahr")).toBeTruthy();
+    expect(screen.getByText("Essenszuschuss aktiv")).toBeTruthy();
+    expect(screen.getByText("7,67 €/Tag · 220 Tage/Jahr · 1.687,40 €/Jahr")).toBeTruthy();
   });
 
   it("keeps investments in the overall comparison on both GmbH and private sides", () => {
