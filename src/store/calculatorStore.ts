@@ -89,6 +89,13 @@ const initialState: CalculatorState = {
     darlehenEndfaellig: false,
     privatDarlehenBetrag: 0,
     privatDarlehenZinssatz: 3,
+    benefitAktiv: {
+      tankgutscheinAktiv: true,
+      essenszuschussAktiv: true,
+      strategieessenAktiv: true,
+      bavAktiv: true,
+      firmenhandyAktiv: true,
+    },
   },
 };
 
@@ -258,15 +265,21 @@ export const useCalculatorStore = create<CalculatorStore>()(
       betriebDarlehenEndfaellig,
       get().betrieb.etfRendite,
       get().betrieb.kosten,
-      get().betrieb.benefits,
-      get().betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG,
+      {
+        ...get().betrieb.benefits,
+        ...get().ende.benefitAktiv,
+      },
+      {
+        ...(get().betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG),
+        aktiv: get().ende.benefitAktiv?.firmenhandyAktiv ?? (get().betrieb.firmenhandy?.aktiv ?? DEFAULT_FIRMENHANDY_CONFIG.aktiv),
+      },
       gmbhSteuerGesamt
     );
   },
     }),
     {
       name: "gmbh-kalkulator",
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;
@@ -307,6 +320,10 @@ export const useCalculatorStore = create<CalculatorStore>()(
           ende: {
             ...initialState.ende,
             ...state?.ende,
+            benefitAktiv: {
+              ...initialState.ende.benefitAktiv,
+              ...state?.ende?.benefitAktiv,
+            },
           },
         };
       },

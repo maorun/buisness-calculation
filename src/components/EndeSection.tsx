@@ -64,7 +64,7 @@ function InputField({
 }
 
 export function EndeSection() {
-  const { ende, setEnde, betrieb, setBetrieb, getEndeErgebnisse, getBetriebsErgebnisse } = useCalculatorStore();
+  const { ende, setEnde, betrieb, getEndeErgebnisse, getBetriebsErgebnisse } = useCalculatorStore();
   const ergebnisse = getEndeErgebnisse();
   const betriebsErgebnisse = getBetriebsErgebnisse();
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
@@ -90,11 +90,14 @@ export function EndeSection() {
   const handyAnschaffung = handyConfig.anschaffungskosten.toLocaleString("de-DE");
   const handyZyklus = handyConfig.ersatzzyklusJahre;
   const handyVerkaufsquote = (handyConfig.restwertQuote * 100).toLocaleString("de-DE");
-  const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(betrieb.benefits);
+
+  // Merge Ende-specific active flags on top of Betrieb benefit values for display
+  const endeBenefits = { ...betrieb.benefits, ...ende.benefitAktiv };
+  const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(endeBenefits);
 
   const nettoGehalt = berechneNettoGehalt(ende.geschaeftsfuehrergehalt);
   const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung);
-  const benefitsSteuerersparnis = berechneBenefitsSteuerersparnis(betrieb.benefits);
+  const benefitsSteuerersparnis = berechneBenefitsSteuerersparnis(endeBenefits);
 
   // Split ergebnisse for display
   const bereich1Ergebnisse = ergebnisse.filter((e) => e.details.bereich === 1);
@@ -175,9 +178,9 @@ export function EndeSection() {
     : `${kennzahlProzent >= 0 ? "+" : "-"}${Math.abs(kennzahlProzent).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
   const overlayGesamtProzent = formatSignedPercent(gesamtvergleich.vorteilProzent);
 
-  const toggleBenefitAktiv = (field: keyof typeof betrieb.benefits, checked: boolean) => {
-    setBetrieb({
-      benefits: { ...betrieb.benefits, [field]: checked },
+  const toggleBenefitAktiv = (field: keyof NonNullable<typeof ende.benefitAktiv>, checked: boolean) => {
+    setEnde({
+      benefitAktiv: { ...ende.benefitAktiv, [field]: checked },
     });
   };
 
@@ -739,7 +742,7 @@ export function EndeSection() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Benefits & Firmenhandy</h3>
         <p className="text-xs text-slate-500 mb-4">
-          Reduzieren auch in der Auszahlungsphase die Steuerlast – hier aktivieren/deaktivieren
+          Reduzieren auch in der Auszahlungsphase die Steuerlast – hier unabhängig vom Betrieb aktivieren/deaktivieren
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Tankgutschein */}
@@ -748,7 +751,7 @@ export function EndeSection() {
               <input
                 type="checkbox"
                 id="endeTankgutscheinAktiv"
-                checked={betrieb.benefits.tankgutscheinAktiv ?? true}
+                checked={ende.benefitAktiv?.tankgutscheinAktiv ?? true}
                 onChange={(e) => toggleBenefitAktiv("tankgutscheinAktiv", e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
               />
@@ -763,7 +766,7 @@ export function EndeSection() {
               <input
                 type="checkbox"
                 id="endeEssenszuschussAktiv"
-                checked={betrieb.benefits.essenszuschussAktiv ?? true}
+                checked={ende.benefitAktiv?.essenszuschussAktiv ?? true}
                 onChange={(e) => toggleBenefitAktiv("essenszuschussAktiv", e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
               />
@@ -780,7 +783,7 @@ export function EndeSection() {
               <input
                 type="checkbox"
                 id="endeStrategieessenAktiv"
-                checked={betrieb.benefits.strategieessenAktiv ?? true}
+                checked={ende.benefitAktiv?.strategieessenAktiv ?? true}
                 onChange={(e) => toggleBenefitAktiv("strategieessenAktiv", e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
               />
@@ -795,7 +798,7 @@ export function EndeSection() {
               <input
                 type="checkbox"
                 id="endeBavAktiv"
-                checked={betrieb.benefits.bavAktiv ?? true}
+                checked={ende.benefitAktiv?.bavAktiv ?? true}
                 onChange={(e) => toggleBenefitAktiv("bavAktiv", e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
               />
@@ -810,10 +813,8 @@ export function EndeSection() {
               <input
                 type="checkbox"
                 id="endeHandyAktiv"
-                checked={betrieb.firmenhandy?.aktiv ?? DEFAULT_FIRMENHANDY_CONFIG.aktiv}
-                onChange={(e) =>
-                  setBetrieb({ firmenhandy: { ...(betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG), aktiv: e.target.checked } })
-                }
+                checked={ende.benefitAktiv?.firmenhandyAktiv ?? true}
+                onChange={(e) => toggleBenefitAktiv("firmenhandyAktiv", e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
               />
               <label htmlFor="endeHandyAktiv" className="text-sm font-medium text-gray-700">Firmenhandy aktiv</label>
