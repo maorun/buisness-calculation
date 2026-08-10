@@ -63,10 +63,14 @@ const initialState: CalculatorState = {
     kosten: defaultBetriebskosten,
     benefits: {
       tankgutschein: 50,
+      tankgutscheinAktiv: true,
       strategieessen: 0,
+      strategieessenAktiv: true,
       essenszuschussProTag: DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
       essenszuschussTageProJahr: 220,
+      essenszuschussAktiv: true,
       bav: 0,
+      bavAktiv: true,
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
     stillerGesellschafter: { ...DEFAULT_STILLER_GESELLSCHAFTER_CONFIG },
@@ -262,7 +266,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }),
     {
       name: "gmbh-kalkulator",
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;
