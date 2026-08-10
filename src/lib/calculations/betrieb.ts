@@ -26,6 +26,25 @@ export const GEWERBESTEUER = 0.14;
 
 // Total GmbH tax rate on profits
 export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
+
+// Configurable GmbH tax rate defaults (in percent, e.g. 15 means 15%)
+export const DEFAULT_KOERPERSCHAFTSTEUER_SATZ = 15;
+export const DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ = 5.5;
+export const DEFAULT_GEWERBESTEUER_SATZ = 14;
+
+/** Derive the effective GmbH total tax rate from configurable inputs (all in %). */
+export function berechneGmbhSteuerRaten(
+  koerperschaftsteuerSatz: number,
+  solidaritaetszuschlagSatz: number,
+  gewerbesteuerSatz: number
+): { kstGesamt: number; gewerbesteuer: number; gmbhSteuerGesamt: number } {
+  const kst = Math.max(0, koerperschaftsteuerSatz) / 100;
+  const soli = Math.max(0, solidaritaetszuschlagSatz) / 100;
+  const gst = Math.max(0, gewerbesteuerSatz) / 100;
+  const kstGesamt = kst * (1 + soli);
+  return { kstGesamt, gewerbesteuer: gst, gmbhSteuerGesamt: kstGesamt + gst };
+}
+
 export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
@@ -800,6 +819,12 @@ export function berechnePrivatVergleichZeitreihe(
  */
 export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
+  const { kstGesamt: effKstGesamt, gewerbesteuer: effGewerbesteuer, gmbhSteuerGesamt: effGmbhSteuerGesamt } =
+    berechneGmbhSteuerRaten(
+      state.koerperschaftsteuerSatz ?? DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
+      state.solidaritaetszuschlagSatz ?? DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
+      state.gewerbesteuerSatz ?? DEFAULT_GEWERBESTEUER_SATZ,
+    );
   let etfLots: EtfLot[] = [];
   etfLots = fuegeEtfLotHinzu(etfLots, "startkapital", Math.max(0, state.startkapital));
   etfLots = fuegeEtfLotHinzu(etfLots, "darlehen", Math.max(0, state.darlehen.betrag));
@@ -932,12 +957,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
       const realisierterEtfErtragIter = verkaufIteration.etfGewinn;
       const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtragIter);
-      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
-      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter);
+      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
+      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
       const gewinnNachBetriebsausgabenIter =
         simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
       const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
-        ? gewinnNachBetriebsausgabenIter * GMBH_STEUER_GESAMT
+        ? gewinnNachBetriebsausgabenIter * effGmbhSteuerGesamt
         : 0;
       const benoetigterVerkauf = Math.min(
         etfWertNachWachstum,
@@ -957,24 +982,24 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
     const realisierterEtfErtrag = verkauf.etfGewinn;
     const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtrag);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
     // gewinnNachBetriebsausgaben is the taxable profit base (after all deductible expenses)
     const gewinnNachBetriebsausgaben =
       simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
 
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
     const gmbhSteuer = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * GMBH_STEUER_GESAMT
+      ? gewinnNachBetriebsausgaben * effGmbhSteuerGesamt
       : 0;
     const gmbhSteuerKst = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * KST_GESAMT
+      ? gewinnNachBetriebsausgaben * effKstGesamt
       : 0;
     const gmbhSteuerGewSt = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * GEWERBESTEUER
+      ? gewinnNachBetriebsausgaben * effGewerbesteuer
       : 0;
 
     // Tax on realized ETF gain due to selling
-    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag);
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
     const gesamtauszahlungen =
       ungedeckteBetriebsausgaben + jaehrlicheZinsen + investitionsCashAbfluss + vorabpauschalesteuer + gmbhSteuer + etfVerkaufssteuer;
     const liquiditaetsabflussOhneEtfVerkauf = Math.min(gesamtauszahlungen, verfuegbareLiquiditaetVorEtfVerkauf);

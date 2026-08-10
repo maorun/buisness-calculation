@@ -257,7 +257,8 @@ export function berechneEndeErgebnisse(
     essenszuschussTageProJahr: 0,
     bav: 0,
   },
-  firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG
+  firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
+  gmbhSteuerGesamt: number = GMBH_STEUER_GESAMT
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
@@ -285,7 +286,7 @@ export function berechneEndeErgebnisse(
     const etfNachWachstumB1 = etfVorWachstumB1 * (1 + etfRenditePercent / 100);
     const theoretischerEtfErtragB1 = Math.max(0, etfNachWachstumB1 - etfVorWachstumB1);
     const vorabpauschaleB1 = berechneVorabpauschale(etfVorWachstumB1, etfNachWachstumB1);
-    const vorabpauschalesteuerB1 = berechneVorabpauschalesteuer(vorabpauschaleB1, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
+    const vorabpauschalesteuerB1 = berechneVorabpauschalesteuer(vorabpauschaleB1, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
 
     // Betriebskosten for Bereich 1 (running GmbH costs continue in Ende phase)
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
@@ -300,7 +301,7 @@ export function berechneEndeErgebnisse(
     // from the taxable profit, just as in the Betrieb phase. It is tracked separately here to
     // keep betriebsausgabenGesamtB1 consistent with its non-salary Betriebskosten meaning.
     const gewinnNachBetriebsausgabenB1 = simulierterGewinn + theoretischerEtfErtragB1 - betriebsausgabenGesamtB1 - bruttoGehalt;
-    const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * GMBH_STEUER_GESAMT : 0;
+    const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gmbhSteuerGesamt : 0;
     endePhaseJahr++;
 
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
@@ -445,7 +446,7 @@ export function berechneEndeErgebnisse(
     const etfNachWachstum = etfVorWachstum * (1 + etfRenditePercent / 100);
     const theoretischerEtfErtrag = Math.max(0, etfNachWachstum - etfVorWachstum);
     const vorabpauschale = berechneVorabpauschale(etfVorWachstum, etfNachWachstum);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
 
     // Betriebskosten for this year (running GmbH costs continue in Ende phase)
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
@@ -532,7 +533,7 @@ export function berechneEndeErgebnisse(
     // bruttoGehalt is a deductible Betriebsausgabe (§ 4 EStG) – must be subtracted from taxable
     // profit, consistent with the Betrieb phase treatment in betrieb.ts.
     const steuerpflichtigerGewinn = simulierterGewinn + theoretischerEtfErtrag - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
-    const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * GMBH_STEUER_GESAMT : 0;
+    const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gmbhSteuerGesamt : 0;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + gesamtDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
