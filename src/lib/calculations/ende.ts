@@ -10,6 +10,8 @@ import {
   DEFAULT_FIRMENHANDY_CONFIG,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
+  KST_GESAMT,
+  GEWERBESTEUER,
 } from "./betrieb";
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
@@ -258,7 +260,9 @@ export function berechneEndeErgebnisse(
     bav: 0,
   },
   firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
-  gmbhSteuerGesamt: number = GMBH_STEUER_GESAMT
+  gmbhSteuerGesamt: number = GMBH_STEUER_GESAMT,
+  kstGesamt: number = KST_GESAMT,
+  gewerbesteuer: number = GEWERBESTEUER
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
@@ -302,6 +306,8 @@ export function berechneEndeErgebnisse(
     // keep betriebsausgabenGesamtB1 consistent with its non-salary Betriebskosten meaning.
     const gewinnNachBetriebsausgabenB1 = simulierterGewinn + theoretischerEtfErtragB1 - betriebsausgabenGesamtB1 - bruttoGehalt;
     const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gmbhSteuerGesamt : 0;
+    const gmbhSteuerKstB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * kstGesamt : 0;
+    const gmbhSteuerGewStB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gewerbesteuer : 0;
     endePhaseJahr++;
 
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
@@ -416,6 +422,8 @@ export function berechneEndeErgebnisse(
         jaehrlicheKosten: jaehrlicheKostenB1,
         betriebsausgabenGesamt: betriebsausgabenGesamtB1,
         gmbhSteuer: gmbhSteuerB1,
+        gmbhSteuerKst: gmbhSteuerKstB1,
+        gmbhSteuerGewSt: gmbhSteuerGewStB1,
       },
       betriebskostenPosten: betriebskostenPostenB1,
     });
@@ -534,6 +542,8 @@ export function berechneEndeErgebnisse(
     // profit, consistent with the Betrieb phase treatment in betrieb.ts.
     const steuerpflichtigerGewinn = simulierterGewinn + theoretischerEtfErtrag - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
     const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gmbhSteuerGesamt : 0;
+    const gmbhSteuerKst = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * kstGesamt : 0;
+    const gmbhSteuerGewSt = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gewerbesteuer : 0;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + gesamtDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
@@ -598,6 +608,8 @@ export function berechneEndeErgebnisse(
         betriebsausgabenGesamt,
         simulierterGewinn,
         gmbhSteuer,
+        gmbhSteuerKst,
+        gmbhSteuerGewSt,
       },
       betriebskostenPosten,
     });
