@@ -481,11 +481,11 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
       />
 
       <SectionHeader label="Bereich 2 – Gewinn- und Verlustrechnung der GmbH" />
-      {d.theoretischerEtfErtrag !== undefined && (
-        <BilanzRow label="+ ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
-      )}
       {d.simulierterGewinn !== undefined && d.simulierterGewinn > 0 && (
         <BilanzRow label="+ Simulierter Betriebsgewinn" value={d.simulierterGewinn} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.theoretischerEtfErtrag !== undefined && (
+        <BilanzRow label="+ ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.betriebsausgabenGesamt !== undefined && (
         <BilanzRow label="− Betriebsausgaben (ohne Gehalt)" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
@@ -503,7 +503,10 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="− GF-Gehalt (brutto, Betriebsausgabe)" value={d.bruttoGehalt} prefix="−" colorClass="text-gray-600" indent />
       )}
       {d.darlehenZinsen !== undefined && d.darlehenZinsen > 0 && (
-        <BilanzRow label="− Darlehenszinsen (abzugsfähig)" value={d.darlehenZinsen} prefix="−" colorClass="text-gray-600" indent />
+        <BilanzRow label="− Darlehenszinsen Gesellschafter (abzugsfähig)" value={d.darlehenZinsen} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.privatDarlehenZinsen !== undefined && d.privatDarlehenZinsen > 0 && (
+        <BilanzRow label="− Privat-Darlehenszinsen (abzugsfähig)" value={d.privatDarlehenZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
       {d.steuerpflichtigerGewinn !== undefined && d.steuerpflichtigerGewinn > 0 && (
         <>
