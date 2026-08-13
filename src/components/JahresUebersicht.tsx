@@ -6,6 +6,7 @@ import { JahresErgebnis } from "@/lib/types";
 interface JahresUebersichtProps {
   ergebnisse: JahresErgebnis[];
   title?: string;
+  variant?: "betrieb";
 }
 
 function formatEuro(value: number): string {
@@ -50,7 +51,7 @@ function SectionHeader({ label }: { label: string }) {
 /** Structured annual balance sheet (Jahresbilanz) for Betrieb years */
 function BetriebBilanz({ e }: { e: JahresErgebnis }) {
   const d = e.details as Record<string, number>;
-  const gesamtSteuer = d.gmbhSteuer + d.vorabpauschalesteuer + d.etfVerkaufssteuer;
+  const gesamtSteuer = (d.gmbhSteuer ?? 0) + (d.vorabpauschalesteuer ?? 0) + (d.etfVerkaufssteuer ?? 0);
   const betriebskostenPosten = e.betriebskostenPosten ?? [];
   return (
     <div className="space-y-0.5 text-xs">
@@ -74,7 +75,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       )}
-      <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
+      {d.etfVerkauf !== undefined && (
+        <BilanzRow label="ETF-Verkauf (realisiert)" value={d.etfVerkauf} prefix="+" colorClass="text-gray-700" indent />
+      )}
       <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
@@ -126,15 +129,21 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           <BilanzRow label="− Gewerbesteuer (GewSt)" value={d.gmbhSteuerGewSt} prefix="−" colorClass="text-red-600" indent />
         </>
       )}
-      <BilanzRow label="− Steuer auf ETF-Verkauf" value={d.etfVerkaufssteuer} prefix="−" colorClass="text-red-600" indent />
-      <Divider />
-      <BilanzRow
-        label="= Saldo nach Ausgaben & Steuern"
-        value={d.deckungssaldoNachAusgabenUndSteuern}
-        prefix={d.deckungssaldoNachAusgabenUndSteuern >= 0 ? "+" : "−"}
-        bold
-        colorClass="text-gray-800"
-      />
+      {d.etfVerkaufssteuer !== undefined && (
+        <BilanzRow label="− Steuer auf ETF-Verkauf" value={d.etfVerkaufssteuer} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.deckungssaldoNachAusgabenUndSteuern !== undefined && (
+        <>
+          <Divider />
+          <BilanzRow
+            label="= Saldo nach Ausgaben & Steuern"
+            value={d.deckungssaldoNachAusgabenUndSteuern}
+            prefix={d.deckungssaldoNachAusgabenUndSteuern >= 0 ? "+" : "−"}
+            bold
+            colorClass="text-gray-800"
+          />
+        </>
+      )}
       {d.cashReserveZugang > 0 && (
         <BilanzRow label="→ als Cash-Reserve in Aktiva" value={d.cashReserveZugang} prefix="+" colorClass="text-blue-700" indent />
       )}
@@ -185,18 +194,24 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       {d.gewinnNachSteuernEtfZufluss > 0 && (
         <BilanzRow label="Gewinnüberschuss nach Steuern in ETF investiert" value={d.gewinnNachSteuernEtfZufluss} prefix="+" colorClass="text-blue-700" indent />
       )}
-      <BilanzRow label="ETF-Verkauf für ungedeckte Ausgaben + Steuern" value={d.etfVerkauf} prefix="−" colorClass="text-orange-600" bold indent />
+      {d.etfVerkauf !== undefined && (
+        <BilanzRow label="ETF-Verkauf für ungedeckte Ausgaben + Steuern" value={d.etfVerkauf} prefix="−" colorClass="text-orange-600" bold indent />
+      )}
 
       {/* ── Bilanz ───────────────────────────────────── */}
       <SectionHeader label="Bilanz (Jahresende)" />
       <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
-      <BilanzRow label="ETF-Wert aus Startkapital" value={d.startkapitalEtfWert} prefix="+" colorClass="text-blue-700" indent />
-      <BilanzRow label="ETF-Wert aus Gesellschafterdarlehen" value={d.darlehenEtfWert} prefix="+" colorClass="text-blue-700" indent />
+      {d.startkapitalEtfWert !== undefined && (
+        <BilanzRow label="ETF-Wert aus Startkapital" value={d.startkapitalEtfWert} prefix="+" colorClass="text-blue-700" indent />
+      )}
+      {d.darlehenEtfWert !== undefined && (
+        <BilanzRow label="ETF-Wert aus Gesellschafterdarlehen" value={d.darlehenEtfWert} prefix="+" colorClass="text-blue-700" indent />
+      )}
       {d.zuzahlungenEtfWert > 0 && (
         <BilanzRow label="ETF-Wert aus freien Darlehenszuzahlungen" value={d.zuzahlungenEtfWert} prefix="+" colorClass="text-blue-700" indent />
       )}
       <Divider />
-      <BilanzRow label="Gesamter ETF-Wert" value={d.etfWert} prefix="+" colorClass="text-blue-700" bold indent />
+      <BilanzRow label="Gesamter ETF-Wert" value={d.etfWert ?? d.firmenEtfVermoegen ?? 0} prefix="+" colorClass="text-blue-700" bold indent />
       {d.cashReserve > 0 && (
         <BilanzRow label="Cash-Reserve" value={d.cashReserve} prefix="+" colorClass="text-blue-700" bold indent />
       )}
@@ -204,14 +219,14 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="Investitionskapital (GmbH)" value={d.investitionsKapitalGesamt} prefix="+" colorClass="text-blue-700" bold indent />
       )}
 
-      {(d.offenesDarlehen > 0 || d.haftungskapitalEingeflossen > 0 || d.investitionsKreditRestschuld > 0) && (
+      {(d.offenesDarlehen > 0 || d.haftungskapitalEingeflossen > 0 || d.investitionsKreditRestschuld > 0 || d.firmenDarlehensverbindlichkeit > 0) && (
         <>
           <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
           {d.haftungskapitalEingeflossen > 0 && (
             <BilanzRow label="Eingeflossenes Haftungskapital (Startkapital + Cash-Zufluss)" value={d.haftungskapitalEingeflossen} prefix="+" colorClass="text-gray-700" indent />
           )}
-          {d.offenesDarlehen > 0 && (
-            <BilanzRow label="Offenes Darlehen (Verbindlichkeit)" value={d.offenesDarlehen} prefix="−" colorClass="text-gray-600" indent />
+          {(d.offenesDarlehen > 0 || d.firmenDarlehensverbindlichkeit > 0) && (
+            <BilanzRow label="Offenes Darlehen (Verbindlichkeit)" value={d.offenesDarlehen > 0 ? d.offenesDarlehen : d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
           )}
           {d.investitionsKreditRestschuld > 0 && (
             <BilanzRow label="Investitionskredite (Restschuld)" value={d.investitionsKreditRestschuld} prefix="−" colorClass="text-gray-600" indent />
@@ -221,8 +236,8 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       <Divider />
       <BilanzRow
         label="= Nettovermögen (Eigenkapital)"
-        value={d.nettovermoegen}
-        prefix={d.nettovermoegen >= 0 ? "+" : "−"}
+        value={d.nettovermoegen ?? d.firmenNettovermoegen ?? 0}
+        prefix={(d.nettovermoegen ?? d.firmenNettovermoegen ?? 0) >= 0 ? "+" : "−"}
         bold
         colorClass="text-blue-800"
       />
@@ -503,7 +518,7 @@ function EndeBilanz({ e }: { e: JahresErgebnis }) {
   return d.bereich === 1 ? <EndeBereich1Bilanz e={e} /> : <EndeBereich2Bilanz e={e} />;
 }
 
-export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
+export function JahresUebersicht({ ergebnisse, title, variant }: JahresUebersichtProps) {
   const [expandedJahr, setExpandedJahr] = React.useState<number | null>(null);
 
   if (ergebnisse.length === 0) {
@@ -565,7 +580,7 @@ export function JahresUebersicht({ ergebnisse, title }: JahresUebersichtProps) {
                     <td colSpan={6} className="pb-3 pt-1">
                       <div id={`jahr-details-${e.jahr}`} className="bg-gray-50 rounded-lg p-4 text-xs">
                         <p className="font-semibold text-gray-700 mb-3 text-sm">Jahresbilanz – Jahr {e.jahr}</p>
-                        {"etfGewinn" in e.details
+                        {variant === "betrieb" || "etfGewinn" in e.details
                           ? <BetriebBilanz e={e} />
                           : <EndeBilanz e={e} />
                         }
