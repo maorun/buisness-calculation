@@ -344,11 +344,14 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
       )}
 
       <SectionHeader label="Bereich 1 – Gewinn- und Verlustrechnung der GmbH" />
+      {d.simulierterGewinn !== undefined && d.simulierterGewinn > 0 && (
+        <BilanzRow label="+ Simulierter Betriebsgewinn" value={d.simulierterGewinn} prefix="+" colorClass="text-gray-700" indent />
+      )}
       {d.theoretischerEtfErtrag !== undefined && (
-        <BilanzRow label="ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
+        <BilanzRow label="+ ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.betriebsausgabenGesamt !== undefined && (
-        <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
+        <BilanzRow label="− Betriebsausgaben (ohne Gehalt)" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       )}
       {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
@@ -359,14 +362,27 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       ))}
+      {d.bruttoGehalt !== undefined && d.bruttoGehalt > 0 && (
+        <BilanzRow label="− GF-Gehalt (brutto, Betriebsausgabe)" value={d.bruttoGehalt} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.firmenGuVZinsaufwand !== undefined && d.firmenGuVZinsaufwand > 0 && (
+        <BilanzRow label="− Zinsaufwand auf Darlehen" value={d.firmenGuVZinsaufwand} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.steuerpflichtigerGewinn !== undefined && d.steuerpflichtigerGewinn > 0 && (
+        <>
+          <Divider />
+          <BilanzRow label="= Steuerpflichtiger Gewinn (Bemessungsgrundlage)" value={d.steuerpflichtigerGewinn} prefix="=" bold colorClass="text-gray-700" indent />
+        </>
+      )}
       {d.vorabpauschalesteuer !== undefined && d.vorabpauschalesteuer > 0 && (
         <BilanzRow label="− Steuer auf Vorabpauschale" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
       )}
-      {d.gmbhSteuer !== undefined && d.gmbhSteuer > 0 && (
-        <BilanzRow label="− Gewinnsteuer (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
+      {d.gmbhSteuerKst !== undefined && d.gmbhSteuerKst > 0 && (
+        <BilanzRow label="− Körperschaftsteuer inkl. Soli (KSt, 15,825 %)" value={d.gmbhSteuerKst} prefix="−" colorClass="text-red-600" indent />
       )}
-      <BilanzRow label="− GF-Gehalt Aufwand" value={d.firmenGuVGehaltAufwand} prefix="−" colorClass="text-gray-600" indent />
-      <BilanzRow label="− Zinsaufwand auf Alt-Darlehen" value={d.firmenGuVZinsaufwand} prefix="−" colorClass="text-gray-600" indent />
+      {d.gmbhSteuerGewSt !== undefined && d.gmbhSteuerGewSt > 0 && (
+        <BilanzRow label="− Gewerbesteuer (GewSt)" value={d.gmbhSteuerGewSt} prefix="−" colorClass="text-red-600" indent />
+      )}
       <Divider />
       <BilanzRow
         label="= GuV-Saldo der GmbH"
@@ -466,10 +482,13 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
 
       <SectionHeader label="Bereich 2 – Gewinn- und Verlustrechnung der GmbH" />
       {d.theoretischerEtfErtrag !== undefined && (
-        <BilanzRow label="ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
+        <BilanzRow label="+ ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
+      )}
+      {d.simulierterGewinn !== undefined && d.simulierterGewinn > 0 && (
+        <BilanzRow label="+ Simulierter Betriebsgewinn" value={d.simulierterGewinn} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.betriebsausgabenGesamt !== undefined && (
-        <BilanzRow label="− Betriebsausgaben" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
+        <BilanzRow label="− Betriebsausgaben (ohne Gehalt)" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       )}
       {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
@@ -480,11 +499,26 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       ))}
+      {d.bruttoGehalt !== undefined && d.bruttoGehalt > 0 && (
+        <BilanzRow label="− GF-Gehalt (brutto, Betriebsausgabe)" value={d.bruttoGehalt} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.darlehenZinsen !== undefined && d.darlehenZinsen > 0 && (
+        <BilanzRow label="− Darlehenszinsen (abzugsfähig)" value={d.darlehenZinsen} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.steuerpflichtigerGewinn !== undefined && d.steuerpflichtigerGewinn > 0 && (
+        <>
+          <Divider />
+          <BilanzRow label="= Steuerpflichtiger Gewinn (Bemessungsgrundlage)" value={d.steuerpflichtigerGewinn} prefix="=" bold colorClass="text-gray-700" indent />
+        </>
+      )}
       {d.vorabpauschalesteuer !== undefined && d.vorabpauschalesteuer > 0 && (
         <BilanzRow label="− Steuer auf Vorabpauschale" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
       )}
-      {d.gmbhSteuer !== undefined && d.gmbhSteuer > 0 && (
-        <BilanzRow label="− Gewinnsteuer (KSt + GewSt)" value={d.gmbhSteuer} prefix="−" colorClass="text-red-600" indent />
+      {d.gmbhSteuerKst !== undefined && d.gmbhSteuerKst > 0 && (
+        <BilanzRow label="− Körperschaftsteuer inkl. Soli (KSt, 15,825 %)" value={d.gmbhSteuerKst} prefix="−" colorClass="text-red-600" indent />
+      )}
+      {d.gmbhSteuerGewSt !== undefined && d.gmbhSteuerGewSt > 0 && (
+        <BilanzRow label="− Gewerbesteuer (GewSt)" value={d.gmbhSteuerGewSt} prefix="−" colorClass="text-red-600" indent />
       )}
 
       {(d.firmenEtfVermoegen !== undefined && d.firmenDarlehensverbindlichkeit !== undefined) && (
