@@ -109,4 +109,54 @@ describe("JahresUebersicht", () => {
     expect(screen.getByText("• Software")).toBeTruthy();
     expect(screen.getByText("• Tankgutschein")).toBeTruthy();
   });
+
+  it("shows BetriebBilanz layout for Ende data when variant=betrieb is passed", () => {
+    const ergebnisse: JahresErgebnis[] = [{
+      jahr: 1,
+      gesamtvermoegen: 100000,
+      gewinn: 1000,
+      steuer: 100,
+      nettogewinn: 900,
+      details: {
+        bereich: 2,
+        bruttoGehalt: 0,
+        nettoGehalt: 0,
+        einkommensteuer: 0,
+        soli: 0,
+        darlehenZinsen: 0,
+        darlehenZinsenSteuer: 0,
+        darlehenZinsenNetto: 0,
+        darlehenTilgung: 0,
+        darlehenGesamtauszahlungBrutto: 0,
+        darlehenGesamtauszahlungNetto: 0,
+        restdarlehen: 0,
+        firmenEtfVermoegen: 100000,
+        firmenDarlehensverbindlichkeit: 5000,
+        firmenNettovermoegen: 95000,
+        theoretischerEtfErtrag: 2000,
+        vorabpauschale: 100,
+        vorabpauschalesteuer: 10,
+        jaehrlicheKosten: 1200,
+        betriebsausgabenGesamt: 4200,
+        gmbhSteuer: 20,
+      },
+      betriebskostenPosten: [
+        { label: "Software", wert: 1200 },
+      ],
+    }];
+
+    render(<JahresUebersicht ergebnisse={ergebnisse} variant="betrieb" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+
+    expect(screen.getByText("Gewinn- und Verlustrechnung")).toBeTruthy();
+    expect(screen.getAllByText("Steuern (Finanzamt)").length).toBeGreaterThan(0);
+    expect(screen.getByText("Bilanz (Jahresende)")).toBeTruthy();
+    expect(screen.getByText("− Betriebsausgaben")).toBeTruthy();
+    expect(screen.getByText("• Software")).toBeTruthy();
+    expect(screen.getByText("= Nettogewinn (Buchgewinn)")).toBeTruthy();
+    expect(screen.getByText("Gesamter ETF-Wert")).toBeTruthy();
+    expect(screen.getByText("= Nettovermögen (Eigenkapital)")).toBeTruthy();
+    expect(screen.getByText("Offenes Darlehen (Verbindlichkeit)")).toBeTruthy();
+  });
 });

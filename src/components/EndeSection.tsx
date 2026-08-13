@@ -497,7 +497,7 @@ export function EndeSection() {
             </div>
           </div>
           {bereich1Ergebnisse.length > 0 && (
-            <JahresUebersicht ergebnisse={bereich1Ergebnisse} title="Bereich 1 – Gesellschafterzufluss, GmbH-GuV und GmbH-Bilanz" />
+            <JahresUebersicht ergebnisse={bereich1Ergebnisse} title="Bereich 1 – Gesellschafterzufluss, GmbH-GuV und GmbH-Bilanz" variant="betrieb" />
           )}
         </div>
       )}
@@ -734,7 +734,7 @@ export function EndeSection() {
 
         {/* Results Bereich 2 */}
         {bereich2Ergebnisse.length > 0 && (
-          <JahresUebersicht ergebnisse={bereich2Ergebnisse} title={betriebDarlehenEndfaellig ? "Bereich 2 – Laufende Zins- und Tilgungsphase" : "Jahresergebnisse Auszahlungsphase"} />
+          <JahresUebersicht ergebnisse={bereich2Ergebnisse} title={betriebDarlehenEndfaellig ? "Bereich 2 – Laufende Zins- und Tilgungsphase" : "Jahresergebnisse Auszahlungsphase"} variant="betrieb" />
         )}
       </div>
 
