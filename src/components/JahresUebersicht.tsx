@@ -226,7 +226,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
             <BilanzRow label="Eingeflossenes Haftungskapital (Startkapital + Cash-Zufluss)" value={d.haftungskapitalEingeflossen} prefix="+" colorClass="text-gray-700" indent />
           )}
           {(d.offenesDarlehen > 0 || d.firmenDarlehensverbindlichkeit > 0) && (
-            <BilanzRow label="Offenes Darlehen (Verbindlichkeit)" value={d.offenesDarlehen ?? d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
+            <BilanzRow label="Offenes Darlehen (Verbindlichkeit)" value={d.offenesDarlehen > 0 ? d.offenesDarlehen : d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
           )}
           {d.investitionsKreditRestschuld > 0 && (
             <BilanzRow label="Investitionskredite (Restschuld)" value={d.investitionsKreditRestschuld} prefix="−" colorClass="text-gray-600" indent />
