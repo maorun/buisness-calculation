@@ -351,7 +351,7 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="+ ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.betriebsausgabenGesamt !== undefined && (
-        <BilanzRow label="− Betriebsausgaben (ohne Gehalt)" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
+        <BilanzRow label={d.bruttoGehalt > 0 ? "− Betriebsausgaben (ohne Gehalt)" : "− Betriebsausgaben"} value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       )}
       {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
@@ -488,7 +488,7 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
         <BilanzRow label="+ ETF-Ertrag (theoretisch)" value={d.theoretischerEtfErtrag} prefix="+" colorClass="text-gray-700" indent />
       )}
       {d.betriebsausgabenGesamt !== undefined && (
-        <BilanzRow label="− Betriebsausgaben (ohne Gehalt)" value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
+        <BilanzRow label={d.bruttoGehalt > 0 ? "− Betriebsausgaben (ohne Gehalt)" : "− Betriebsausgaben"} value={d.betriebsausgabenGesamt} prefix="−" colorClass="text-gray-600" indent />
       )}
       {betriebskostenPosten.map((posten, index) => (
         <BilanzRow
