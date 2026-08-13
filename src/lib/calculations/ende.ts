@@ -299,7 +299,9 @@ export function berechneEndeErgebnisse(
     // Nominal benefit value received by the shareholder; the GmbH tax saving is already
     // captured in the lower gmbhSteuerB1 (benefits are deductible Betriebsausgaben).
     const essenszuschussNutzenB1 = berechneEssenszuschussJaehrlich(benefits);
-    const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy, bruttoGehalt);
+    // Pass 0 for Gehalt so the bullet list only covers non-salary Betriebsausgaben;
+    // the salary is displayed as its own separate line in the GmbH GuV.
+    const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy, 0);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
     // bruttoGehalt is a deductible Betriebsausgabe for the GmbH (§ 4 EStG) and must be deducted
     // from the taxable profit, just as in the Betrieb phase. It is tracked separately here to
@@ -424,6 +426,7 @@ export function berechneEndeErgebnisse(
         gmbhSteuer: gmbhSteuerB1,
         gmbhSteuerKst: gmbhSteuerKstB1,
         gmbhSteuerGewSt: gmbhSteuerGewStB1,
+        steuerpflichtigerGewinn: Math.max(0, gewinnNachBetriebsausgabenB1),
       },
       betriebskostenPosten: betriebskostenPostenB1,
     });
@@ -464,7 +467,9 @@ export function berechneEndeErgebnisse(
     // captured in the lower gmbhSteuer (benefits are deductible Betriebsausgaben).
     const essenszuschussNutzen = berechneEssenszuschussJaehrlich(benefits);
     const bruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
-    const betriebskostenPosten = berechneBetriebskostenPosten(kosten, benefits, handyNettoKosten, firmenhandy, bruttoGehalt);
+    // Pass 0 for Gehalt so the bullet list only covers non-salary Betriebsausgaben;
+    // the salary is displayed as its own separate line in the GmbH GuV.
+    const betriebskostenPosten = berechneBetriebskostenPosten(kosten, benefits, handyNettoKosten, firmenhandy, 0);
     const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten;
     endePhaseJahr++;
 
@@ -610,6 +615,7 @@ export function berechneEndeErgebnisse(
         gmbhSteuer,
         gmbhSteuerKst,
         gmbhSteuerGewSt,
+        steuerpflichtigerGewinn: Math.max(0, steuerpflichtigerGewinn),
       },
       betriebskostenPosten,
     });
