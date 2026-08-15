@@ -22,7 +22,6 @@ const basisBetrieb: BetriebState = {
     strategieessen: 0,
     essenszuschussProTag: 0,
     essenszuschussTageProJahr: 0,
-    bav: 0,
   },
 };
 

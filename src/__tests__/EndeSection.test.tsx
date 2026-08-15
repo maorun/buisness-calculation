@@ -35,7 +35,6 @@ function setStoreState(partialState?: Partial<ReturnType<typeof useCalculatorSto
         strategieessen: 0,
         essenszuschussProTag: 0,
         essenszuschussTageProJahr: 0,
-        bav: 0,
       },
       firmenhandy: {
         aktiv: true,
@@ -108,7 +107,6 @@ describe("EndeSection", () => {
           strategieessen: 0,
           essenszuschussProTag: 7.67,
           essenszuschussTageProJahr: 220,
-          bav: 0,
         },
       },
     });
@@ -139,7 +137,6 @@ describe("EndeSection", () => {
         benefits: {
           tankgutschein: 0,
           strategieessen: 0,
-          bav: 0,
         },
         firmenhandy: {
           aktiv: false,

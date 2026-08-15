@@ -31,12 +31,6 @@ export interface BenefitConfig {
   essenszuschussTageProJahr: number; // subsidized meal days per year
   /** Whether the meal-subsidy benefit is active. Defaults to true. */
   essenszuschussAktiv?: boolean;
-  /** Annual employer contribution to company pension scheme (bAV, § 3 Nr. 63 EStG).
-   *  Tax-free for the GF up to 8% of the Beitragsbemessungsgrenze (BBG), fully
-   *  deductible as a business expense for the GmbH. */
-  bav: number;
-  /** Whether the bAV benefit is active. Defaults to true. */
-  bavAktiv?: boolean;
 }
 
 export interface StillerGesellschafterConfig {
@@ -154,7 +148,6 @@ export interface EndeBenefitAktivConfig {
   tankgutscheinAktiv?: boolean;
   essenszuschussAktiv?: boolean;
   strategieessenAktiv?: boolean;
-  bavAktiv?: boolean;
   /** Whether the company-phone programme counts in the Ende phase. */
   firmenhandyAktiv?: boolean;
 }

@@ -8,7 +8,6 @@ import {
   DEFAULT_FIRMENHANDY_CONFIG,
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
-  BAV_MAX_STEUERFREIER_BEITRAG,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_KAPITALERTRAGSTEUER_SATZ,
@@ -627,31 +626,6 @@ export function BetriebSection() {
                 onChange={(v) => updateBenefits("strategieessen", v)}
                 suffix="€/Jahr"
                 hint="Voll abzugsfähige Betriebsausgabe"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* bAV */}
-        <div className="mb-2">
-          <div className="flex items-center gap-3 mb-2">
-            <input
-              type="checkbox"
-              id="bavAktiv"
-              checked={betrieb.benefits.bavAktiv ?? true}
-              onChange={(e) => toggleBenefitAktiv("bavAktiv", e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600"
-            />
-            <label htmlFor="bavAktiv" className="text-sm text-gray-700">bAV aktiv</label>
-          </div>
-          {(betrieb.benefits.bavAktiv ?? true) && (
-            <div className="pl-7">
-              <InputField
-                label="bAV-Beitrag (€/Jahr)"
-                value={betrieb.benefits.bav}
-                onChange={(v) => updateBenefits("bav", v)}
-                suffix="€/Jahr"
-                hint={`Arbeitgeberbeitrag zur betrieblichen Altersvorsorge (§ 3 Nr. 63 EStG). Voll abzugsfähige Betriebsausgabe; bis zu ${BAV_MAX_STEUERFREIER_BEITRAG.toLocaleString("de-DE")} €/Jahr steuer- und sozialabgabenfrei für den GF.`}
               />
             </div>
           )}
