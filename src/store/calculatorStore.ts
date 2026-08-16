@@ -243,7 +243,12 @@ export const useCalculatorStore = create<CalculatorStore>()(
     const letztesBetriebsergebnis = betriebErgebnisse.length > 0
       ? betriebErgebnisse[betriebErgebnisse.length - 1]
       : undefined;
-    const letzterEtfWert = letztesBetriebsergebnis?.details.etfWert ?? 0;
+    // Combine etfWert and cashReserve: the GmbH's entire liquid wealth (ETF portfolio plus
+    // any cash reserve held for operational purposes) is available at the start of the Ende
+    // phase and is treated as the initial ETF position.  This prevents a kink at the phase
+    // boundary where Betrieb nettovermoegen (which includes cashReserve) would otherwise
+    // exceed the Ende starting value.
+    const letzterEtfWert = (letztesBetriebsergebnis?.details.etfWert ?? 0) + (letztesBetriebsergebnis?.details.cashReserve ?? 0);
     const offenesDarlehen = letztesBetriebsergebnis?.details.offenesDarlehen
       ?? Math.max(0, get().betrieb.darlehen.betrag);
     const aufgelaufeneZinsen = letztesBetriebsergebnis?.details.aufgelaufeneZinsen ?? 0;
