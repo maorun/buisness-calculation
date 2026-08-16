@@ -257,7 +257,6 @@ export function berechneEndeErgebnisse(
     strategieessen: 0,
     essenszuschussProTag: 0,
     essenszuschussTageProJahr: 0,
-    bav: 0,
   },
   firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
   gmbhSteuerGesamt: number = GMBH_STEUER_GESAMT,

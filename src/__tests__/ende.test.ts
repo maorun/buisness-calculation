@@ -365,7 +365,7 @@ describe("berechneEndeErgebnisse", () => {
       false,
       0,
       [],
-      { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0, bav: 0 },
+      { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
       { aktiv: false, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
     );
     expect(results[0].details.firmenEtfVermoegen).toBeCloseTo(etfStart);
@@ -410,7 +410,7 @@ describe("berechneEndeErgebnisse", () => {
       false,
       0,
       [],
-      { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0, bav: 0 },
+      { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
       { aktiv: false, anschaffungskosten: 1000, restwertQuote: 0.1, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
     );
     expect(results[0].details.firmenEtfVermoegen).toBeCloseTo(10000);
@@ -697,7 +697,6 @@ describe("berechneEndeErgebnisse", () => {
         strategieessen: 0,
         essenszuschussProTag: 7.67,
         essenszuschussTageProJahr: 220,
-        bav: 0,
       };
       const resultsOhneBenefit = berechneEndeErgebnisse(state, 100000, 0, 0, 0, false, 0, []);
       const resultsMitBenefit = berechneEndeErgebnisse(
@@ -732,7 +731,6 @@ describe("berechneEndeErgebnisse", () => {
         strategieessen: 0,
         essenszuschussProTag: 7.67,
         essenszuschussTageProJahr: 220,
-        bav: 0,
       };
       // Use a non-zero loan so Bereich 1 is actually triggered
       const resultsOhneBenefit = berechneEndeErgebnisse(state, 100000, 10000, 3, 500, true, 0, []);

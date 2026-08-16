@@ -83,9 +83,6 @@ export const DEFAULT_FIRMENHANDY_CONFIG: FirmenhandyConfig = {
   ersatzzyklusJahre: HANDY_ERSATZZYKLUS_JAHRE,
   erstanschaffungJahr: 1,
 };
-/** Maximum tax-free bAV employer contribution per year (§ 3 Nr. 63 EStG, 2024):
- *  8 % of the Beitragsbemessungsgrenze Rentenversicherung West (90 600 €). */
-export const BAV_MAX_STEUERFREIER_BEITRAG = 7248;
 export const MAX_SALE_CONVERGENCE_ITERATIONS = 20;
 export const SALE_CONVERGENCE_THRESHOLD = 0.01;
 export const DARLEHEN_MONATE_PRO_JAHR = MONATE_PRO_JAHR;
@@ -387,8 +384,7 @@ export function berechneBenefitsKosten(benefits: BenefitConfig): number {
   const tankJahr = berechneTankgutscheinJaehrlich(benefits);
   const essenszuschussJahr = berechneEssenszuschussJaehrlich(benefits);
   const strategieessen = (benefits.strategieessenAktiv ?? true) ? Math.max(0, benefits.strategieessen) : 0;
-  const bav = (benefits.bavAktiv ?? true) ? Math.max(0, benefits.bav ?? 0) : 0;
-  return tankJahr + essenszuschussJahr + strategieessen + bav;
+  return tankJahr + essenszuschussJahr + strategieessen;
 }
 
 export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number {
@@ -451,7 +447,6 @@ export function berechneBetriebskostenPosten(
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Essenszuschuss", wert: essenszuschussJaehrlich },
     { label: "Strategieessen", wert: (benefits.strategieessenAktiv ?? true) ? Math.max(0, benefits.strategieessen) : 0 },
-    { label: "bAV-Beitrag", wert: (benefits.bavAktiv ?? true) ? Math.max(0, benefits.bav ?? 0) : 0 },
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
     ...(stillerGesellschafterKosten > 0

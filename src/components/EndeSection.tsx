@@ -792,21 +792,6 @@ export function EndeSection() {
             <p className="text-xs text-slate-600 pl-7">{betrieb.benefits.strategieessen} €/Jahr</p>
           </div>
 
-          {/* bAV */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <div className="flex items-center gap-3 mb-1">
-              <input
-                type="checkbox"
-                id="endeBavAktiv"
-                checked={ende.benefitAktiv?.bavAktiv ?? true}
-                onChange={(e) => toggleBenefitAktiv("bavAktiv", e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600"
-              />
-              <label htmlFor="endeBavAktiv" className="text-sm font-medium text-gray-700">bAV aktiv</label>
-            </div>
-            <p className="text-xs text-slate-600 pl-7">{betrieb.benefits.bav} €/Jahr</p>
-          </div>
-
           {/* Firmenhandy */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
             <div className="flex items-center gap-3 mb-1">
