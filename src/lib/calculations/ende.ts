@@ -305,7 +305,12 @@ export function berechneEndeErgebnisse(
     // bruttoGehalt is a deductible Betriebsausgabe for the GmbH (§ 4 EStG) and must be deducted
     // from the taxable profit, just as in the Betrieb phase. It is tracked separately here to
     // keep betriebsausgabenGesamtB1 consistent with its non-salary Betriebskosten meaning.
-    const gewinnNachBetriebsausgabenB1 = simulierterGewinn + theoretischerEtfErtragB1 - betriebsausgabenGesamtB1 - bruttoGehalt;
+    // theoretischerEtfErtragB1 is excluded from the tax base because ETF gains are only taxed
+    // when realised (sold). Unrealised growth is not a taxable event under German corporate tax
+    // law; the Vorabpauschale already captures the minimum annual taxation on unrealised gains.
+    // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
+    // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
+    const gewinnNachBetriebsausgabenB1 = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
     const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gmbhSteuerGesamt : 0;
     const gmbhSteuerKstB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * kstGesamt : 0;
     const gmbhSteuerGewStB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gewerbesteuer : 0;
@@ -541,10 +546,15 @@ export function berechneEndeErgebnisse(
     const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
-    // GmbH tax on net ETF gain after Betriebskosten, salary and deductible interest (both loans).
+    // GmbH tax on operating profit after Betriebskosten, salary and deductible interest (both loans).
+    // theoretischerEtfErtrag is excluded from the tax base: ETF gains are only taxed when realised
+    // (sold). Unrealised growth is not a taxable event under German corporate tax law; the
+    // Vorabpauschale already captures the minimum annual taxation on unrealised gains.
+    // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
+    // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
     // bruttoGehalt is a deductible Betriebsausgabe (§ 4 EStG) – must be subtracted from taxable
     // profit, consistent with the Betrieb phase treatment in betrieb.ts.
-    const steuerpflichtigerGewinn = simulierterGewinn + theoretischerEtfErtrag - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
+    const steuerpflichtigerGewinn = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
     const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gmbhSteuerGesamt : 0;
     const gmbhSteuerKst = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * kstGesamt : 0;
     const gmbhSteuerGewSt = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gewerbesteuer : 0;
