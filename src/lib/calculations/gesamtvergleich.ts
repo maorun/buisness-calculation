@@ -40,14 +40,20 @@ export function formatSignedPercent(value: number | null): string {
 /**
  * Builds per-year override arrays for the private comparison from the Ende results.
  *
- * For Betrieb years: no override (private comparison uses its own salary/interest logic).
- * For Ende years: use the GmbH Ende-phase net income (nettogewinn) as entnahmenVorSteuern so
- *   the private person "consumes" the same amount as the GmbH shareholder each year.
- *   The restdarlehen (original GmbH loan) is used to override offenesDarlehen so the outstanding
- *   bank-loan balance stays in sync between the GmbH and private comparison (critical for
- *   endfällig loans where Bereich 1 settles the old loan and Bereich 2 starts a smaller one).
- *   Note: privatDarlehenRestschuld is intentionally excluded here – the private person never
- *   gave that money to a GmbH, so it remains in the private ETF rather than as a liability.
+ * Only the loan balance (offeneDarlehenOverride) is overridden for Ende years so that the
+ * private comparison stays in sync with the GmbH's original bank-loan balance.  This is
+ * critical for endfällig loans where Bereich 1 settles the old loan and Bereich 2 starts a
+ * smaller one.
+ *
+ * The entnahmen (withdrawal amount) is intentionally NOT overridden for Ende years.  Forcing
+ * the private comparison to withdraw exactly nettogewinn each year created a discontinuity
+ * (kink) at the Betrieb→Ende boundary: in Betrieb years the private person reinvests a
+ * sparplan surplus, but the override suddenly switches them to a large fixed withdrawal in
+ * year 1 of the Ende phase.  Letting the normal sparplan logic run throughout both phases
+ * eliminates this kink and gives a smooth, consistent private comparison curve.
+ *
+ * Note: privatDarlehenRestschuld is intentionally excluded here – the private person never
+ * gave that money to a GmbH, so it remains in the private ETF rather than as a liability.
  */
 function berechnePrivatVergleichOverrides(
   betriebLaufzeitJahre: number,
@@ -63,7 +69,6 @@ function berechnePrivatVergleichOverrides(
   for (let i = 0; i < endeErgebnisse.length; i++) {
     const idx = betriebLaufzeitJahre + i;
     const e = endeErgebnisse[i];
-    entnahmenOverride[idx] = e.nettogewinn ?? 0;
     // Use only the GmbH's original loan (restdarlehen) as the private comparison's outstanding
     // debt. The privatDarlehen is the shareholder's own money given to the GmbH – in the private
     // comparison that capital stays in the private ETF and is not a debt.
