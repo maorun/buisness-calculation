@@ -7,6 +7,7 @@ import {
   berechneEssenszuschussJaehrlich,
   berechneHandyNettoKostenProJahr,
   berechneBenefitsKosten,
+  berechneKonsumNutzenwertProJahr,
   DEFAULT_FIRMENHANDY_CONFIG,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
@@ -271,6 +272,11 @@ export function berechneEndeErgebnisse(
   let reinvestiertesDarlehen = 0;
   // Tracks the sequential year within the Ende phase for the 3-year phone replacement cycle.
   let endePhaseJahr = 1;
+  // Tracks the cumulative benefit consumption value (Tankgutschein, Essenszuschuss, Firmenhandy)
+  // received by the shareholder across all Ende years. Mirrors kumulierterKonsumwert in betrieb.ts
+  // so that the Gesamtvergleich chart does not develop a downward slope kink at the
+  // Betrieb→Ende boundary due to the consumption value suddenly stopping to accumulate.
+  let kumulierterKonsumwert = 0;
 
   // --- Bereich 1: settlement year for endfällig deferred interest ---
   // Skip Bereich 1 entirely when there is no actual loan to settle (betrag = 0 means no principal
@@ -298,6 +304,9 @@ export function berechneEndeErgebnisse(
     // Nominal benefit value received by the shareholder; the GmbH tax saving is already
     // captured in the lower gmbhSteuerB1 (benefits are deductible Betriebsausgaben).
     const essenszuschussNutzenB1 = berechneEssenszuschussJaehrlich(benefits);
+    // Accumulate total benefit consumption value for the chart (mirrors betrieb.ts treatment).
+    const konsumNutzenwertB1 = berechneKonsumNutzenwertProJahr(endePhaseJahr, benefits, firmenhandy);
+    kumulierterKonsumwert += konsumNutzenwertB1;
     // Pass 0 for Gehalt so the bullet list only covers non-salary Betriebsausgaben;
     // the salary is displayed as its own separate line in the GmbH GuV.
     const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy, 0);
@@ -305,7 +314,12 @@ export function berechneEndeErgebnisse(
     // bruttoGehalt is a deductible Betriebsausgabe for the GmbH (§ 4 EStG) and must be deducted
     // from the taxable profit, just as in the Betrieb phase. It is tracked separately here to
     // keep betriebsausgabenGesamtB1 consistent with its non-salary Betriebskosten meaning.
-    const gewinnNachBetriebsausgabenB1 = simulierterGewinn + theoretischerEtfErtragB1 - betriebsausgabenGesamtB1 - bruttoGehalt;
+    // theoretischerEtfErtragB1 is excluded from the tax base because ETF gains are only taxed
+    // when realised (sold). Unrealised growth is not a taxable event under German corporate tax
+    // law; the Vorabpauschale already captures the minimum annual taxation on unrealised gains.
+    // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
+    // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
+    const gewinnNachBetriebsausgabenB1 = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
     const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gmbhSteuerGesamt : 0;
     const gmbhSteuerKstB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * kstGesamt : 0;
     const gmbhSteuerGewStB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gewerbesteuer : 0;
@@ -426,6 +440,8 @@ export function berechneEndeErgebnisse(
         gmbhSteuerKst: gmbhSteuerKstB1,
         gmbhSteuerGewSt: gmbhSteuerGewStB1,
         steuerpflichtigerGewinn: Math.max(0, gewinnNachBetriebsausgabenB1),
+        konsumNutzenwert: konsumNutzenwertB1,
+        kumulierterKonsumwert,
       },
       betriebskostenPosten: betriebskostenPostenB1,
     });
@@ -465,6 +481,9 @@ export function berechneEndeErgebnisse(
     // Nominal benefit value received by the shareholder; the GmbH tax saving is already
     // captured in the lower gmbhSteuer (benefits are deductible Betriebsausgaben).
     const essenszuschussNutzen = berechneEssenszuschussJaehrlich(benefits);
+    // Accumulate total benefit consumption value for the chart (mirrors betrieb.ts treatment).
+    const konsumNutzenwert = berechneKonsumNutzenwertProJahr(endePhaseJahr, benefits, firmenhandy);
+    kumulierterKonsumwert += konsumNutzenwert;
     const bruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
     // Pass 0 for Gehalt so the bullet list only covers non-salary Betriebsausgaben;
     // the salary is displayed as its own separate line in the GmbH GuV.
@@ -541,10 +560,15 @@ export function berechneEndeErgebnisse(
     const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
-    // GmbH tax on net ETF gain after Betriebskosten, salary and deductible interest (both loans).
+    // GmbH tax on operating profit after Betriebskosten, salary and deductible interest (both loans).
+    // theoretischerEtfErtrag is excluded from the tax base: ETF gains are only taxed when realised
+    // (sold). Unrealised growth is not a taxable event under German corporate tax law; the
+    // Vorabpauschale already captures the minimum annual taxation on unrealised gains.
+    // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
+    // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
     // bruttoGehalt is a deductible Betriebsausgabe (§ 4 EStG) – must be subtracted from taxable
     // profit, consistent with the Betrieb phase treatment in betrieb.ts.
-    const steuerpflichtigerGewinn = simulierterGewinn + theoretischerEtfErtrag - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
+    const steuerpflichtigerGewinn = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
     const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gmbhSteuerGesamt : 0;
     const gmbhSteuerKst = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * kstGesamt : 0;
     const gmbhSteuerGewSt = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gewerbesteuer : 0;
@@ -615,6 +639,8 @@ export function berechneEndeErgebnisse(
         gmbhSteuerKst,
         gmbhSteuerGewSt,
         steuerpflichtigerGewinn: Math.max(0, steuerpflichtigerGewinn),
+        konsumNutzenwert,
+        kumulierterKonsumwert,
       },
       betriebskostenPosten,
     });

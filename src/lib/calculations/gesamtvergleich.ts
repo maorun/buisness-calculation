@@ -118,6 +118,7 @@ export function berechneGesamtvergleichKpi(
   const gmbhGesamtwert =
     gmbhEndeNettovermoegen +
     gmbhBetriebKonsumwert +
+    (letzterEndeStand?.details.kumulierterKonsumwert ?? 0) +
     (letzterEndeStand ? investitionsZusammenfassung.nettovermoegen : 0);
   const privatGesamtwert = privatVergleich.gesamtwertMitKonsum;
   const vorteil = gmbhGesamtwert - privatGesamtwert;
@@ -188,7 +189,7 @@ export function berechneGesamtvergleichZeitreihe(
         e.details.firmenDarlehensverbindlichkeit ?? 0
       );
       const gmbhEndeNettovermoegen = e.gesamtvermoegen - firmenDarlehensverbindlichkeit;
-      return gmbhEndeNettovermoegen + gmbhBetriebKonsumwert + investitionsNettovermoegen;
+      return gmbhEndeNettovermoegen + gmbhBetriebKonsumwert + (e.details.kumulierterKonsumwert ?? 0) + investitionsNettovermoegen;
     }),
   ];
 
