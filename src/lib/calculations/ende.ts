@@ -165,6 +165,39 @@ export function berechneFlexibleTilgung(
 }
 
 /**
+ * Caps the requested gross salary to what the GmbH can actually fund in the current year
+ * (after fixed outflows and considering that higher salary reduces corporate taxes).
+ */
+function berechneMaxBezahlbaresBruttoGehalt(
+  angefordertesBruttoGehalt: number,
+  verfuegbaresFirmenkapital: number,
+  fixeAuszahlungenOhneGehalt: number,
+  steuerpflichtigerGewinnVorGehalt: number,
+  gmbhSteuerGesamt: number
+): number {
+  const bruttoNorm = Math.max(0, angefordertesBruttoGehalt);
+  const budgetNachFixkosten = verfuegbaresFirmenkapital - fixeAuszahlungenOhneGehalt;
+  if (budgetNachFixkosten <= 0) return 0;
+
+  const steuerRate = Math.max(0, Math.min(1, gmbhSteuerGesamt));
+  const gewinnVorGehalt = Math.max(0, steuerpflichtigerGewinnVorGehalt);
+  const grenzeOhneGmbhSteuer = gewinnVorGehalt;
+
+  let maxBezahlbar: number;
+  if (budgetNachFixkosten >= grenzeOhneGmbhSteuer) {
+    maxBezahlbar = budgetNachFixkosten;
+  } else {
+    const divisor = 1 - steuerRate;
+    maxBezahlbar = divisor > 0
+      ? (budgetNachFixkosten - (steuerRate * gewinnVorGehalt)) / divisor
+      : 0;
+    maxBezahlbar = Math.min(maxBezahlbar, grenzeOhneGmbhSteuer);
+  }
+
+  return Math.max(0, Math.min(bruttoNorm, maxBezahlbar));
+}
+
+/**
  * Gesetzlicher Krankenversicherungsbeitrag für freiwillig gesetzlich versicherte
  * Personen (vereinfachte Näherung mit Beitragsbemessungsgrenze).
  * Wird aus dem bereits versteuerten Netto getragen.
@@ -484,7 +517,8 @@ export function berechneEndeErgebnisse(
     // Accumulate total benefit consumption value for the chart (mirrors betrieb.ts treatment).
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(endePhaseJahr, benefits, firmenhandy);
     kumulierterKonsumwert += konsumNutzenwert;
-    const bruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
+    const angefordertesBruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
+    let bruttoGehalt = angefordertesBruttoGehalt;
     // Pass 0 for Gehalt so the bullet list only covers non-salary Betriebsausgaben;
     // the salary is displayed as its own separate line in the GmbH GuV.
     const betriebskostenPosten = berechneBetriebskostenPosten(kosten, benefits, handyNettoKosten, firmenhandy, 0);
@@ -502,9 +536,9 @@ export function berechneEndeErgebnisse(
       verbleibendeJahre,
       state.tilgungsrate
     );
-    const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
-    const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
-    const soli = berechneSoli(einkommensteuer);
+    let nettoGehalt = berechneNettoGehalt(bruttoGehalt);
+    let einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
+    let soli = berechneSoli(einkommensteuer);
 
     const istLetztesBereich2Jahr = i === state.laufzeitJahre;
     if (endeDarlehenEndfaelligAktiv && restdarlehen > 0) {
@@ -521,24 +555,24 @@ export function berechneEndeErgebnisse(
     const gesamtDarlehenZinsen = darlehenZinsen + privatDarlehenZinsen;
     const gesamtDarlehenZinsenSteuer = berechneDarlehensZinsenSteuer(gesamtDarlehenZinsen, bruttoGehalt);
     // Split tax proportionally to individual loan interest amounts
-    const darlehenZinsenSteuer = gesamtDarlehenZinsen > 0
+    let darlehenZinsenSteuer = gesamtDarlehenZinsen > 0
       ? gesamtDarlehenZinsenSteuer * (darlehenZinsen / gesamtDarlehenZinsen)
       : 0;
-    const privatDarlehenZinsenSteuer = gesamtDarlehenZinsen > 0
+    let privatDarlehenZinsenSteuer = gesamtDarlehenZinsen > 0
       ? gesamtDarlehenZinsenSteuer * (privatDarlehenZinsen / gesamtDarlehenZinsen)
       : 0;
-    const darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
-    const privatDarlehenZinsenNetto = privatDarlehenZinsen - privatDarlehenZinsenSteuer;
+    let darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
+    let privatDarlehenZinsenNetto = privatDarlehenZinsen - privatDarlehenZinsenSteuer;
 
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
       berechneNettoAusschuettung(state.gewinnausschuettung);
     const zielnetto = endeDarlehenEndfaelligAktiv ? 0 : (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2);
-    const beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
-    const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
+    let beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
+    let gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
       beitragspflichtigeEinnahmenGkv
     );
-    const konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
-    const konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
+    let konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
+    let konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
     // When the Ende-phase loan is non-endfällig and no explicit tilgungsrate is configured,
     // the shareholder perpetually re-lends the principal back to the GmbH so the ETF keeps the
     // full loan amount compounding. The principal is never forcefully repaid – it stays in the
@@ -557,8 +591,64 @@ export function berechneEndeErgebnisse(
       // tilgungsrate = 0 (non-endfällig): perpetually re-lent, ETF balance stays positive
       darlehenTilgung = 0;
     }
-    const darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
-    const darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
+    let darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
+    let darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
+
+    if (simulierterGewinn > 0) {
+      const verfuegbaresFirmenkapital = etfNachWachstum + simulierterGewinn;
+      const fixeAuszahlungenOhneGehalt =
+        state.gewinnausschuettung +
+        darlehenGesamtauszahlungBrutto +
+        privatDarlehenZinsen +
+        kstSteuer +
+        betriebsausgabenGesamt +
+        vorabpauschalesteuer;
+      const steuerpflichtigerGewinnVorGehalt =
+        simulierterGewinn - betriebsausgabenGesamt - darlehenZinsen - privatDarlehenZinsen;
+      const maxBezahlbaresBruttoGehalt = berechneMaxBezahlbaresBruttoGehalt(
+        angefordertesBruttoGehalt,
+        verfuegbaresFirmenkapital,
+        fixeAuszahlungenOhneGehalt,
+        steuerpflichtigerGewinnVorGehalt,
+        gmbhSteuerGesamt
+      );
+
+      if (maxBezahlbaresBruttoGehalt < bruttoGehalt) {
+        bruttoGehalt = maxBezahlbaresBruttoGehalt;
+        einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
+        soli = berechneSoli(einkommensteuer);
+        nettoGehalt = berechneNettoGehalt(bruttoGehalt);
+
+        const gesamtDarlehenZinsenSteuerNeu = berechneDarlehensZinsenSteuer(gesamtDarlehenZinsen, bruttoGehalt);
+        darlehenZinsenSteuer = gesamtDarlehenZinsen > 0
+          ? gesamtDarlehenZinsenSteuerNeu * (darlehenZinsen / gesamtDarlehenZinsen)
+          : 0;
+        privatDarlehenZinsenSteuer = gesamtDarlehenZinsen > 0
+          ? gesamtDarlehenZinsenSteuerNeu * (privatDarlehenZinsen / gesamtDarlehenZinsen)
+          : 0;
+        darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
+        privatDarlehenZinsenNetto = privatDarlehenZinsen - privatDarlehenZinsenSteuer;
+
+        beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
+        gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
+          beitragspflichtigeEinnahmenGkv
+        );
+        konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
+        konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
+
+        if (endeDarlehenEndfaelligAktiv) {
+          darlehenTilgung = istLetztesBereich2Jahr ? restdarlehen : 0;
+        } else if (endfaellig) {
+          darlehenTilgung = berechneFlexibleTilgung(zielnetto, konsumVorTilgung, restdarlehen);
+        } else if (state.tilgungsrate > 0) {
+          darlehenTilgung = berechneteDarlehenTilgung;
+        } else {
+          darlehenTilgung = 0;
+        }
+        darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
+        darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
+      }
+    }
 
     // GmbH tax on operating profit after Betriebskosten, salary and deductible interest (both loans).
     // theoretischerEtfErtrag is excluded from the tax base: ETF gains are only taxed when realised
@@ -574,7 +664,7 @@ export function berechneEndeErgebnisse(
     const gmbhSteuerGewSt = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gewerbesteuer : 0;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
-    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + gesamtDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
+    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + privatDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
     // essenszuschussNutzen is excluded from the displayed net payout – it is a non-cash benefit
     // used only internally (zielnetto gap check, GmbH cost accounting).
     const gesamtNetto =
