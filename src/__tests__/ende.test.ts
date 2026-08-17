@@ -256,6 +256,48 @@ describe("berechneEndeErgebnisse", () => {
     expect(results[0].details.darlehenTilgung).toBe(0);
   });
 
+  it("caps Bereich-2 GF salary to available company funds when profit is configured", () => {
+    const state: EndeState = {
+      ...defaultState,
+      geschaeftsfuehrergehalt: 100000,
+      simulierterGewinn: 8400,
+      laufzeitJahre: 2,
+      gewinnausschuettung: 0,
+      tilgungsrate: 0,
+    };
+
+    const results = berechneEndeErgebnisse(
+      state,
+      1000,
+      0,
+      0,
+      0,
+      false,
+      0,
+      [],
+      {
+        tankgutschein: 0,
+        tankgutscheinAktiv: false,
+        strategieessen: 0,
+        strategieessenAktiv: false,
+        essenszuschussProTag: 0,
+        essenszuschussTageProJahr: 0,
+        essenszuschussAktiv: false,
+      },
+      {
+        aktiv: false,
+        anschaffungskosten: 0,
+        restwertQuote: 0,
+        ersatzzyklusJahre: 3,
+        erstanschaffungJahr: 1,
+      }
+    );
+
+    expect(results[0].details.bruttoGehalt).toBeCloseTo(9400);
+    expect(results[1].details.bruttoGehalt).toBeCloseTo(8400);
+    expect(results[1].details.firmenEtfVermoegen).toBeCloseTo(0);
+  });
+
   it("uses configured annual repayment rate in payout phase", () => {
     const state = { ...defaultState, tilgungsrate: 2000 };
     const results = berechneEndeErgebnisse(state, 0, 12000, 6);
