@@ -170,7 +170,8 @@ describe("berechneGesamtvergleichKpi", () => {
     expect(privatDirektMitGehalt[2].entnahmenVorSteuern).toBeGreaterThan(privatDirektOhneGehalt[2].entnahmenVorSteuern);
     expect(zeitreiheOhneGehalt[2].privat).toBeCloseTo(privatDirektOhneGehalt[2].gesamtwertMitKonsum);
     expect(zeitreiheMitGehalt[2].privat).toBeCloseTo(privatDirektMitGehalt[2].gesamtwertMitKonsum);
-    expect(kpiMitGehalt.privatGesamtwert).toBeCloseTo(kpiOhneGehalt.privatGesamtwert);
+    expect(kpiOhneGehalt.privatGesamtwert).toBeCloseTo(privatDirektOhneGehalt[2].gesamtwertMitKonsum);
+    expect(kpiMitGehalt.privatGesamtwert).toBeCloseTo(privatDirektMitGehalt[2].gesamtwertMitKonsum);
   });
 });
 

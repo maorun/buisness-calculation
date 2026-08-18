@@ -669,7 +669,7 @@ function simulierePrivatVergleich(
     let stillerGesellschafterEntnahme: number;
     let entnahmenVorSteuern: number;
     if (jahresOverride !== undefined) {
-      gehaltsEntnahme = 0;
+      gehaltsEntnahme = gehaltsOverrideJahr !== undefined ? Math.max(0, gehaltsOverrideJahr) : 0;
       zinsEntnahme = 0;
       entnahmeAusSparplanDefizit = 0;
       stillerGesellschafterEntnahme = 0;
