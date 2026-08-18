@@ -207,7 +207,11 @@ describe("berechneGesamtvergleichKpi", () => {
     // In the Ende year the private comparison must NOT reinvest simulierterGewinnNetto.
     // Therefore the ETF in the Ende-year result should be strictly less than the scenario
     // without an Ende override (where business income IS reinvested every year).
-    expect(privatMitEnde[1].verbleibenderEtfWert).toBeLessThan(privatOhneEnde[1].verbleibenderEtfWert);
+    // The difference must be at least simulierterGewinnNetto (≈ 12000 × (1−0.4) × (1−0.055) ≈ 6,784),
+    // because that is the minimum "missing" reinvestment when the income is suppressed.
+    const simulierterGewinnNetto = 12000 * (1 - 0.4) * (1 - 0.055); // ~6,784 after ESt + SolZ
+    const etfDelta = privatOhneEnde[1].verbleibenderEtfWert - privatMitEnde[1].verbleibenderEtfWert;
+    expect(etfDelta).toBeGreaterThan(simulierterGewinnNetto);
 
     // The sparplanNetto for an Ende year equals -konsumNutzenwert (≤ 0), never the positive
     // business-income surplus that would appear in a normal Betrieb year.

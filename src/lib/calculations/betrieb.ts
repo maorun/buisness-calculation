@@ -658,7 +658,12 @@ function simulierePrivatVergleich(
     //   • kumulierterKonsumwert is still credited, keeping the comparison fair (neutral net effect).
     //   • No spurious business-income reinvestment inflates the private ETF during the Ende phase.
     const isEndeJahr = gehaltsOverrideJahr !== undefined;
-    const konsumNutzenwert = (isEndeJahr || jahresOverride === undefined)
+    // Benefits are relevant unless a full explicit withdrawal override (jahresOverride) is active,
+    // in which case the withdrawal already encodes the net GmbH payout and crediting benefits
+    // separately would inflate the private total without a matching cost deduction.
+    // For Ende years (identified by isEndeJahr / gehaltsEntnahmeOverride) benefits still apply:
+    // the GmbH keeps paying them tax-free while the private person buys the same goods out of pocket.
+    const konsumNutzenwert = jahresOverride === undefined
       ? berechneKonsumNutzenwertProJahr(jahr, state.benefits, state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG)
       : 0;
     const investitionsNettoCashflow = investitionsJahreswert?.nettoCashflow ?? 0;
