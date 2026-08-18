@@ -72,6 +72,106 @@ describe("berechneGesamtvergleichKpi", () => {
 
     expect(kpi.gmbhGesamtwert).toBe(25000);
   });
+
+  it("applies Ende GF salary to every Ende year in private comparison", () => {
+    const betriebMitStartkapital: BetriebState = {
+      ...basisBetrieb,
+      startkapital: 50000,
+      etfRendite: 10,
+      laufzeitJahre: 1,
+      geschaeftsfuehrergehalt: 0,
+      firmenhandy: {
+        aktiv: false,
+        anschaffungskosten: 1000,
+        restwertQuote: 0.1,
+        ersatzzyklusJahre: 3,
+        erstanschaffungJahr: 1,
+      },
+    };
+    const betriebsErgebnisse: JahresErgebnis[] = [{
+      jahr: 1,
+      gesamtvermoegen: 50000,
+      gewinn: 0,
+      steuer: 0,
+      nettogewinn: 0,
+      details: {
+        nettovermoegen: 50000,
+        kumulierterKonsumwert: 0,
+      },
+    }];
+    const endeErgebnisseOhneGehalt: JahresErgebnis[] = [
+      {
+        jahr: 1,
+        gesamtvermoegen: 50000,
+        gewinn: 0,
+        steuer: 0,
+        nettogewinn: 0,
+        details: { firmenDarlehensverbindlichkeit: 0, restdarlehen: 0, bruttoGehalt: 0, kumulierterKonsumwert: 0 },
+      },
+      {
+        jahr: 2,
+        gesamtvermoegen: 50000,
+        gewinn: 0,
+        steuer: 0,
+        nettogewinn: 0,
+        details: { firmenDarlehensverbindlichkeit: 0, restdarlehen: 0, bruttoGehalt: 0, kumulierterKonsumwert: 0 },
+      },
+    ];
+    const endeErgebnisseMitGehaltImZweitenJahr: JahresErgebnis[] = [
+      endeErgebnisseOhneGehalt[0],
+      {
+        ...endeErgebnisseOhneGehalt[1],
+        details: {
+          ...endeErgebnisseOhneGehalt[1].details,
+          bruttoGehalt: 10000,
+        },
+      },
+    ];
+
+    const privatDirektOhneGehalt = berechnePrivatVergleichZeitreihe(
+      { ...betriebMitStartkapital, laufzeitJahre: 3 },
+      undefined,
+      [undefined, 0, 0],
+      [undefined, 0, 0]
+    );
+    const privatDirektMitGehalt = berechnePrivatVergleichZeitreihe(
+      { ...betriebMitStartkapital, laufzeitJahre: 3 },
+      undefined,
+      [undefined, 0, 0],
+      [undefined, 0, 10000]
+    );
+    const zeitreiheOhneGehalt = berechneGesamtvergleichZeitreihe(
+      betriebMitStartkapital,
+      2,
+      endeErgebnisseOhneGehalt,
+      betriebsErgebnisse
+    );
+    const zeitreiheMitGehalt = berechneGesamtvergleichZeitreihe(
+      betriebMitStartkapital,
+      2,
+      endeErgebnisseMitGehaltImZweitenJahr,
+      betriebsErgebnisse
+    );
+    const kpiOhneGehalt = berechneGesamtvergleichKpi(
+      betriebMitStartkapital,
+      2,
+      endeErgebnisseOhneGehalt,
+      betriebsErgebnisse
+    );
+    const kpiMitGehalt = berechneGesamtvergleichKpi(
+      betriebMitStartkapital,
+      2,
+      endeErgebnisseMitGehaltImZweitenJahr,
+      betriebsErgebnisse
+    );
+
+    expect(privatDirektOhneGehalt[2].gehaltsEntnahme).toBe(0);
+    expect(privatDirektMitGehalt[2].gehaltsEntnahme).toBe(10000);
+    expect(privatDirektMitGehalt[2].entnahmenVorSteuern).toBeGreaterThan(privatDirektOhneGehalt[2].entnahmenVorSteuern);
+    expect(zeitreiheOhneGehalt[2].privat).toBeCloseTo(privatDirektOhneGehalt[2].gesamtwertMitKonsum);
+    expect(zeitreiheMitGehalt[2].privat).toBeCloseTo(privatDirektMitGehalt[2].gesamtwertMitKonsum);
+    expect(kpiMitGehalt.privatGesamtwert).toBeCloseTo(kpiOhneGehalt.privatGesamtwert);
+  });
 });
 
 describe("berechneGesamtvergleichZeitreihe", () => {

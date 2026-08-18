@@ -40,10 +40,13 @@ export function formatSignedPercent(value: number | null): string {
 /**
  * Builds per-year override arrays for the private comparison from the Ende results.
  *
- * Only the loan balance (offeneDarlehenOverride) is overridden for Ende years so that the
- * private comparison stays in sync with the GmbH's original bank-loan balance.  This is
- * critical for endfällig loans where Bereich 1 settles the old loan and Bereich 2 starts a
- * smaller one.
+ * The loan balance (offeneDarlehenOverride) and the GF-salary withdrawal
+ * (gehaltsEntnahmeOverride) are overridden for Ende years:
+ * - offeneDarlehenOverride keeps the private comparison in sync with the GmbH's
+ *   original bank-loan balance (critical for endfällig loans where Bereich 1
+ *   settles the old loan and Bereich 2 starts a smaller one).
+ * - gehaltsEntnahmeOverride applies the configured Ende salaries to every Ende
+ *   year in the private comparison instead of reusing the Betrieb salary.
  *
  * The entnahmen (withdrawal amount) is intentionally NOT overridden for Ende years.  Forcing
  * the private comparison to withdraw exactly nettogewinn each year created a discontinuity
@@ -61,10 +64,12 @@ function berechnePrivatVergleichOverrides(
 ): {
   entnahmenOverride: (number | undefined)[];
   offeneDarlehenOverride: (number | undefined)[];
+  gehaltsEntnahmeOverride: (number | undefined)[];
 } {
   const zeitraumJahre = betriebLaufzeitJahre + endeErgebnisse.length;
   const entnahmenOverride: (number | undefined)[] = new Array(zeitraumJahre).fill(undefined);
   const offeneDarlehenOverride: (number | undefined)[] = new Array(zeitraumJahre).fill(undefined);
+  const gehaltsEntnahmeOverride: (number | undefined)[] = new Array(zeitraumJahre).fill(undefined);
 
   for (let i = 0; i < endeErgebnisse.length; i++) {
     const idx = betriebLaufzeitJahre + i;
@@ -74,9 +79,10 @@ function berechnePrivatVergleichOverrides(
     // comparison that capital stays in the private ETF and is not a debt.
     const restdarlehen = e.details.restdarlehen;
     offeneDarlehenOverride[idx] = restdarlehen !== undefined ? Math.max(0, restdarlehen) : 0;
+    gehaltsEntnahmeOverride[idx] = Math.max(0, e.details.bruttoGehalt ?? 0);
   }
 
-  return { entnahmenOverride, offeneDarlehenOverride };
+  return { entnahmenOverride, offeneDarlehenOverride, gehaltsEntnahmeOverride };
 }
 
 export function berechneGesamtvergleichKpi(
@@ -90,14 +96,15 @@ export function berechneGesamtvergleichKpi(
     1,
     Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
   );
-  const { entnahmenOverride, offeneDarlehenOverride } = berechnePrivatVergleichOverrides(
+  const { entnahmenOverride, offeneDarlehenOverride, gehaltsEntnahmeOverride } = berechnePrivatVergleichOverrides(
     betrieb.laufzeitJahre,
     endeErgebnisse
   );
   const privatVergleich = berechnePrivatVergleichErgebnis(
     { ...betrieb, laufzeitJahre: zeitraumJahre },
     entnahmenOverride,
-    offeneDarlehenOverride
+    offeneDarlehenOverride,
+    gehaltsEntnahmeOverride
   );
   const investitionsZusammenfassung = berechneInvestitionsZusammenfassung(betrieb.investitionen, zeitraumJahre);
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
@@ -161,14 +168,15 @@ export function berechneGesamtvergleichZeitreihe(
     1,
     Math.max(0, betrieb.laufzeitJahre) + Math.max(0, endeLaufzeitJahre) + endfaelligkeitsAbwicklungsjahre
   );
-  const { entnahmenOverride, offeneDarlehenOverride } = berechnePrivatVergleichOverrides(
+  const { entnahmenOverride, offeneDarlehenOverride, gehaltsEntnahmeOverride } = berechnePrivatVergleichOverrides(
     betrieb.laufzeitJahre,
     endeErgebnisse
   );
   const privatZeitreihe = berechnePrivatVergleichZeitreihe(
     { ...betrieb, laufzeitJahre: zeitraumJahre },
     entnahmenOverride,
-    offeneDarlehenOverride
+    offeneDarlehenOverride,
+    gehaltsEntnahmeOverride
   );
   const investitionsNettovermoegen = berechneInvestitionsZusammenfassung(
     betrieb.investitionen,

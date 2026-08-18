@@ -596,7 +596,8 @@ function verkaufeEtfLotsSteueroptimal(
 function simulierePrivatVergleich(
   state: BetriebState,
   entnahmenOverride?: (number | undefined)[],
-  offeneDarlehenOverride?: (number | undefined)[]
+  offeneDarlehenOverride?: (number | undefined)[],
+  gehaltsEntnahmeOverride?: (number | undefined)[]
 ): {
   ergebnis: PrivatVergleichErgebnis;
   jahreswerte: PrivatVergleichJahreswert[];
@@ -645,6 +646,7 @@ function simulierePrivatVergleich(
     // When an override is present, we skip the normal salary/interest/sparplan components and use
     // the override value directly as entnahmenVorSteuern.
     const jahresOverride = entnahmenOverride ? entnahmenOverride[jahr - 1] : undefined;
+    const gehaltsOverrideJahr = gehaltsEntnahmeOverride ? gehaltsEntnahmeOverride[jahr - 1] : undefined;
 
     // The benefit consumption value (Tankgutschein, Essenszuschuss, Firmenhandy) is only relevant
     // for genuine Betrieb-phase years, where it reduces the private sparplan (real cost of buying
@@ -673,7 +675,9 @@ function simulierePrivatVergleich(
       stillerGesellschafterEntnahme = 0;
       entnahmenVorSteuern = Math.max(0, jahresOverride);
     } else {
-      gehaltsEntnahme = Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
+      gehaltsEntnahme = gehaltsOverrideJahr !== undefined
+        ? Math.max(0, gehaltsOverrideJahr)
+        : Math.max(0, state.geschaeftsfuehrergehalt ?? DEFAULT_GF_GEHALT_BETRIEB);
       zinsEntnahme = state.darlehen.endfaellig ? 0 : zinsenJaehrlich;
       entnahmeAusSparplanDefizit = Math.max(0, -sparplanNetto);
       stillerGesellschafterEntnahme = berechneStillenGesellschafterKosten(
@@ -798,17 +802,19 @@ function simulierePrivatVergleich(
 export function berechnePrivatVergleichErgebnis(
   state: BetriebState,
   entnahmenOverride?: (number | undefined)[],
-  offeneDarlehenOverride?: (number | undefined)[]
+  offeneDarlehenOverride?: (number | undefined)[],
+  gehaltsEntnahmeOverride?: (number | undefined)[]
 ): PrivatVergleichErgebnis {
-  return simulierePrivatVergleich(state, entnahmenOverride, offeneDarlehenOverride).ergebnis;
+  return simulierePrivatVergleich(state, entnahmenOverride, offeneDarlehenOverride, gehaltsEntnahmeOverride).ergebnis;
 }
 
 export function berechnePrivatVergleichZeitreihe(
   state: BetriebState,
   entnahmenOverride?: (number | undefined)[],
-  offeneDarlehenOverride?: (number | undefined)[]
+  offeneDarlehenOverride?: (number | undefined)[],
+  gehaltsEntnahmeOverride?: (number | undefined)[]
 ): PrivatVergleichJahreswert[] {
-  return simulierePrivatVergleich(state, entnahmenOverride, offeneDarlehenOverride).jahreswerte;
+  return simulierePrivatVergleich(state, entnahmenOverride, offeneDarlehenOverride, gehaltsEntnahmeOverride).jahreswerte;
 }
 
 /**
