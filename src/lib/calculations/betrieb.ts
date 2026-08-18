@@ -648,19 +648,31 @@ function simulierePrivatVergleich(
     const jahresOverride = entnahmenOverride ? entnahmenOverride[jahr - 1] : undefined;
     const gehaltsOverrideJahr = gehaltsEntnahmeOverride ? gehaltsEntnahmeOverride[jahr - 1] : undefined;
 
-    // The benefit consumption value (Tankgutschein, Essenszuschuss, Firmenhandy) is only relevant
-    // for genuine Betrieb-phase years, where it reduces the private sparplan (real cost of buying
-    // the same goods privately) and is credited back via kumulierterKonsumwert for a fair
-    // like-for-like comparison. In override years (Ende phase) the withdrawal already matches the
-    // GmbH's actual net payout for that year 1:1, so crediting the benefit value again here would
-    // double-count it without any matching cost ever being deducted from the private ETF.
+    // Ende-phase years are identified by a gehaltsEntnahmeOverride being set for the year.
+    // In these years the private comparison should NOT reinvest the simulated business income
+    // (the GmbH is paying out from its ETF, not from ongoing operations), but the benefit
+    // consumption value is still relevant: the GmbH continues to provide benefits tax-free while
+    // the private person pays for the same goods out of pocket.  Setting sparplanNetto to the
+    // negative benefit cost (instead of income − cost) ensures:
+    //   • The ETF is sold to cover the benefit expenditure (private person pays for benefits).
+    //   • kumulierterKonsumwert is still credited, keeping the comparison fair (neutral net effect).
+    //   • No spurious business-income reinvestment inflates the private ETF during the Ende phase.
+    const isEndeJahr = gehaltsOverrideJahr !== undefined;
+    // Benefits are relevant unless a full explicit withdrawal override (jahresOverride) is active,
+    // in which case the withdrawal already encodes the net GmbH payout and crediting benefits
+    // separately would inflate the private total without a matching cost deduction.
+    // For Ende years (identified by isEndeJahr / gehaltsEntnahmeOverride) benefits still apply:
+    // the GmbH keeps paying them tax-free while the private person buys the same goods out of pocket.
     const konsumNutzenwert = jahresOverride === undefined
       ? berechneKonsumNutzenwertProJahr(jahr, state.benefits, state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG)
       : 0;
     const investitionsNettoCashflow = investitionsJahreswert?.nettoCashflow ?? 0;
-    const sparplanNetto =
-      jaehrlicherCashZuschuss + simulierterGewinnNetto + darlehensZuschussJaehrlich + investitionsNettoCashflow - konsumNutzenwert;
-    kumulierterSparplan += sparplanNetto;
+    const sparplanNetto = isEndeJahr
+      ? -konsumNutzenwert
+      : jaehrlicherCashZuschuss + simulierterGewinnNetto + darlehensZuschussJaehrlich + investitionsNettoCashflow - konsumNutzenwert;
+    if (!isEndeJahr) {
+      kumulierterSparplan += sparplanNetto;
+    }
     kumulierterKonsumwert += konsumNutzenwert;
 
     let gehaltsEntnahme: number;
@@ -732,9 +744,10 @@ function simulierePrivatVergleich(
     kumulierteEtfVerkaufssteuer += etfVerkaufssteuer;
 
     etfLots = verkauf.lots;
-    // Only re-invest the sparplan surplus when there is no per-year override (override years
-    // represent the Ende phase where there is no operating sparplan to re-invest).
-    if (jahresOverride === undefined && sparplanNetto > 0) {
+    // Only re-invest the sparplan surplus in genuine Betrieb-phase years (isEndeJahr = false).
+    // In Ende years sparplanNetto equals -konsumNutzenwert (≤ 0), so the guard also prevents
+    // a negative reinvestment, but the explicit !isEndeJahr check makes the intent clear.
+    if (!isEndeJahr && sparplanNetto > 0) {
       etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", sparplanNetto);
     }
 

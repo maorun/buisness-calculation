@@ -173,6 +173,51 @@ describe("berechneGesamtvergleichKpi", () => {
     expect(kpiOhneGehalt.privatGesamtwert).toBeCloseTo(privatDirektOhneGehalt[2].gesamtwertMitKonsum);
     expect(kpiMitGehalt.privatGesamtwert).toBeCloseTo(privatDirektMitGehalt[2].gesamtwertMitKonsum);
   });
+
+  it("does NOT reinvest simulated business income into the private ETF during Ende phase years", () => {
+    // Regression test: prior to the fix, sparplanNetto (= simulierterGewinnNetto − konsumNutzenwert)
+    // was added back into the private ETF in Ende years, inflating the private comparison value.
+    // After the fix, Ende years only charge benefit costs (no business income reinvestment).
+    const betriebMitGewinn: BetriebState = {
+      ...basisBetrieb,
+      startkapital: 20000,
+      etfRendite: 5,
+      laufzeitJahre: 1,
+      simulierterGewinn: 12000,
+      persoenlicherGrenzsteuersatz: 40,
+      firmenhandy: { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+    };
+
+    const endeGehalt = 6000;
+    // One Betrieb year (no override) + one Ende year (gehaltsOverride = endeGehalt)
+    const privatMitEnde = berechnePrivatVergleichZeitreihe(
+      { ...betriebMitGewinn, laufzeitJahre: 2 },
+      undefined,
+      [undefined, 0],
+      [undefined, endeGehalt]
+    );
+    // One Betrieb year only (no Ende year, i.e. no salary override at all)
+    const privatOhneEnde = berechnePrivatVergleichZeitreihe(
+      { ...betriebMitGewinn, laufzeitJahre: 2 },
+      undefined,
+      [undefined, 0],
+      undefined
+    );
+
+    // In the Ende year the private comparison must NOT reinvest simulierterGewinnNetto.
+    // Therefore the ETF in the Ende-year result should be strictly less than the scenario
+    // without an Ende override (where business income IS reinvested every year).
+    // The difference must be at least simulierterGewinnNetto (≈ 12000 × (1−0.4) × (1−0.055) ≈ 6,784),
+    // because that is the minimum "missing" reinvestment when the income is suppressed.
+    const simulierterGewinnNetto = 12000 * (1 - 0.4) * (1 - 0.055); // ~6,784 after ESt + SolZ
+    const etfDelta = privatOhneEnde[1].verbleibenderEtfWert - privatMitEnde[1].verbleibenderEtfWert;
+    expect(etfDelta).toBeGreaterThan(simulierterGewinnNetto);
+
+    // The sparplanNetto for an Ende year equals -konsumNutzenwert (≤ 0), never the positive
+    // business-income surplus that would appear in a normal Betrieb year.
+    expect(privatMitEnde[1].sparplanNetto).toBeLessThanOrEqual(0);
+    expect(privatOhneEnde[1].sparplanNetto).toBeGreaterThan(0); // normal Betrieb year has positive sparplan
+  });
 });
 
 describe("berechneGesamtvergleichZeitreihe", () => {
