@@ -876,6 +876,19 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[2].details.betriebsausgabenGesamt).toBeCloseTo(0);
     });
 
+    it("carries forward losses across Ende phase years", () => {
+      const state: EndeState = {
+        ...baseState,
+        geschaeftsfuehrergehalt: 10000,
+        simulierterGewinn: 0, // Loss of ~10,000 + costs in Year 1
+        laufzeitJahre: 2,
+      };
+
+      const results = berechneEndeErgebnisse(state, 100000);
+      expect(results[0].details.gmbhSteuer).toBe(0);
+      expect(results[0].details.verlustvortrag).toBeGreaterThan(0);
+    });
+
     it("applies Gewerbesteuer-Hinzurechnung in Ende phase when interest exceeds 200,000 €", () => {
       // Deferred interest of 300,000 € in Bereich 1
       // Hinzurechnung = 25% of (300,000 - 200,000) = 25,000 €

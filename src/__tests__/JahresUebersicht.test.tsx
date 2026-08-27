@@ -159,4 +159,32 @@ describe("JahresUebersicht", () => {
     expect(screen.getByText("= Nettovermögen (Eigenkapital)")).toBeTruthy();
     expect(screen.getByText("Offenes Darlehen (Verbindlichkeit)")).toBeTruthy();
   });
+
+  it("renders loss carryforward utilization and remaining loss carryforward", () => {
+    const ergebnisse: JahresErgebnis[] = [{
+      jahr: 1,
+      gesamtvermoegen: 100000,
+      gewinn: 5000,
+      steuer: 100,
+      nettogewinn: 4900,
+      details: {
+        etfGewinn: 0,
+        etfVerkauf: 0,
+        betriebsausgabenGesamt: 1000,
+        gmbhSteuer: 500,
+        gmbhSteuerKst: 250,
+        gmbhSteuerGewSt: 250,
+        verlustVortragGenutzt: 2000,
+        verlustvortrag: 3000,
+        steuerpflichtigerGewinn: 3000,
+      },
+    }];
+
+    render(<JahresUebersicht ergebnisse={ergebnisse} variant="betrieb" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+
+    expect(screen.getByText("− Verlustvortrag verrechnet")).toBeTruthy();
+    expect(screen.getByText("Verbleibender Verlustvortrag")).toBeTruthy();
+  });
 });

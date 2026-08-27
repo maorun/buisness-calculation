@@ -48,6 +48,52 @@ export const DEFAULT_KOERPERSCHAFTSTEUER_SATZ = 15;
 export const DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ = 5.5;
 export const DEFAULT_GEWERBESTEUER_SATZ = 14;
 
+/**
+ * Calculates loss carryforward utilization and remaining loss carryforward balance
+ * according to German tax law (§ 10d EStG / § 8 Abs. 1 KStG).
+ *
+ * Minimum taxation rule (Mindestbesteuerung):
+ * - Up to 1,000,000 €: offset 100% of profit.
+ * - Exceeding 1,000,000 €: offset up to 60% of the profit exceeding 1,000,000 €.
+ */
+export function berechneVerlustvortragAnrechnung(
+  gewinnVorVerlustvortrag: number,
+  aktuellerVerlustvortrag: number
+): {
+  versteuerterGewinn: number;
+  verlustVortragGenutzt: number;
+  neuerVerlustvortrag: number;
+} {
+  if (gewinnVorVerlustvortrag <= 0) {
+    return {
+      versteuerterGewinn: 0,
+      verlustVortragGenutzt: 0,
+      neuerVerlustvortrag: aktuellerVerlustvortrag + Math.abs(gewinnVorVerlustvortrag),
+    };
+  }
+
+  if (aktuellerVerlustvortrag <= 0) {
+    return {
+      versteuerterGewinn: gewinnVorVerlustvortrag,
+      verlustVortragGenutzt: 0,
+      neuerVerlustvortrag: 0,
+    };
+  }
+
+  const maxAnrechenbar = gewinnVorVerlustvortrag <= 1_000_000
+    ? Math.min(aktuellerVerlustvortrag, gewinnVorVerlustvortrag)
+    : Math.min(aktuellerVerlustvortrag, 1_000_000 + 0.6 * (gewinnVorVerlustvortrag - 1_000_000));
+
+  const versteuerterGewinn = Math.max(0, gewinnVorVerlustvortrag - maxAnrechenbar);
+  const neuerVerlustvortrag = Math.max(0, aktuellerVerlustvortrag - maxAnrechenbar);
+
+  return {
+    versteuerterGewinn,
+    verlustVortragGenutzt: maxAnrechenbar,
+    neuerVerlustvortrag,
+  };
+}
+
 /** Derive the effective GmbH total tax rate from configurable inputs (all in %). */
 export function berechneGmbhSteuerRaten(
   koerperschaftsteuerSatz: number,
@@ -867,6 +913,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     etfLots = fuegeEtfLotHinzu(etfLots, "stillerGesellschafter", stillerGesellschafterEinlage);
   }
   let cashReserve = 0;
+  let verlustvortrag = 0;
   let offenesDarlehen = Math.max(0, state.darlehen.betrag);
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
   // For regular loans, interest is paid (and deductible) each year.
@@ -995,10 +1042,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const hinzurechnungIter = berechneGewerbesteuerHinzurechnung(finanzierungskostenIter);
       const gewinnNachBetriebsausgabenIter =
         simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
-      const kstIter = gewinnNachBetriebsausgabenIter > 0
-        ? gewinnNachBetriebsausgabenIter * effKstGesamt
+      const { versteuerterGewinn: versteuerterGewinnIter } =
+        berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
+      const kstIter = versteuerterGewinnIter > 0
+        ? versteuerterGewinnIter * effKstGesamt
         : 0;
-      const gewStBemessungIter = gewinnNachBetriebsausgabenIter + hinzurechnungIter;
+      const gewStBemessungIter = versteuerterGewinnIter + hinzurechnungIter;
       const gewStIter = gewStBemessungIter > 0
         ? gewStBemessungIter * effGewerbesteuer
         : 0;
@@ -1026,14 +1075,21 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const gewinnNachBetriebsausgaben =
       simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
 
+    const {
+      versteuerterGewinn,
+      verlustVortragGenutzt,
+      neuerVerlustvortrag,
+    } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgaben, verlustvortrag);
+    verlustvortrag = neuerVerlustvortrag;
+
     const finanzierungskosten = jaehrlicheZinsen + investitionsZinsaufwandProJahr;
     const hinzurechnung = berechneGewerbesteuerHinzurechnung(finanzierungskosten);
 
-    // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
-    const gmbhSteuerKst = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * effKstGesamt
+    // GmbH taxes (KSt + GewSt) on positive taxable profit after loss carryforward, paid to Finanzamt
+    const gmbhSteuerKst = versteuerterGewinn > 0
+      ? versteuerterGewinn * effKstGesamt
       : 0;
-    const gewStBemessungsgrundlage = gewinnNachBetriebsausgaben + hinzurechnung;
+    const gewStBemessungsgrundlage = versteuerterGewinn + hinzurechnung;
     const gmbhSteuerGewSt = gewStBemessungsgrundlage > 0
       ? gewStBemessungsgrundlage * effGewerbesteuer
       : 0;
@@ -1172,6 +1228,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         jaehrlicheZinsen,
         aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
         gewinnNachBetriebsausgaben,
+        steuerpflichtigerGewinn: versteuerterGewinn,
+        verlustvortrag,
+        verlustVortragGenutzt,
         vorabpauschaleVorAnrechnung: vorabpauschaleBrutto,
         vorabpauschale,
         vorabpauschalesteuer,

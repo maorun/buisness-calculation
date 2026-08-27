@@ -116,8 +116,14 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       {d.jaehrlicheZinsen > 0 && (
         <BilanzRow label="− Darlehenszinsen (laufend)" value={d.jaehrlicheZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
+      {d.verlustVortragGenutzt !== undefined && d.verlustVortragGenutzt > 0 && (
+        <BilanzRow label="− Verlustvortrag verrechnet" value={d.verlustVortragGenutzt} prefix="−" colorClass="text-emerald-600" indent />
+      )}
+      {d.steuerpflichtigerGewinn !== undefined && d.verlustVortragGenutzt > 0 && (
+        <BilanzRow label="= Versteuerter Gewinn" value={d.steuerpflichtigerGewinn} bold colorClass="text-gray-800" indent />
+      )}
       <BilanzRow
-        label={`− Steuer auf Vorabpauschale (Basis: ${formatEuro(d.vorabpauschale)})`}
+        label={`− Steuer auf Vorabpauschale (Basis: ${formatEuro(d.vorabpauschale ?? 0)})`}
         value={d.vorabpauschalesteuer}
         prefix="−"
         colorClass="text-red-600"
@@ -243,7 +249,7 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
       />
 
       {/* ── Weitere Infos ─────────────────────────────── */}
-      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0 || d.investitionsKumulierterGewinnVerlust !== 0 || d.investitionsKumulierterNettoCashflow !== 0) && (
+      {(d.vorabpauschale > 0 || d.aufgelaufeneZinsen > 0 || d.theoretischerEtfErtrag > 0 || d.investitionsKumulierterGewinnVerlust !== 0 || d.investitionsKumulierterNettoCashflow !== 0 || (d.verlustvortrag !== undefined && d.verlustvortrag > 0)) && (
         <>
           <SectionHeader label="Weitere Infos" />
           {d.theoretischerEtfErtrag > 0 && (
@@ -251,6 +257,9 @@ function BetriebBilanz({ e }: { e: JahresErgebnis }) {
           )}
           {d.vorabpauschale > 0 && (
             <BilanzRow label="Vorabpauschale (Bemessungsgrundlage)" value={d.vorabpauschale} colorClass="text-gray-500" indent />
+          )}
+          {d.verlustvortrag !== undefined && d.verlustvortrag > 0 && (
+            <BilanzRow label="Verbleibender Verlustvortrag" value={d.verlustvortrag} colorClass="text-amber-600" indent />
           )}
           {d.aufgelaufeneZinsen > 0 && (
             <BilanzRow label="Aufgelaufene Zinsen (endfällig, kumuliert)" value={d.aufgelaufeneZinsen} colorClass="text-amber-600" indent />
@@ -368,11 +377,17 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
       {d.firmenGuVZinsaufwand !== undefined && d.firmenGuVZinsaufwand > 0 && (
         <BilanzRow label="− Zinsaufwand auf Darlehen" value={d.firmenGuVZinsaufwand} prefix="−" colorClass="text-gray-600" indent />
       )}
+      {d.verlustVortragGenutzt !== undefined && d.verlustVortragGenutzt > 0 && (
+        <BilanzRow label="− Verlustvortrag verrechnet" value={d.verlustVortragGenutzt} prefix="−" colorClass="text-emerald-600" indent />
+      )}
       {d.steuerpflichtigerGewinn !== undefined && d.steuerpflichtigerGewinn > 0 && (
         <>
           <Divider />
           <BilanzRow label="= Steuerpflichtiger Gewinn (Bemessungsgrundlage)" value={d.steuerpflichtigerGewinn} prefix="=" bold colorClass="text-gray-700" indent />
         </>
+      )}
+      {d.verlustvortrag !== undefined && d.verlustvortrag > 0 && (
+        <BilanzRow label="Verbleibender Verlustvortrag" value={d.verlustvortrag} colorClass="text-amber-600" indent />
       )}
       {d.vorabpauschalesteuer !== undefined && d.vorabpauschalesteuer > 0 && (
         <BilanzRow label="− Steuer auf Vorabpauschale" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
@@ -508,11 +523,17 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
       {d.privatDarlehenZinsen !== undefined && d.privatDarlehenZinsen > 0 && (
         <BilanzRow label="− Privat-Darlehenszinsen (abzugsfähig)" value={d.privatDarlehenZinsen} prefix="−" colorClass="text-gray-600" indent />
       )}
+      {d.verlustVortragGenutzt !== undefined && d.verlustVortragGenutzt > 0 && (
+        <BilanzRow label="− Verlustvortrag verrechnet" value={d.verlustVortragGenutzt} prefix="−" colorClass="text-emerald-600" indent />
+      )}
       {d.steuerpflichtigerGewinn !== undefined && d.steuerpflichtigerGewinn > 0 && (
         <>
           <Divider />
           <BilanzRow label="= Steuerpflichtiger Gewinn (Bemessungsgrundlage)" value={d.steuerpflichtigerGewinn} prefix="=" bold colorClass="text-gray-700" indent />
         </>
+      )}
+      {d.verlustvortrag !== undefined && d.verlustvortrag > 0 && (
+        <BilanzRow label="Verbleibender Verlustvortrag" value={d.verlustvortrag} colorClass="text-amber-600" indent />
       )}
       {d.vorabpauschalesteuer !== undefined && d.vorabpauschalesteuer > 0 && (
         <BilanzRow label="− Steuer auf Vorabpauschale" value={d.vorabpauschalesteuer} prefix="−" colorClass="text-red-600" indent />
