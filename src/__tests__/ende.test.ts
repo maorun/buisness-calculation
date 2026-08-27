@@ -876,6 +876,38 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[2].details.betriebsausgabenGesamt).toBeCloseTo(0);
     });
 
+    it("applies Gewerbesteuer-Hinzurechnung in Ende phase when interest exceeds 200,000 €", () => {
+      // Deferred interest of 300,000 € in Bereich 1
+      // Hinzurechnung = 25% of (300,000 - 200,000) = 25,000 €
+      const state: EndeState = {
+        ...baseState,
+        simulierterGewinn: 500000,
+        gehaltBereich1: 0,
+        geschaeftsfuehrergehalt: 0,
+        laufzeitJahre: 1,
+      };
+      const results = berechneEndeErgebnisse(
+        state,
+        100000,
+        0,
+        0,
+        300000,
+        true,
+        0,
+        [],
+        { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
+      );
+      const r1 = results[0];
+      // Profit base for KSt = 500,000 € (since interest was already deferred and not deducted from operating profit in B1)
+      // Profit base for GewSt = 500,000 + 25,000 = 525,000 €
+      // KSt (15.825%) = 79,125 €
+      // GewSt (14%) = 525,000 * 0.14 = 73,500 €
+      expect(r1.details.gmbhSteuerKst).toBeCloseTo(79125);
+      expect(r1.details.gmbhSteuerGewSt).toBeCloseTo(73500);
+      expect(r1.details.gmbhSteuer).toBeCloseTo(79125 + 73500);
+    });
+
     it("defers Ende-darlehen payout to the final year when ende.darlehenEndfaellig is active", () => {
       const state: EndeState = {
         ...baseState,

@@ -3,6 +3,7 @@ import {
   berechneVorabpauschaleNachEtfVerkauf,
   berechneVorabpauschalesteuer,
   berechneEtfVerkaufssteuer,
+  berechneGewerbesteuerHinzurechnung,
   berechneEtfWachstum,
   berechneDarlehenszinsen,
   berechneDarlehensjahr,
@@ -500,6 +501,41 @@ describe("berechneBetriebsErgebnisse", () => {
     };
     const results = berechneBetriebsErgebnisse(state);
     expect(results[0].details.gmbhSteuer).toBe(0);
+  });
+
+  describe("berechneGewerbesteuerHinzurechnung", () => {
+    it("returns 0 when financing costs are below or equal to 200,000 €", () => {
+      expect(berechneGewerbesteuerHinzurechnung(150000)).toBe(0);
+      expect(berechneGewerbesteuerHinzurechnung(200000)).toBe(0);
+    });
+
+    it("calculates 25% on financing costs exceeding 200,000 €", () => {
+      // 300,000 € financing costs -> 100,000 € excess -> 25% = 25,000 €
+      expect(berechneGewerbesteuerHinzurechnung(300000)).toBe(25000);
+    });
+  });
+
+  it("applies Gewerbesteuer-Hinzurechnung when annual interest exceeds 200,000 €", () => {
+    // Loan of 10,000,000 € at 3% interest = 300,000 € interest
+    // Hinzurechnung = 25% of (300,000 - 200,000) = 25,000 €
+    const state: BetriebState = {
+      ...defaultState,
+      simulierterGewinn: 500000,
+      darlehen: { betrag: 10000000, zinssatz: 3, monatlicherZuschuss: 0, endfaellig: false },
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+      laufzeitJahre: 1,
+    };
+    const results = berechneBetriebsErgebnisse(state);
+    const r = results[0];
+    // Profit base for KSt = 500,000 - 300,000 = 200,000 €
+    // Profit base for GewSt = 200,000 + 25,000 = 225,000 €
+    // KSt (15.825%) = 31,650 €
+    // GewSt (14%) = 225,000 * 0.14 = 31,500 €
+    expect(r.details.gmbhSteuerKst).toBeCloseTo(31650);
+    expect(r.details.gmbhSteuerGewSt).toBeCloseTo(31500);
+    expect(r.details.gmbhSteuer).toBeCloseTo(31650 + 31500);
   });
 
   it("steuer includes GmbH tax, Vorabpauschale tax and ETF sale tax", () => {

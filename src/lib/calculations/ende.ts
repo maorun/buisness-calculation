@@ -8,6 +8,7 @@ import {
   berechneHandyNettoKostenProJahr,
   berechneBenefitsKosten,
   berechneKonsumNutzenwertProJahr,
+  berechneGewerbesteuerHinzurechnung,
   DEFAULT_FIRMENHANDY_CONFIG,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
@@ -353,9 +354,11 @@ export function berechneEndeErgebnisse(
     // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
     // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
     const gewinnNachBetriebsausgabenB1 = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
-    const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gmbhSteuerGesamt : 0;
+    const hinzurechnungB1 = berechneGewerbesteuerHinzurechnung(aufgelaufeneZinsenNorm);
     const gmbhSteuerKstB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * kstGesamt : 0;
-    const gmbhSteuerGewStB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gewerbesteuer : 0;
+    const gewStBemessungB1 = gewinnNachBetriebsausgabenB1 + hinzurechnungB1;
+    const gmbhSteuerGewStB1 = gewStBemessungB1 > 0 ? gewStBemessungB1 * gewerbesteuer : 0;
+    const gmbhSteuerB1 = gmbhSteuerKstB1 + gmbhSteuerGewStB1;
     endePhaseJahr++;
 
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
@@ -659,9 +662,12 @@ export function berechneEndeErgebnisse(
     // bruttoGehalt is a deductible Betriebsausgabe (§ 4 EStG) – must be subtracted from taxable
     // profit, consistent with the Betrieb phase treatment in betrieb.ts.
     const steuerpflichtigerGewinn = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
-    const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gmbhSteuerGesamt : 0;
+    const finanzierungskostenB2 = darlehenZinsen + privatDarlehenZinsen;
+    const hinzurechnungB2 = berechneGewerbesteuerHinzurechnung(finanzierungskostenB2);
     const gmbhSteuerKst = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * kstGesamt : 0;
-    const gmbhSteuerGewSt = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gewerbesteuer : 0;
+    const gewStBemessungB2 = steuerpflichtigerGewinn + hinzurechnungB2;
+    const gmbhSteuerGewSt = gewStBemessungB2 > 0 ? gewStBemessungB2 * gewerbesteuer : 0;
+    const gmbhSteuer = gmbhSteuerKst + gmbhSteuerGewSt;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + privatDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;

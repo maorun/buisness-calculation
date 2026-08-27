@@ -27,6 +27,22 @@ export const GEWERBESTEUER = 0.14;
 // Total GmbH tax rate on profits
 export const GMBH_STEUER_GESAMT = KST_GESAMT + GEWERBESTEUER; // ~29.825%
 
+// Gewerbesteuer-Hinzurechnung § 8 Nr. 1 GewStG
+export const GEWERBESTEUER_HINZURECHNUNG_FREIBETRAG = 200000;
+export const GEWERBESTEUER_HINZURECHNUNG_SATZ = 0.25;
+
+/**
+ * Calculates trade tax add-back (Gewerbesteuer-Hinzurechnung) under § 8 Nr. 1 GewStG.
+ * 25% of financing costs above a combined allowance (Freibetrag) of 200.000 € are added back to trade profit.
+ */
+export function berechneGewerbesteuerHinzurechnung(
+  finanzierungskosten: number,
+  freibetrag: number = GEWERBESTEUER_HINZURECHNUNG_FREIBETRAG
+): number {
+  if (finanzierungskosten <= freibetrag) return 0;
+  return (finanzierungskosten - freibetrag) * GEWERBESTEUER_HINZURECHNUNG_SATZ;
+}
+
 // Configurable GmbH tax rate defaults (in percent, e.g. 15 means 15%)
 export const DEFAULT_KOERPERSCHAFTSTEUER_SATZ = 15;
 export const DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ = 5.5;
@@ -975,11 +991,18 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtragIter);
       const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
+      const finanzierungskostenIter = jaehrlicheZinsen + investitionsZinsaufwandProJahr;
+      const hinzurechnungIter = berechneGewerbesteuerHinzurechnung(finanzierungskostenIter);
       const gewinnNachBetriebsausgabenIter =
         simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
-      const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
-        ? gewinnNachBetriebsausgabenIter * effGmbhSteuerGesamt
+      const kstIter = gewinnNachBetriebsausgabenIter > 0
+        ? gewinnNachBetriebsausgabenIter * effKstGesamt
         : 0;
+      const gewStBemessungIter = gewinnNachBetriebsausgabenIter + hinzurechnungIter;
+      const gewStIter = gewStBemessungIter > 0
+        ? gewStBemessungIter * effGewerbesteuer
+        : 0;
+      const gmbhSteuerIter = kstIter + gewStIter;
       const benoetigterVerkauf = Math.min(
         etfWertNachWachstum,
         Math.max(
@@ -1003,16 +1026,18 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const gewinnNachBetriebsausgaben =
       simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
 
+    const finanzierungskosten = jaehrlicheZinsen + investitionsZinsaufwandProJahr;
+    const hinzurechnung = berechneGewerbesteuerHinzurechnung(finanzierungskosten);
+
     // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
-    const gmbhSteuer = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * effGmbhSteuerGesamt
-      : 0;
     const gmbhSteuerKst = gewinnNachBetriebsausgaben > 0
       ? gewinnNachBetriebsausgaben * effKstGesamt
       : 0;
-    const gmbhSteuerGewSt = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * effGewerbesteuer
+    const gewStBemessungsgrundlage = gewinnNachBetriebsausgaben + hinzurechnung;
+    const gmbhSteuerGewSt = gewStBemessungsgrundlage > 0
+      ? gewStBemessungsgrundlage * effGewerbesteuer
       : 0;
+    const gmbhSteuer = gmbhSteuerKst + gmbhSteuerGewSt;
 
     // Tax on realized ETF gain due to selling
     const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
