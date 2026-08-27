@@ -32,6 +32,52 @@ export const DEFAULT_KOERPERSCHAFTSTEUER_SATZ = 15;
 export const DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ = 5.5;
 export const DEFAULT_GEWERBESTEUER_SATZ = 14;
 
+/**
+ * Calculates loss carryforward utilization and remaining loss carryforward balance
+ * according to German tax law (§ 10d EStG / § 8 Abs. 1 KStG).
+ *
+ * Minimum taxation rule (Mindestbesteuerung):
+ * - Up to 1,000,000 €: offset 100% of profit.
+ * - Exceeding 1,000,000 €: offset up to 60% of the profit exceeding 1,000,000 €.
+ */
+export function berechneVerlustvortragAnrechnung(
+  gewinnVorVerlustvortrag: number,
+  aktuellerVerlustvortrag: number
+): {
+  versteuerterGewinn: number;
+  verlustVortragGenutzt: number;
+  neuerVerlustvortrag: number;
+} {
+  if (gewinnVorVerlustvortrag <= 0) {
+    return {
+      versteuerterGewinn: 0,
+      verlustVortragGenutzt: 0,
+      neuerVerlustvortrag: aktuellerVerlustvortrag + Math.abs(gewinnVorVerlustvortrag),
+    };
+  }
+
+  if (aktuellerVerlustvortrag <= 0) {
+    return {
+      versteuerterGewinn: gewinnVorVerlustvortrag,
+      verlustVortragGenutzt: 0,
+      neuerVerlustvortrag: 0,
+    };
+  }
+
+  const maxAnrechenbar = gewinnVorVerlustvortrag <= 1_000_000
+    ? Math.min(aktuellerVerlustvortrag, gewinnVorVerlustvortrag)
+    : Math.min(aktuellerVerlustvortrag, 1_000_000 + 0.6 * (gewinnVorVerlustvortrag - 1_000_000));
+
+  const versteuerterGewinn = Math.max(0, gewinnVorVerlustvortrag - maxAnrechenbar);
+  const neuerVerlustvortrag = Math.max(0, aktuellerVerlustvortrag - maxAnrechenbar);
+
+  return {
+    versteuerterGewinn,
+    verlustVortragGenutzt: maxAnrechenbar,
+    neuerVerlustvortrag,
+  };
+}
+
 /** Derive the effective GmbH total tax rate from configurable inputs (all in %). */
 export function berechneGmbhSteuerRaten(
   koerperschaftsteuerSatz: number,
@@ -851,6 +897,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     etfLots = fuegeEtfLotHinzu(etfLots, "stillerGesellschafter", stillerGesellschafterEinlage);
   }
   let cashReserve = 0;
+  let verlustvortrag = 0;
   let offenesDarlehen = Math.max(0, state.darlehen.betrag);
   // For endfällig loans, interest is deferred to end and NOT deducted annually.
   // For regular loans, interest is paid (and deductible) each year.
@@ -977,8 +1024,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
       const gewinnNachBetriebsausgabenIter =
         simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
-      const gmbhSteuerIter = gewinnNachBetriebsausgabenIter > 0
-        ? gewinnNachBetriebsausgabenIter * effGmbhSteuerGesamt
+      const { versteuerterGewinn: versteuerterGewinnIter } =
+        berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
+      const gmbhSteuerIter = versteuerterGewinnIter > 0
+        ? versteuerterGewinnIter * effGmbhSteuerGesamt
         : 0;
       const benoetigterVerkauf = Math.min(
         etfWertNachWachstum,
@@ -1003,15 +1052,22 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const gewinnNachBetriebsausgaben =
       simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
 
-    // GmbH taxes (KSt + GewSt) on positive profit, paid to Finanzamt
-    const gmbhSteuer = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * effGmbhSteuerGesamt
+    const {
+      versteuerterGewinn,
+      verlustVortragGenutzt,
+      neuerVerlustvortrag,
+    } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgaben, verlustvortrag);
+    verlustvortrag = neuerVerlustvortrag;
+
+    // GmbH taxes (KSt + GewSt) on positive taxable profit after loss carryforward, paid to Finanzamt
+    const gmbhSteuer = versteuerterGewinn > 0
+      ? versteuerterGewinn * effGmbhSteuerGesamt
       : 0;
-    const gmbhSteuerKst = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * effKstGesamt
+    const gmbhSteuerKst = versteuerterGewinn > 0
+      ? versteuerterGewinn * effKstGesamt
       : 0;
-    const gmbhSteuerGewSt = gewinnNachBetriebsausgaben > 0
-      ? gewinnNachBetriebsausgaben * effGewerbesteuer
+    const gmbhSteuerGewSt = versteuerterGewinn > 0
+      ? versteuerterGewinn * effGewerbesteuer
       : 0;
 
     // Tax on realized ETF gain due to selling
@@ -1147,6 +1203,9 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         jaehrlicheZinsen,
         aufgelaufeneZinsen: state.darlehen.endfaellig ? aufgelaufeneZinsen : 0,
         gewinnNachBetriebsausgaben,
+        steuerpflichtigerGewinn: versteuerterGewinn,
+        verlustvortrag,
+        verlustVortragGenutzt,
         vorabpauschaleVorAnrechnung: vorabpauschaleBrutto,
         vorabpauschale,
         vorabpauschalesteuer,

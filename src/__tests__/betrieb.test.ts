@@ -16,6 +16,7 @@ import {
   berechneBetriebsErgebnisse,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
+  berechneVerlustvortragAnrechnung,
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
@@ -30,6 +31,38 @@ import {
   berechneSoliBetrieb,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
+
+describe("berechneVerlustvortragAnrechnung", () => {
+  it("accumulates loss when profit is negative", () => {
+    const res = berechneVerlustvortragAnrechnung(-10000, 5000);
+    expect(res.versteuerterGewinn).toBe(0);
+    expect(res.verlustVortragGenutzt).toBe(0);
+    expect(res.neuerVerlustvortrag).toBe(15000);
+  });
+
+  it("fully offsets profit when loss carryforward is larger than profit below 1 Mio", () => {
+    const res = berechneVerlustvortragAnrechnung(20000, 30000);
+    expect(res.versteuerterGewinn).toBe(0);
+    expect(res.verlustVortragGenutzt).toBe(20000);
+    expect(res.neuerVerlustvortrag).toBe(10000);
+  });
+
+  it("partially offsets profit when loss carryforward is smaller than profit below 1 Mio", () => {
+    const res = berechneVerlustvortragAnrechnung(50000, 20000);
+    expect(res.versteuerterGewinn).toBe(30000);
+    expect(res.verlustVortragGenutzt).toBe(20000);
+    expect(res.neuerVerlustvortrag).toBe(0);
+  });
+
+  it("applies Mindestbesteuerung for profits exceeding 1 Mio €", () => {
+    // Profit = 2,000,000 €; Loss carryforward = 2,000,000 €
+    // Max offset = 1,000,000 + 0.6 * (2,000,000 - 1,000,000) = 1,600,000 €
+    const res = berechneVerlustvortragAnrechnung(2000000, 2000000);
+    expect(res.verlustVortragGenutzt).toBe(1600000);
+    expect(res.versteuerterGewinn).toBe(400000);
+    expect(res.neuerVerlustvortrag).toBe(400000);
+  });
+});
 
 describe("berechneEtfWachstum", () => {
   it("calculates 7% growth correctly", () => {
@@ -492,7 +525,7 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results).toHaveLength(0);
   });
 
-  it("GmbH tax is 0 when operating at a loss", () => {
+  it("GmbH tax is 0 when operating at a loss and loss carryforward is accumulated", () => {
     // Very high costs to ensure a loss
     const state: BetriebState = {
       ...defaultState,
@@ -500,6 +533,36 @@ describe("berechneBetriebsErgebnisse", () => {
     };
     const results = berechneBetriebsErgebnisse(state);
     expect(results[0].details.gmbhSteuer).toBe(0);
+    expect(results[0].details.verlustvortrag).toBeGreaterThan(0);
+  });
+
+  it("carries forward losses from year 1 (e.g. initial phone purchase) to reduce GmbH tax in year 2", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      startkapital: 0,
+      etfRendite: 0,
+      laufzeitJahre: 2,
+      simulierterGewinn: 2000,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: true, anschaffungskosten: 3000, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+      geschaeftsfuehrergehalt: 0,
+    };
+
+    const results = berechneBetriebsErgebnisse(state);
+    // Year 1: profit 2000 - phone 3000 = -1000 loss
+    expect(results[0].gewinn).toBe(-1000);
+    expect(results[0].details.gmbhSteuer).toBe(0);
+    expect(results[0].details.verlustvortrag).toBe(1000);
+
+    // Year 2: profit 2000 - phone 0 = 2000 profit
+    // Loss offset = 1000 -> Taxable profit = 1000
+    expect(results[1].gewinn).toBe(2000);
+    expect(results[1].details.verlustVortragGenutzt).toBe(1000);
+    expect(results[1].details.verlustvortrag).toBe(0);
+    expect(results[1].details.steuerpflichtigerGewinn).toBe(1000);
+    expect(results[1].details.gmbhSteuer).toBeCloseTo(1000 * GMBH_STEUER_GESAMT);
   });
 
   it("steuer includes GmbH tax, Vorabpauschale tax and ETF sale tax", () => {

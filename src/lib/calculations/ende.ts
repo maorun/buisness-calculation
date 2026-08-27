@@ -8,6 +8,7 @@ import {
   berechneHandyNettoKostenProJahr,
   berechneBenefitsKosten,
   berechneKonsumNutzenwertProJahr,
+  berechneVerlustvortragAnrechnung,
   DEFAULT_FIRMENHANDY_CONFIG,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
@@ -303,6 +304,7 @@ export function berechneEndeErgebnisse(
   let privatvermoegen = 0;
   let firmenEtfVermoegen = Math.max(0, etfWertAnfang) + stammkapitalErhoehungEtf;
   let reinvestiertesDarlehen = 0;
+  let verlustvortrag = 0;
   // Tracks the sequential year within the Ende phase for the 3-year phone replacement cycle.
   let endePhaseJahr = 1;
   // Tracks the cumulative benefit consumption value (Tankgutschein, Essenszuschuss, Firmenhandy)
@@ -353,9 +355,16 @@ export function berechneEndeErgebnisse(
     // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
     // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
     const gewinnNachBetriebsausgabenB1 = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
-    const gmbhSteuerB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gmbhSteuerGesamt : 0;
-    const gmbhSteuerKstB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * kstGesamt : 0;
-    const gmbhSteuerGewStB1 = gewinnNachBetriebsausgabenB1 > 0 ? gewinnNachBetriebsausgabenB1 * gewerbesteuer : 0;
+    const {
+      versteuerterGewinn: versteuerterGewinnB1,
+      verlustVortragGenutzt: verlustVortragGenutztB1,
+      neuerVerlustvortrag: neuerVerlustvortragB1,
+    } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenB1, verlustvortrag);
+    verlustvortrag = neuerVerlustvortragB1;
+
+    const gmbhSteuerB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gmbhSteuerGesamt : 0;
+    const gmbhSteuerKstB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * kstGesamt : 0;
+    const gmbhSteuerGewStB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gewerbesteuer : 0;
     endePhaseJahr++;
 
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
@@ -472,7 +481,10 @@ export function berechneEndeErgebnisse(
         gmbhSteuer: gmbhSteuerB1,
         gmbhSteuerKst: gmbhSteuerKstB1,
         gmbhSteuerGewSt: gmbhSteuerGewStB1,
-        steuerpflichtigerGewinn: Math.max(0, gewinnNachBetriebsausgabenB1),
+        gewinnNachBetriebsausgaben: gewinnNachBetriebsausgabenB1,
+        steuerpflichtigerGewinn: versteuerterGewinnB1,
+        verlustvortrag,
+        verlustVortragGenutzt: verlustVortragGenutztB1,
         konsumNutzenwert: konsumNutzenwertB1,
         kumulierterKonsumwert,
       },
@@ -658,10 +670,17 @@ export function berechneEndeErgebnisse(
     // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
     // bruttoGehalt is a deductible Betriebsausgabe (§ 4 EStG) – must be subtracted from taxable
     // profit, consistent with the Betrieb phase treatment in betrieb.ts.
-    const steuerpflichtigerGewinn = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
-    const gmbhSteuer = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gmbhSteuerGesamt : 0;
-    const gmbhSteuerKst = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * kstGesamt : 0;
-    const gmbhSteuerGewSt = steuerpflichtigerGewinn > 0 ? steuerpflichtigerGewinn * gewerbesteuer : 0;
+    const gewinnNachBetriebsausgaben = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
+    const {
+      versteuerterGewinn,
+      verlustVortragGenutzt,
+      neuerVerlustvortrag,
+    } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgaben, verlustvortrag);
+    verlustvortrag = neuerVerlustvortrag;
+
+    const gmbhSteuer = versteuerterGewinn > 0 ? versteuerterGewinn * gmbhSteuerGesamt : 0;
+    const gmbhSteuerKst = versteuerterGewinn > 0 ? versteuerterGewinn * kstGesamt : 0;
+    const gmbhSteuerGewSt = versteuerterGewinn > 0 ? versteuerterGewinn * gewerbesteuer : 0;
 
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
     const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + privatDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
@@ -728,7 +747,10 @@ export function berechneEndeErgebnisse(
         gmbhSteuer,
         gmbhSteuerKst,
         gmbhSteuerGewSt,
-        steuerpflichtigerGewinn: Math.max(0, steuerpflichtigerGewinn),
+        gewinnNachBetriebsausgaben,
+        steuerpflichtigerGewinn: versteuerterGewinn,
+        verlustvortrag,
+        verlustVortragGenutzt,
         konsumNutzenwert,
         kumulierterKonsumwert,
       },
