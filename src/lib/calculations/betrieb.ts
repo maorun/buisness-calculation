@@ -53,7 +53,7 @@ export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
 // The UI uses it as the default starting value, but it is intentionally not
 // enforced as a hard cap so the calculator can adapt when that threshold changes.
 export const DEFAULT_ESSENSZUSCHUSS_PRO_TAG = 7.67;
-export const DEFAULT_KAPITALERTRAGSTEUER_SATZ = 15;
+export const DEFAULT_KAPITALERTRAGSTEUER_SATZ = 26.375;
 export const MAX_ESSENSZUSCHUSS_TAGE_PRO_JAHR = 366;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;

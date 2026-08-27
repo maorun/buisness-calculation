@@ -451,7 +451,7 @@ export function BetriebSection() {
               })
             }
             suffix="%"
-            hint="Steuert Vorabpauschale- und ETF-Verkaufssteuer im Privatvergleich (Default: 15 %)."
+            hint="Steuert Vorabpauschale- und ETF-Verkaufssteuer im Privatvergleich (Default: 26,375 %)."
           />
           <InputField
             label="Körperschaftsteuer GmbH (%)"
