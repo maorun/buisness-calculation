@@ -6,6 +6,7 @@ import {
   berechneGmbhSteuerRaten,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_KAPITALERTRAGSTEUER_SATZ,
   DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
   DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
   DEFAULT_GEWERBESTEUER_SATZ,
@@ -45,7 +46,7 @@ const initialState: CalculatorState = {
   betrieb: {
     startkapital: 12500,
     jaehrlicherCashZuschuss: 2400,
-    kapitalertragsteuerSatz: 15,
+    kapitalertragsteuerSatz: DEFAULT_KAPITALERTRAGSTEUER_SATZ,
     koerperschaftsteuerSatz: 15,
     solidaritaetszuschlagSatz: 5.5,
     gewerbesteuerSatz: 14,

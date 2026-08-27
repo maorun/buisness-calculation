@@ -1143,7 +1143,7 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(privat.kumulierteVorabpauschalesteuer).toBeGreaterThan(gmbhVorabsteuer);
   });
 
-  it("uses 15% capital gains tax as default when no private tax rate is provided", () => {
+  it("uses 26.375% capital gains tax as default when no private tax rate is provided", () => {
     const stateOhneSatz: BetriebState = {
       ...basisState,
       startkapital: 100000,
