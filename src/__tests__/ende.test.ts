@@ -96,6 +96,14 @@ describe("berechneGewinnausschuettungsteuer", () => {
     expect(methode).toMatch(/Abgeltungssteuer|Teileinkünfteverfahren/);
   });
 
+  it("chooses Teileinkünfteverfahren for low personal tax rate", () => {
+    // At 20% personal rate → Teileinkünfte = 10000 * 0.6 * 0.20 = 1200 + Soli (0 if below limit)
+    // Abgeltungssteuer = 2637.5 → Teileinkünfteverfahren is significantly cheaper
+    const { methode, steuer } = berechneGewinnausschuettungsteuer(10000, 0.20);
+    expect(methode).toBe("Teileinkünfteverfahren");
+    expect(steuer).toBeCloseTo(1200, 0);
+  });
+
   it("chooses Teileinkünfteverfahren for very high personal tax rate", () => {
     // At 45% personal rate → Teileinkünfte = 10000 * 0.6 * 0.45 = 2700, Abgeltungsteuer = 2637.5
     // Abgeltungsteuer should be cheaper
@@ -111,7 +119,7 @@ describe("berechneGewinnausschuettungsteuer", () => {
 
   it("Abgeltungssteuer is approx 26.375% of gross", () => {
     const ausschuettung = 100000;
-    const { steuer, methode } = berechneGewinnausschuettungsteuer(ausschuettung, 0.1); // low personal rate → Abgeltungsteuer
+    const { steuer, methode } = berechneGewinnausschuettungsteuer(ausschuettung, 0.45);
     if (methode === "Abgeltungssteuer") {
       expect(steuer).toBeCloseTo(100000 * 0.25 * 1.055, 0);
     }
@@ -125,6 +133,12 @@ describe("berechneNettoAusschuettung", () => {
     expect(kstSteuer).toBeCloseTo(15825);
     const ausschuettung = 100000 - kstSteuer;
     expect(nettoAusschuettung).toBeCloseTo(ausschuettung - ausschuettungsteuer);
+  });
+
+  it("uses custom personal tax rate for dividend taxation", () => {
+    const { ausschuettungsteuer: steuerHigh } = berechneNettoAusschuettung(100000, 0.15825, undefined, 0.45);
+    const { ausschuettungsteuer: steuerLow } = berechneNettoAusschuettung(100000, 0.15825, undefined, 0.15);
+    expect(steuerLow).toBeLessThan(steuerHigh);
   });
 
   it("returns 0 netto for 0 input", () => {
@@ -390,6 +404,14 @@ describe("berechneEndeErgebnisse", () => {
     const state = { ...defaultState, gewinnausschuettung: 0 };
     const results = berechneEndeErgebnisse(state);
     expect(results[0].details.nettoAusschuettung).toBe(0);
+  });
+
+  it("respects custom persoenlicherSteuersatz in berechneEndeErgebnisse", () => {
+    const stateHigh = { ...defaultState, gewinnausschuettung: 50000, persoenlicherSteuersatz: 45 };
+    const stateLow = { ...defaultState, gewinnausschuettung: 50000, persoenlicherSteuersatz: 15 };
+    const resultsHigh = berechneEndeErgebnisse(stateHigh);
+    const resultsLow = berechneEndeErgebnisse(stateLow);
+    expect(resultsLow[0].details.ausschuettungsteuer).toBeLessThan(resultsHigh[0].details.ausschuettungsteuer);
   });
 
   it("handles laufzeitJahre = 0", () => {

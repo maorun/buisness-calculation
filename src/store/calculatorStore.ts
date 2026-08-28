@@ -80,6 +80,7 @@ const initialState: CalculatorState = {
   ende: {
     geschaeftsfuehrergehalt: 0,
     simulierterGewinn: 0,
+    persoenlicherSteuersatz: 42,
     stammkapitalErhoehungEtf: 0,
     gehaltBereich1: 0,
     teiltilgungBereich1: 0,
