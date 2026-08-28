@@ -55,9 +55,12 @@ export function berechneEinkommensteuer(zvE: number): number {
  * but still applies to higher incomes).
  */
 export function berechneSoli(einkommensteuer: number): number {
-  // Soli abolished below ~16,956 € ESt (2024)
+  // Soli abolished below ~16,956 € ESt (2024).
+  // Milderungszone (§ 3 Abs. 4 SolzG): Soli is capped at 11.9% of the amount exceeding 16,956 €.
   if (einkommensteuer <= 16956) return 0;
-  return Math.floor(einkommensteuer * 0.055);
+  const volleSoli = einkommensteuer * 0.055;
+  const milderungsSoli = (einkommensteuer - 16956) * 0.119;
+  return Math.floor(Math.min(volleSoli, milderungsSoli));
 }
 
 /**

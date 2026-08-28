@@ -56,9 +56,16 @@ describe("berechneSoli", () => {
     expect(berechneSoli(16956)).toBe(0);
   });
 
-  it("calculates 5.5% for high income tax", () => {
-    const est = 30000;
-    expect(berechneSoli(est)).toBeCloseTo(Math.floor(est * 0.055));
+  it("calculates Soli using Milderungszone (11.9% of excess over 16956 €)", () => {
+    const est = 20000;
+    // (20000 - 16956) * 0.119 = 3044 * 0.119 = 362.236 → Math.floor = 362
+    expect(berechneSoli(est)).toBe(362);
+  });
+
+  it("calculates 5.5% for high income tax above Milderungszone", () => {
+    const est = 40000;
+    // 40000 * 0.055 = 2200
+    expect(berechneSoli(est)).toBe(2200);
   });
 });
 
