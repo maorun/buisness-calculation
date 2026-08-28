@@ -20,6 +20,7 @@ import {
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
+  TEILFREISTELLUNG_AKTIEN_PRIVAT,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
   HANDY_ANSCHAFFUNGSKOSTEN,
@@ -150,6 +151,20 @@ describe("berechneVorabpauschalesteuer", () => {
     const expectedTax = taxableAmount * GMBH_STEUER_GESAMT;
     expect(berechneVorabpauschalesteuer(vp, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT)).toBeCloseTo(expectedTax);
   });
+
+  it("subtracts Sparerpauschbetrag from taxable amount", () => {
+    const vp = 2000; // taxable after 30% Teilfreistellung: 1400 €
+    const sparerpauschbetrag = 1000;
+    const expectedTaxable = 1400 - 1000; // 400 €
+    const expectedTax = expectedTaxable * ABGELTUNGSSTEUER_GESAMT;
+    expect(berechneVorabpauschalesteuer(vp, TEILFREISTELLUNG_AKTIEN_PRIVAT, ABGELTUNGSSTEUER_GESAMT, sparerpauschbetrag)).toBeCloseTo(expectedTax);
+  });
+
+  it("returns 0 tax when Sparerpauschbetrag covers entire taxable amount", () => {
+    const vp = 1000; // taxable after 30% Teilfreistellung: 700 €
+    const sparerpauschbetrag = 1000;
+    expect(berechneVorabpauschalesteuer(vp, TEILFREISTELLUNG_AKTIEN_PRIVAT, ABGELTUNGSSTEUER_GESAMT, sparerpauschbetrag)).toBe(0);
+  });
 });
 
 describe("berechneEtfVerkaufssteuer", () => {
@@ -170,6 +185,14 @@ describe("berechneEtfVerkaufssteuer", () => {
   it("returns 0 for non-positive realized gain", () => {
     expect(berechneEtfVerkaufssteuer(0)).toBe(0);
     expect(berechneEtfVerkaufssteuer(-100)).toBe(0);
+  });
+
+  it("subtracts Sparerpauschbetrag from taxable realized gain", () => {
+    const gewinn = 2000; // taxable after 30% Teilfreistellung: 1400 €
+    const sparerpauschbetrag = 1000;
+    const expectedTaxable = 1400 - 1000; // 400 €
+    const expectedTax = expectedTaxable * ABGELTUNGSSTEUER_GESAMT;
+    expect(berechneEtfVerkaufssteuer(gewinn, TEILFREISTELLUNG_AKTIEN_PRIVAT, ABGELTUNGSSTEUER_GESAMT, sparerpauschbetrag)).toBeCloseTo(expectedTax);
   });
 });
 
@@ -1213,6 +1236,7 @@ describe("berechnePrivatVergleichErgebnis", () => {
       darlehen: { ...basisState.darlehen, betrag: 0, zinssatz: 0, monatlicherZuschuss: 0 },
       etfRendite: 7,
       laufzeitJahre: 1,
+      sparerpauschbetrag: 0,
     };
 
     const privat = berechnePrivatVergleichErgebnis(state);
@@ -1265,6 +1289,24 @@ describe("berechnePrivatVergleichErgebnis", () => {
 
     expect(steuer15.kumulierteSteuern).toBeGreaterThan(0);
     expect(steuer30.kumulierteSteuern).toBeGreaterThan(steuer15.kumulierteSteuern);
+  });
+
+  it("reduces private tax burden when Sparerpauschbetrag is applied", () => {
+    const state: BetriebState = {
+      ...basisState,
+      startkapital: 100000,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      etfRendite: 7,
+      laufzeitJahre: 1,
+      geschaeftsfuehrergehalt: 10000,
+    };
+
+    const mitFreibetrag = berechnePrivatVergleichErgebnis({ ...state, sparerpauschbetrag: 1000 });
+    const ohneFreibetrag = berechnePrivatVergleichErgebnis({ ...state, sparerpauschbetrag: 0 });
+    const doppeltFreibetrag = berechnePrivatVergleichErgebnis({ ...state, sparerpauschbetrag: 2000 });
+
+    expect(ohneFreibetrag.kumulierteSteuern).toBeGreaterThan(mitFreibetrag.kumulierteSteuern);
+    expect(mitFreibetrag.kumulierteSteuern).toBeGreaterThan(doppeltFreibetrag.kumulierteSteuern);
   });
 });
 

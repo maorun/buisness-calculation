@@ -101,6 +101,7 @@ export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
 // enforced as a hard cap so the calculator can adapt when that threshold changes.
 export const DEFAULT_ESSENSZUSCHUSS_PRO_TAG = 7.67;
 export const DEFAULT_KAPITALERTRAGSTEUER_SATZ = 26.375;
+export const DEFAULT_SPARERPAUSCHBETRAG = 1000;
 export const MAX_ESSENSZUSCHUSS_TAGE_PRO_JAHR = 366;
 export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
@@ -325,9 +326,10 @@ export function berechneVorabpauschaleNachEtfVerkauf(
 export function berechneVorabpauschalesteuer(
   vorabpauschale: number,
   teilfreistellung: number = TEILFREISTELLUNG_AKTIEN,
-  steuersatz: number = ABGELTUNGSSTEUER_GESAMT
+  steuersatz: number = ABGELTUNGSSTEUER_GESAMT,
+  sparerpauschbetrag: number = 0
 ): number {
-  const steuerpflichtig = vorabpauschale * (1 - teilfreistellung);
+  const steuerpflichtig = Math.max(0, vorabpauschale * (1 - teilfreistellung) - Math.max(0, sparerpauschbetrag));
   return steuerpflichtig * steuersatz;
 }
 
@@ -338,12 +340,13 @@ export function berechneVorabpauschalesteuer(
 export function berechneEtfVerkaufssteuer(
   realisierterEtfErtrag: number,
   teilfreistellung: number = TEILFREISTELLUNG_AKTIEN_GMBH,
-  steuersatz: number = GMBH_STEUER_GESAMT
+  steuersatz: number = GMBH_STEUER_GESAMT,
+  sparerpauschbetrag: number = 0
 ): number {
   if (realisierterEtfErtrag <= 0) {
     return 0;
   }
-  const steuerpflichtig = realisierterEtfErtrag * (1 - teilfreistellung);
+  const steuerpflichtig = Math.max(0, realisierterEtfErtrag * (1 - teilfreistellung) - Math.max(0, sparerpauschbetrag));
   return steuerpflichtig * steuersatz;
 }
 
@@ -741,20 +744,26 @@ function simulierePrivatVergleich(
     }
     kumulierteEntnahmen += entnahmenVorSteuern;
 
+    const jahresSparerpauschbetrag = Math.max(0, state.sparerpauschbetrag ?? DEFAULT_SPARERPAUSCHBETRAG);
     const sortierteLotIndizes = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstum);
     let etfVerkauf = Math.min(etfWertNachWachstum, Math.max(0, entnahmenVorSteuern));
     for (let i = 0; i < MAX_SALE_CONVERGENCE_ITERATIONS; i++) {
       const verkaufIteration = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
       const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, verkaufIteration.etfGewinn);
+      const steuerpflichtigeVorabpauschale = vorabpauschale * (1 - TEILFREISTELLUNG_AKTIEN_PRIVAT);
+      const genutzterFreibetragVp = Math.min(jahresSparerpauschbetrag, steuerpflichtigeVorabpauschale);
       const vorabpauschalesteuer = berechneVorabpauschalesteuer(
         vorabpauschale,
         TEILFREISTELLUNG_AKTIEN_PRIVAT,
-        kapitalertragsteuerRate
+        kapitalertragsteuerRate,
+        genutzterFreibetragVp
       );
+      const restSparerpauschbetrag = Math.max(0, jahresSparerpauschbetrag - genutzterFreibetragVp);
       const etfVerkaufssteuer = berechneEtfVerkaufssteuer(
         verkaufIteration.etfGewinn,
         TEILFREISTELLUNG_AKTIEN_PRIVAT,
-        kapitalertragsteuerRate
+        kapitalertragsteuerRate,
+        restSparerpauschbetrag
       );
       const benoetigterVerkauf = Math.min(
         etfWertNachWachstum,
@@ -769,15 +778,20 @@ function simulierePrivatVergleich(
 
     const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
     const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, verkauf.etfGewinn);
+    const steuerpflichtigeVorabpauschale = vorabpauschale * (1 - TEILFREISTELLUNG_AKTIEN_PRIVAT);
+    const genutzterFreibetragVp = Math.min(jahresSparerpauschbetrag, steuerpflichtigeVorabpauschale);
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(
       vorabpauschale,
       TEILFREISTELLUNG_AKTIEN_PRIVAT,
-      kapitalertragsteuerRate
+      kapitalertragsteuerRate,
+      genutzterFreibetragVp
     );
+    const restSparerpauschbetrag = Math.max(0, jahresSparerpauschbetrag - genutzterFreibetragVp);
     const etfVerkaufssteuer = berechneEtfVerkaufssteuer(
       verkauf.etfGewinn,
       TEILFREISTELLUNG_AKTIEN_PRIVAT,
-      kapitalertragsteuerRate
+      kapitalertragsteuerRate,
+      restSparerpauschbetrag
     );
 
     kumulierterEtfVerkauf += verkauf.etfVerkauf;
