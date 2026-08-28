@@ -161,6 +161,8 @@ export interface EndeState {
   geschaeftsfuehrergehalt: number; // annual gross salary for Bereich 2 (regular payout phase)
   /** Annual simulated operating profit during Ende phase (before Betriebsausgaben and benefits). */
   simulierterGewinn?: number;
+  /** Personal marginal tax rate of shareholder for dividend taxation (in %, e.g. 42). Default: 42. */
+  persoenlicherSteuersatz?: number;
   /** Per-benefit active overrides for the Ende phase (independent from Betrieb toggles). */
   benefitAktiv?: EndeBenefitAktivConfig;
   /** One-time equity increase invested into ETF at the start of the Ende phase. */

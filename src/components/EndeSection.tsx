@@ -97,7 +97,8 @@ export function EndeSection() {
   const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(endeBenefits);
 
   const nettoGehalt = berechneNettoGehalt(ende.geschaeftsfuehrergehalt);
-  const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung);
+  const persoenlicherSteuersatz = (ende.persoenlicherSteuersatz ?? 42) / 100;
+  const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung, persoenlicherSteuersatz);
   const benefitsSteuerersparnis = berechneBenefitsSteuerersparnis(endeBenefits);
 
   // Split ergebnisse for display
@@ -700,13 +701,22 @@ export function EndeSection() {
         {/* Profit distribution */}
         <div className="mb-4">
           <h4 className="font-semibold text-gray-600 mb-3">Gewinnausschüttung</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <InputField
               label="Jährliche Ausschüttung (€)"
               value={ende.gewinnausschuettung}
               onChange={(v) => setEnde({ gewinnausschuettung: parseFloat(v) || 0 })}
               suffix="€/Jahr"
               hint="Gewinn nach GmbH-Steuern"
+            />
+            <InputField
+              label="Persönlicher Steuersatz (%)"
+              value={ende.persoenlicherSteuersatz ?? 42}
+              onChange={(v) => setEnde({ persoenlicherSteuersatz: Math.max(0, Math.min(100, parseFloat(v) || 0)) })}
+              suffix="%"
+              hint="Relevant für das Teileinkünfteverfahren (Default 42 %)"
+              min={0}
+              max={100}
             />
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
               <p className="text-xs text-purple-600 font-medium">Ausschüttungsteuer ({methode})</p>

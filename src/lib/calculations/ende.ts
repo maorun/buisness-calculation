@@ -107,11 +107,12 @@ export function berechneGewinnausschuettungsteuer(
 export function berechneNettoAusschuettung(
   gewinnVorKSt: number,
   kstRate: number = 0.15825,
-  steuerjahr?: Steuerjahr
+  steuerjahr?: Steuerjahr,
+  persönlicherSteuersatz: number = 0.42
 ): { nettoAusschuettung: number; kstSteuer: number; ausschuettungsteuer: number } {
   const kstSteuer = gewinnVorKSt * kstRate;
   const ausschuettung = gewinnVorKSt - kstSteuer;
-  const { steuer: ausschuettungsteuer } = berechneGewinnausschuettungsteuer(ausschuettung, 0.42, steuerjahr);
+  const { steuer: ausschuettungsteuer } = berechneGewinnausschuettungsteuer(ausschuettung, persönlicherSteuersatz, steuerjahr);
   const nettoAusschuettung = ausschuettung - ausschuettungsteuer;
   return { nettoAusschuettung, kstSteuer, ausschuettungsteuer };
 }
@@ -563,8 +564,9 @@ export function berechneEndeErgebnisse(
     let darlehenZinsenNetto = darlehenZinsen - darlehenZinsenSteuer;
     let privatDarlehenZinsenNetto = privatDarlehenZinsen - privatDarlehenZinsenSteuer;
 
+    const persönlicherSteuersatz = (state.persoenlicherSteuersatz ?? 42) / 100;
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
-      berechneNettoAusschuettung(state.gewinnausschuettung, 0.15825, steuerjahr);
+      berechneNettoAusschuettung(state.gewinnausschuettung, 0.15825, steuerjahr, persönlicherSteuersatz);
     const zielnetto = endeDarlehenEndfaelligAktiv ? 0 : (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2);
     let beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
     let gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
