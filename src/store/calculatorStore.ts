@@ -44,6 +44,7 @@ const initialState: CalculatorState = {
     kosten: defaultGruendungskosten,
   },
   betrieb: {
+    steuerjahr: 2025,
     startkapital: 12500,
     jaehrlicherCashZuschuss: 2400,
     kapitalertragsteuerSatz: DEFAULT_KAPITALERTRAGSTEUER_SATZ,

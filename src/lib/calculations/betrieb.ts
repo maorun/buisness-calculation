@@ -1,6 +1,7 @@
 import { BetriebState, BenefitConfig, DarlehenConfig, JahresErgebnis, KostenPosition, FirmenhandyConfig, StillerGesellschafterConfig, InvestitionsPosition, InvestitionsErgebnis } from "../types";
+import { Steuerjahr, getSteuerjahrParameter, DEFAULT_STEUERJAHR } from "../parameters";
 
-// 2024 Basiszins for Vorabpauschale calculation
+// 2024 Basiszins for Vorabpauschale calculation (retained for backward compatibility)
 export const BASISZINS_2024 = 0.0229;
 
 // German capital gains tax (Abgeltungssteuer) + Solidaritätszuschlag
@@ -105,21 +106,6 @@ export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
 export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
 export const MONATE_PRO_JAHR = 12;
 export const UMSATZSTEUER_SATZ = 0.19;
-// Einkommensteuer-Parameter 2024 (vereinfachte Näherung wie in Ende-Berechnung).
-const GRUNDFREIBETRAG_2024 = 11604;
-const EINKOMMENSTEUER_ZONE_1_MAX = 17005;
-const EINKOMMENSTEUER_ZONE_2_MAX = 66760;
-const EINKOMMENSTEUER_SPITZENSTEUER_START = 277825;
-const EINKOMMENSTEUER_ZONE_1_A = 922.98;
-const EINKOMMENSTEUER_ZONE_1_B = 1400;
-const EINKOMMENSTEUER_ZONE_2_A = 181.19;
-const EINKOMMENSTEUER_ZONE_2_B = 2397;
-const EINKOMMENSTEUER_ZONE_2_C = 1025.38;
-const EINKOMMENSTEUER_SATZ_42 = 0.42;
-const EINKOMMENSTEUER_OFFSET_42 = 10602.13;
-const EINKOMMENSTEUER_SATZ_45 = 0.45;
-const EINKOMMENSTEUER_OFFSET_45 = 17374.99;
-const SOLI_FREIGRENZE_EINKOMMENSTEUER_2024 = 16956;
 export const SOLI_MILDERUNG_FAKTOR = 0.119;
 
 /** Default configuration for the company mobile-phone programme. */
@@ -168,56 +154,60 @@ export function berechneStillenGesellschafterKosten(
   return zinsen + gewinnbeteiligung;
 }
 
-export function berechneEinkommensteuerBetrieb(zvE: number): number {
-  if (zvE <= GRUNDFREIBETRAG_2024) return 0;
+export function berechneEinkommensteuerBetrieb(zvE: number, steuerjahr?: Steuerjahr): number {
+  const params = getSteuerjahrParameter(steuerjahr);
+  if (zvE <= params.grundfreibetrag) return 0;
 
-  if (zvE <= EINKOMMENSTEUER_ZONE_1_MAX) {
-    const y = (zvE - GRUNDFREIBETRAG_2024) / 10000;
-    return Math.floor((EINKOMMENSTEUER_ZONE_1_A * y + EINKOMMENSTEUER_ZONE_1_B) * y);
+  if (zvE <= params.zone1Max) {
+    const y = (zvE - params.grundfreibetrag) / 10000;
+    return Math.floor((params.zone1A * y + params.zone1B) * y);
   }
 
-  if (zvE <= EINKOMMENSTEUER_ZONE_2_MAX) {
-    const z = (zvE - EINKOMMENSTEUER_ZONE_1_MAX) / 10000;
-    return Math.floor((EINKOMMENSTEUER_ZONE_2_A * z + EINKOMMENSTEUER_ZONE_2_B) * z + EINKOMMENSTEUER_ZONE_2_C);
+  if (zvE <= params.zone2Max) {
+    const z = (zvE - params.zone1Max) / 10000;
+    return Math.floor((params.zone2A * z + params.zone2B) * z + params.zone2C);
   }
 
-  if (zvE <= EINKOMMENSTEUER_SPITZENSTEUER_START) {
-    return Math.floor(EINKOMMENSTEUER_SATZ_42 * zvE - EINKOMMENSTEUER_OFFSET_42);
+  if (zvE <= params.spitzensteuerStart) {
+    return Math.floor(0.42 * zvE - params.offset42);
   }
 
-  return Math.floor(EINKOMMENSTEUER_SATZ_45 * zvE - EINKOMMENSTEUER_OFFSET_45);
+  return Math.floor(0.45 * zvE - params.offset45);
 }
 
-export function berechneSoliBetrieb(einkommensteuer: number): number {
-  if (einkommensteuer <= SOLI_FREIGRENZE_EINKOMMENSTEUER_2024) return 0;
+export function berechneSoliBetrieb(einkommensteuer: number, steuerjahr?: Steuerjahr): number {
+  const params = getSteuerjahrParameter(steuerjahr);
+  if (einkommensteuer <= params.soliFreigrenzeEinkommensteuer) return 0;
   const volleSoli = einkommensteuer * SOLI;
-  const milderungsSoli = (einkommensteuer - SOLI_FREIGRENZE_EINKOMMENSTEUER_2024) * SOLI_MILDERUNG_FAKTOR;
+  const milderungsSoli = (einkommensteuer - params.soliFreigrenzeEinkommensteuer) * params.soliMilderungFaktor;
   return Math.floor(Math.min(volleSoli, milderungsSoli));
 }
 
-export function berechneNettoGehaltBetrieb(bruttoGehalt: number): number {
+export function berechneNettoGehaltBetrieb(bruttoGehalt: number, steuerjahr?: Steuerjahr): number {
   // Vereinfachung analog zur Ende-Phase: ohne Sozialversicherungsabzüge.
-  const est = berechneEinkommensteuerBetrieb(bruttoGehalt);
-  const soli = berechneSoliBetrieb(est);
+  const est = berechneEinkommensteuerBetrieb(bruttoGehalt, steuerjahr);
+  const soli = berechneSoliBetrieb(est, steuerjahr);
   return bruttoGehalt - est - soli;
 }
 
 export function berechneDarlehensZinsenSteuerBetrieb(
   zinsen: number,
-  bruttoGehalt: number
+  bruttoGehalt: number,
+  steuerjahr?: Steuerjahr
 ): number {
   if (zinsen <= 0) return 0;
   const gehaltNorm = Math.max(0, bruttoGehalt);
-  const estNurGehalt = berechneEinkommensteuerBetrieb(gehaltNorm);
-  const soliNurGehalt = berechneSoliBetrieb(estNurGehalt);
-  const estKombiniert = berechneEinkommensteuerBetrieb(gehaltNorm + zinsen);
-  const soliKombiniert = berechneSoliBetrieb(estKombiniert);
+  const estNurGehalt = berechneEinkommensteuerBetrieb(gehaltNorm, steuerjahr);
+  const soliNurGehalt = berechneSoliBetrieb(estNurGehalt, steuerjahr);
+  const estKombiniert = berechneEinkommensteuerBetrieb(gehaltNorm + zinsen, steuerjahr);
+  const soliKombiniert = berechneSoliBetrieb(estKombiniert, steuerjahr);
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
 
 function berechneSimulierterGewinnSteuerPrivat(
   simulierterGewinn: number,
-  persoenlicherGrenzsteuersatz?: number
+  persoenlicherGrenzsteuersatz?: number,
+  steuerjahr?: Steuerjahr
 ): { einkommensteuer: number; soli: number } {
   const gewinn = Math.max(0, simulierterGewinn);
   const grenztarif = Math.max(0, Math.min(100, persoenlicherGrenzsteuersatz ?? 0));
@@ -227,8 +217,8 @@ function berechneSimulierterGewinnSteuerPrivat(
     return { einkommensteuer, soli };
   }
 
-  const einkommensteuer = berechneEinkommensteuerBetrieb(gewinn);
-  const soli = berechneSoliBetrieb(einkommensteuer);
+  const einkommensteuer = berechneEinkommensteuerBetrieb(gewinn, steuerjahr);
+  const soli = berechneSoliBetrieb(einkommensteuer, steuerjahr);
   return { einkommensteuer, soli };
 }
 
@@ -305,9 +295,11 @@ export interface InvestitionsZusammenfassung {
 export function berechneVorabpauschale(
   navStart: number,
   navEnd: number,
-  basiszins: number = BASISZINS_2024
+  basiszins?: number,
+  steuerjahr?: Steuerjahr
 ): number {
-  const basisertrag = basiszins * 0.7 * navStart;
+  const effBasiszins = basiszins ?? getSteuerjahrParameter(steuerjahr).basiszins;
+  const basisertrag = effBasiszins * 0.7 * navStart;
   const actualReturn = Math.max(0, navEnd - navStart);
   // Vorabpauschale is capped at actual return
   return Math.min(basisertrag, actualReturn);
@@ -675,7 +667,7 @@ function simulierePrivatVergleich(
     const etfWertVorjahrEnde = sumEtfWert(etfLots);
     const etfLotsNachWachstum = wachseEtfLots(etfLots, state.etfRendite);
     const etfWertNachWachstum = sumEtfWert(etfLotsNachWachstum);
-    const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnde, etfWertNachWachstum);
+    const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnde, etfWertNachWachstum, undefined, state.steuerjahr);
 
     const { zinsenJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
       offenesDarlehen,
@@ -687,7 +679,7 @@ function simulierePrivatVergleich(
     const jaehrlicherCashZuschuss = Math.max(0, state.jaehrlicherCashZuschuss ?? 0);
     const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
     const { einkommensteuer: simulierterGewinnSteuer, soli: simulierterGewinnSoli } =
-      berechneSimulierterGewinnSteuerPrivat(simulierterGewinn, state.persoenlicherGrenzsteuersatz);
+      berechneSimulierterGewinnSteuerPrivat(simulierterGewinn, state.persoenlicherGrenzsteuersatz, state.steuerjahr);
     const simulierterGewinnNetto = simulierterGewinn - simulierterGewinnSteuer - simulierterGewinnSoli;
     const darlehensZuschussJaehrlich = Math.max(0, state.darlehen.monatlicherZuschuss) * DARLEHEN_MONATE_PRO_JAHR;
 
@@ -951,7 +943,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     cashReserve += investitionsCashZufluss;
 
     // Vorabpauschale tax – GmbH uses 80% Teilfreistellung and corporate tax rate (KSt + GewSt)
-    const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum);
+    const vorabpauschaleBrutto = berechneVorabpauschale(etfWertVorjahrEnd, etfWertNachWachstum, undefined, state.steuerjahr);
     // Recompute costs inside the yearly loop so changed expense inputs are reflected directly.
     const jaehrlicheKosten = berechneBetriebskosten(state.kosten);
 
@@ -1115,11 +1107,11 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer;
     const gesellschafterBruttoEinkommen = gehaelterGesamt + darlehenszinsJaehrlich;
-    const gesellschafterEinkommensteuer = berechneEinkommensteuerBetrieb(gesellschafterBruttoEinkommen);
-    const gesellschafterSoli = berechneSoliBetrieb(gesellschafterEinkommensteuer);
+    const gesellschafterEinkommensteuer = berechneEinkommensteuerBetrieb(gesellschafterBruttoEinkommen, state.steuerjahr);
+    const gesellschafterSoli = berechneSoliBetrieb(gesellschafterEinkommensteuer, state.steuerjahr);
     const gesellschafterSteuerGesamt = gesellschafterEinkommensteuer + gesellschafterSoli;
-    const gehaelterEinkommensteuer = berechneEinkommensteuerBetrieb(gehaelterGesamt);
-    const gehaelterSoli = berechneSoliBetrieb(gehaelterEinkommensteuer);
+    const gehaelterEinkommensteuer = berechneEinkommensteuerBetrieb(gehaelterGesamt, state.steuerjahr);
+    const gehaelterSoli = berechneSoliBetrieb(gehaelterEinkommensteuer, state.steuerjahr);
     const gehaelterSteuerGesamt = gehaelterEinkommensteuer + gehaelterSoli;
     const gehaelterNetto = gehaelterGesamt - gehaelterSteuerGesamt;
     const darlehenszinsenSteuer = Math.max(0, gesellschafterSteuerGesamt - gehaelterSteuerGesamt);
