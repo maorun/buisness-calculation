@@ -11,6 +11,7 @@ import {
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_KAPITALERTRAGSTEUER_SATZ,
+  DEFAULT_SPARERPAUSCHBETRAG,
   DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
   DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
   DEFAULT_GEWERBESTEUER_SATZ,
@@ -493,6 +494,17 @@ export function BetriebSection() {
             }
             suffix="%"
             hint="Steuert Vorabpauschale- und ETF-Verkaufssteuer im Privatvergleich (Default: 26,375 %)."
+          />
+          <InputField
+            label="Sparerpauschbetrag Privat (€/Jahr)"
+            value={betrieb.sparerpauschbetrag ?? DEFAULT_SPARERPAUSCHBETRAG}
+            onChange={(v) =>
+              setBetrieb({
+                sparerpauschbetrag: Math.max(0, parseFloat(v) || 0),
+              })
+            }
+            suffix="€/Jahr"
+            hint="Freibetrag für private Kapitalerträge (§ 20 Abs. 9 EStG, Default: 1.000 €/Jahr bzw. 2.000 € bei Zusammenveranlagung)."
           />
           <InputField
             label="Körperschaftsteuer GmbH (%)"
@@ -1223,7 +1235,7 @@ export function BetriebSection() {
             <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss + simulierter Gewinn nach ESt/Soli minus Tankgutschein minus Essenszuschuss minus Firmenhandy</li>
             <li>In der GmbH wird der Konsumwert steuerbereinigt gezeigt (inkl. Vorsteuerabzug beim Firmenhandy)</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
-            <li>Privat-Steuern: Kapitalertragsteuer ({kapitalertragsteuerSatz.toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
+            <li>Privat-Steuern: Kapitalertragsteuer ({kapitalertragsteuerSatz.toLocaleString("de-DE")}%), Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%) und Sparerpauschbetrag ({(betrieb.sparerpauschbetrag ?? DEFAULT_SPARERPAUSCHBETRAG).toLocaleString("de-DE")} €/Jahr, § 20 Abs. 9 EStG)</li>
           </ul>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

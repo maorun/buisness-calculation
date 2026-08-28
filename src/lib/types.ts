@@ -116,6 +116,8 @@ export interface BetriebState {
   jaehrlicherCashZuschuss: number;
   /** Capital gains tax rate for private ETF taxation (in %, e.g. 15). */
   kapitalertragsteuerSatz?: number;
+  /** Annual tax-free allowance for private capital gains (Sparerpauschbetrag § 20 Abs. 9 EStG). Default: 1000 €. */
+  sparerpauschbetrag?: number;
   /** Körperschaftsteuer rate for the GmbH (in %, e.g. 15). Default: 15. */
   koerperschaftsteuerSatz?: number;
   /** Solidaritätszuschlag rate applied on top of Körperschaftsteuer (in %, e.g. 5.5). Default: 5.5. */
