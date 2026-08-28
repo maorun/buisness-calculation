@@ -107,11 +107,11 @@ describe("berechneVorabpauschale", () => {
     expect(result).toBeLessThan(actualReturn);
   });
 
-  it("calculates correctly with default 2024 basiszins", () => {
+  it("calculates correctly with explicit 2024 basiszins", () => {
     const navStart = 50000;
     const navEnd = 53500; // 7% gain
     const expected = BASISZINS_2024 * 0.7 * navStart; // ~801.5
-    expect(berechneVorabpauschale(navStart, navEnd)).toBeCloseTo(expected);
+    expect(berechneVorabpauschale(navStart, navEnd, BASISZINS_2024)).toBeCloseTo(expected);
   });
 });
 
@@ -174,15 +174,15 @@ describe("berechneEtfVerkaufssteuer", () => {
 });
 
 describe("berechneSoliBetrieb", () => {
-  it("returns 0 for income tax <= 16,956 €", () => {
-    expect(berechneSoliBetrieb(0)).toBe(0);
-    expect(berechneSoliBetrieb(16956)).toBe(0);
+  it("returns 0 for income tax <= 16,956 € (2024 parameters)", () => {
+    expect(berechneSoliBetrieb(0, 2024)).toBe(0);
+    expect(berechneSoliBetrieb(16956, 2024)).toBe(0);
   });
 
-  it("calculates Soli using Milderungszone (11.9% of excess over 16956 €)", () => {
+  it("calculates Soli using Milderungszone (11.9% of excess over 18130 € in 2024)", () => {
     const est = 20000;
-    // (20000 - 16956) * 0.119 = 362.236 → Math.floor = 362
-    expect(berechneSoliBetrieb(est)).toBe(362);
+    // (20000 - 18130) * 0.119 = 1870 * 0.119 = 222.53 → Math.floor = 222
+    expect(berechneSoliBetrieb(est, 2024)).toBe(222);
   });
 
   it("calculates 5.5% for income tax above Milderungszone", () => {

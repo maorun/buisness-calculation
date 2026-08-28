@@ -1,4 +1,5 @@
 import { EndeState, JahresErgebnis, KostenPosition, BenefitConfig, FirmenhandyConfig } from "../types";
+import { Steuerjahr, getSteuerjahrParameter, DEFAULT_STEUERJAHR } from "../parameters";
 import {
   berechneVorabpauschale,
   berechneVorabpauschalesteuer,
@@ -18,80 +19,76 @@ import {
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
 export const DEFAULT_ZIELNETTO_BEREICH2 = 17000;
-// Annualized lower bound of the 556 € monthly Übergangsbereich threshold (§ 20 Abs. 2 SGB IV).
-export const MIDIJOB_MONAT_MIN = 556;
-export const MIDIJOB_JAHR_MIN = MIDIJOB_MONAT_MIN * 12;
-export const MIDIJOB_JAHR_MAX = 24000;
+
+// Default constants for backward compatibility (based on DEFAULT_STEUERJAHR)
+const defaultParams = getSteuerjahrParameter(DEFAULT_STEUERJAHR);
+export const MIDIJOB_MONAT_MIN = defaultParams.midijobMonatMin;
+export const MIDIJOB_JAHR_MIN = defaultParams.midijobJahrMin;
+export const MIDIJOB_JAHR_MAX = defaultParams.midijobJahrMax;
 export const REINVESTIERTES_DARLEHEN_ZINSSATZ = 3;
-export const GKV_BEITRAGSSATZ = 0.146 + 0.025; // allgemeiner Satz + durchschnittlicher Zusatzbeitrag
-export const GKV_BEMESSUNG_MONAT_MAX = 5512.5;
-export const GKV_BEMESSUNG_JAHR_MAX = GKV_BEMESSUNG_MONAT_MAX * 12;
+export const GKV_BEITRAGSSATZ = defaultParams.gkvBeitragssatz;
+export const GKV_BEMESSUNG_MONAT_MAX = defaultParams.gkvBemessungMonatMax;
+export const GKV_BEMESSUNG_JAHR_MAX = defaultParams.gkvBemessungJahrMax;
 
-// Progressive German income tax brackets 2024 (approximation)
-// https://www.bundesfinanzministerium.de
-export function berechneEinkommensteuer(zvE: number): number {
-  if (zvE <= 11604) return 0; // Grundfreibetrag 2024
+/**
+ * Progressive German income tax brackets according to selected Steuerjahr.
+ */
+export function berechneEinkommensteuer(zvE: number, steuerjahr?: Steuerjahr): number {
+  const params = getSteuerjahrParameter(steuerjahr);
+  if (zvE <= params.grundfreibetrag) return 0;
 
-  if (zvE <= 17005) {
-    const y = (zvE - 11604) / 10000;
-    return Math.floor((922.98 * y + 1400) * y);
+  if (zvE <= params.zone1Max) {
+    const y = (zvE - params.grundfreibetrag) / 10000;
+    return Math.floor((params.zone1A * y + params.zone1B) * y);
   }
 
-  if (zvE <= 66760) {
-    const z = (zvE - 17005) / 10000;
-    return Math.floor((181.19 * z + 2397) * z + 1025.38);
+  if (zvE <= params.zone2Max) {
+    const z = (zvE - params.zone1Max) / 10000;
+    return Math.floor((params.zone2A * z + params.zone2B) * z + params.zone2C);
   }
 
-  if (zvE <= 277825) {
-    return Math.floor(0.42 * zvE - 10602.13);
+  if (zvE <= params.spitzensteuerStart) {
+    return Math.floor(0.42 * zvE - params.offset42);
   }
 
   // Top rate (Spitzensteuersatz / Reichensteuersatz)
-  return Math.floor(0.45 * zvE - 17374.99);
+  return Math.floor(0.45 * zvE - params.offset45);
 }
 
 /**
- * Solidaritätszuschlag on income tax (abolished for most taxpayers since 2021,
- * but still applies to higher incomes).
+ * Solidaritätszuschlag on income tax according to selected Steuerjahr.
  */
-export function berechneSoli(einkommensteuer: number): number {
-  // Soli abolished below ~16,956 € ESt (2024).
-  // Milderungszone (§ 3 Abs. 4 SolzG): Soli is capped at 11.9% of the amount exceeding 16,956 €.
-  if (einkommensteuer <= 16956) return 0;
+export function berechneSoli(einkommensteuer: number, steuerjahr?: Steuerjahr): number {
+  const params = getSteuerjahrParameter(steuerjahr);
+  if (einkommensteuer <= params.soliFreigrenzeEinkommensteuer) return 0;
   const volleSoli = einkommensteuer * 0.055;
-  const milderungsSoli = (einkommensteuer - 16956) * 0.119;
+  const milderungsSoli = (einkommensteuer - params.soliFreigrenzeEinkommensteuer) * params.soliMilderungFaktor;
   return Math.floor(Math.min(volleSoli, milderungsSoli));
 }
 
 /**
  * Net salary after income tax and Soli.
- * (Simplified: no church tax, no social security – GmbH-GF can opt out of some)
  */
-export function berechneNettoGehalt(bruttoGehalt: number): number {
-  const est = berechneEinkommensteuer(bruttoGehalt);
-  const soli = berechneSoli(est);
+export function berechneNettoGehalt(bruttoGehalt: number, steuerjahr?: Steuerjahr): number {
+  const est = berechneEinkommensteuer(bruttoGehalt, steuerjahr);
+  const soli = berechneSoli(est, steuerjahr);
   return bruttoGehalt - est - soli;
 }
 
 /**
  * Tax on Gewinnausschüttung (profit distribution from GmbH to shareholder).
- *
- * Two options in German law:
- * 1. Abgeltungssteuer: flat 25% + Soli = 26.375%
- * 2. Teileinkünfteverfahren: 60% taxable at personal rate (useful if marginal rate < 41.67%)
- *
- * We calculate both and return the more favourable one.
  */
 export function berechneGewinnausschuettungsteuer(
   ausschuettung: number,
-  persönlicherSteuersatz: number = 0.42
+  persönlicherSteuersatz: number = 0.42,
+  steuerjahr?: Steuerjahr
 ): { steuer: number; methode: string } {
   // Option 1: Abgeltungssteuer
   const abgeltungssteuer = ausschuettung * 0.25 * (1 + 0.055);
 
   // Option 2: Teileinkünfteverfahren – 60% taxable
   const teileinkuenfte = ausschuettung * 0.6 * persönlicherSteuersatz;
-  const teileinkuenfteSoli = berechneSoli(teileinkuenfte);
+  const teileinkuenfteSoli = berechneSoli(teileinkuenfte, steuerjahr);
   const teileinkuenfteGesamt = teileinkuenfte + teileinkuenfteSoli;
 
   if (abgeltungssteuer <= teileinkuenfteGesamt) {
@@ -103,17 +100,15 @@ export function berechneGewinnausschuettungsteuer(
 /**
  * Net dividend after GmbH has already paid Körperschaftsteuer (KSt) and
  * after shareholder pays dividend tax.
- *
- * @param gewinnVorKSt  Profit before corporate tax
- * @param kstRate       KSt + Soli rate (default 15.825%)
  */
 export function berechneNettoAusschuettung(
   gewinnVorKSt: number,
-  kstRate: number = 0.15825
+  kstRate: number = 0.15825,
+  steuerjahr?: Steuerjahr
 ): { nettoAusschuettung: number; kstSteuer: number; ausschuettungsteuer: number } {
   const kstSteuer = gewinnVorKSt * kstRate;
   const ausschuettung = gewinnVorKSt - kstSteuer;
-  const { steuer: ausschuettungsteuer } = berechneGewinnausschuettungsteuer(ausschuettung);
+  const { steuer: ausschuettungsteuer } = berechneGewinnausschuettungsteuer(ausschuettung, 0.42, steuerjahr);
   const nettoAusschuettung = ausschuettung - ausschuettungsteuer;
   return { nettoAusschuettung, kstSteuer, ausschuettungsteuer };
 }
@@ -122,24 +117,18 @@ export const KAPITALERTRAGSTEUER_MIT_SOLI_RATE = 0.25 * (1 + 0.055);
 
 /**
  * Marginal income tax attributable to shareholder-loan interest.
- *
- * For a shareholder holding ≥10% of a GmbH the interest on their loan to the GmbH
- * is excluded from the flat Abgeltungssteuer and instead taxed at the personal
- * progressive rate (§ 32d Abs. 2 Nr. 1b EStG).
- *
- * We compute the marginal tax by comparing combined (salary + interest) tax to
- * salary-only tax. This gives the exact additional tax burden the interest causes.
  */
 export function berechneDarlehensZinsenSteuer(
   zinsen: number,
-  bruttoGehalt: number
+  bruttoGehalt: number,
+  steuerjahr?: Steuerjahr
 ): number {
   if (zinsen <= 0) return 0;
   const gehaltNorm = Math.max(0, bruttoGehalt);
-  const estNurGehalt = berechneEinkommensteuer(gehaltNorm);
-  const soliNurGehalt = berechneSoli(estNurGehalt);
-  const estKombiniert = berechneEinkommensteuer(gehaltNorm + zinsen);
-  const soliKombiniert = berechneSoli(estKombiniert);
+  const estNurGehalt = berechneEinkommensteuer(gehaltNorm, steuerjahr);
+  const soliNurGehalt = berechneSoli(estNurGehalt, steuerjahr);
+  const estKombiniert = berechneEinkommensteuer(gehaltNorm + zinsen, steuerjahr);
+  const soliKombiniert = berechneSoli(estKombiniert, steuerjahr);
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
 
@@ -149,9 +138,11 @@ export function berechneDarlehensZinsenSteuer(
  */
 export function berechneRestlichesMidijobGehalt(
   zinsen: number,
-  jahreslimit: number = MIDIJOB_JAHR_MAX
+  jahreslimit?: number,
+  steuerjahr?: Steuerjahr
 ): number {
-  return Math.max(0, jahreslimit - Math.max(0, zinsen));
+  const limit = jahreslimit ?? getSteuerjahrParameter(steuerjahr).midijobJahrMax;
+  return Math.max(0, limit - Math.max(0, zinsen));
 }
 
 /**
@@ -208,12 +199,16 @@ function berechneMaxBezahlbaresBruttoGehalt(
  */
 export function berechneGesetzlicheKrankenversicherungBeitrag(
   jahresEinnahmen: number,
-  beitragssatz: number = GKV_BEITRAGSSATZ,
-  beitragsbemessungJahrMax: number = GKV_BEMESSUNG_JAHR_MAX
+  beitragssatz?: number,
+  beitragsbemessungJahrMax?: number,
+  steuerjahr?: Steuerjahr
 ): number {
+  const params = getSteuerjahrParameter(steuerjahr);
+  const bss = beitragssatz ?? params.gkvBeitragssatz;
+  const maxBbm = beitragsbemessungJahrMax ?? params.gkvBemessungJahrMax;
   const einnahmen = Math.max(0, jahresEinnahmen);
-  const beitragspflichtigeEinnahmen = Math.min(einnahmen, beitragsbemessungJahrMax);
-  return beitragspflichtigeEinnahmen * Math.max(0, beitragssatz);
+  const beitragspflichtigeEinnahmen = Math.min(einnahmen, maxBbm);
+  return beitragspflichtigeEinnahmen * Math.max(0, bss);
 }
 
 export function berechneDarlehensAuszahlung(
@@ -299,7 +294,8 @@ export function berechneEndeErgebnisse(
   firmenhandy: FirmenhandyConfig = DEFAULT_FIRMENHANDY_CONFIG,
   gmbhSteuerGesamt: number = GMBH_STEUER_GESAMT,
   kstGesamt: number = KST_GESAMT,
-  gewerbesteuer: number = GEWERBESTEUER
+  gewerbesteuer: number = GEWERBESTEUER,
+  steuerjahr?: Steuerjahr
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
@@ -370,13 +366,13 @@ export function berechneEndeErgebnisse(
     const gmbhSteuerGewStB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gewerbesteuer : 0;
     endePhaseJahr++;
 
-    const einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
-    const soli = berechneSoli(einkommensteuer);
-    const nettoGehalt = berechneNettoGehalt(bruttoGehalt);
+    const einkommensteuer = berechneEinkommensteuer(bruttoGehalt, steuerjahr);
+    const soli = berechneSoli(einkommensteuer, steuerjahr);
+    const nettoGehalt = berechneNettoGehalt(bruttoGehalt, steuerjahr);
 
     // Tax on deferred interest: progressive Einkommensteuer (§ 32d Abs. 2 Nr. 1b EStG),
     // NOT flat Abgeltungssteuer. Marginal tax = combined(salary + interest) - salary-only tax.
-    const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsenNorm, bruttoGehalt);
+    const zinsSteuer = berechneDarlehensZinsenSteuer(aufgelaufeneZinsenNorm, bruttoGehalt, steuerjahr);
     const zinsenNetto = aufgelaufeneZinsenNorm - zinsSteuer;
 
     // Net loan return (principal + after-tax interest)
@@ -386,7 +382,10 @@ export function berechneEndeErgebnisse(
     // partial principal repayment that is not rolled into the new shareholder loan.
     const beitragspflichtigeEinnahmenGkv = bruttoGehalt + aufgelaufeneZinsenNorm;
     const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
-      beitragspflichtigeEinnahmenGkv
+      beitragspflichtigeEinnahmenGkv,
+      undefined,
+      undefined,
+      steuerjahr
     );
     const zielnettoBereich1 = state.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
     const konsumVorAutomatischerTilgungBereich1 =
@@ -551,9 +550,9 @@ export function berechneEndeErgebnisse(
       verbleibendeJahre,
       state.tilgungsrate
     );
-    let nettoGehalt = berechneNettoGehalt(bruttoGehalt);
-    let einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
-    let soli = berechneSoli(einkommensteuer);
+    let nettoGehalt = berechneNettoGehalt(bruttoGehalt, steuerjahr);
+    let einkommensteuer = berechneEinkommensteuer(bruttoGehalt, steuerjahr);
+    let soli = berechneSoli(einkommensteuer, steuerjahr);
 
     const istLetztesBereich2Jahr = i === state.laufzeitJahre;
     if (endeDarlehenEndfaelligAktiv && restdarlehen > 0) {
@@ -568,7 +567,7 @@ export function berechneEndeErgebnisse(
 
     // Combined interest tax (both loans are from the same shareholder → taxed together at progressive rate)
     const gesamtDarlehenZinsen = darlehenZinsen + privatDarlehenZinsen;
-    const gesamtDarlehenZinsenSteuer = berechneDarlehensZinsenSteuer(gesamtDarlehenZinsen, bruttoGehalt);
+    const gesamtDarlehenZinsenSteuer = berechneDarlehensZinsenSteuer(gesamtDarlehenZinsen, bruttoGehalt, steuerjahr);
     // Split tax proportionally to individual loan interest amounts
     let darlehenZinsenSteuer = gesamtDarlehenZinsen > 0
       ? gesamtDarlehenZinsenSteuer * (darlehenZinsen / gesamtDarlehenZinsen)
@@ -580,11 +579,14 @@ export function berechneEndeErgebnisse(
     let privatDarlehenZinsenNetto = privatDarlehenZinsen - privatDarlehenZinsenSteuer;
 
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
-      berechneNettoAusschuettung(state.gewinnausschuettung);
+      berechneNettoAusschuettung(state.gewinnausschuettung, 0.15825, steuerjahr);
     const zielnetto = endeDarlehenEndfaelligAktiv ? 0 : (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2);
     let beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
     let gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
-      beitragspflichtigeEinnahmenGkv
+      beitragspflichtigeEinnahmenGkv,
+      undefined,
+      undefined,
+      steuerjahr
     );
     let konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
     let konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
@@ -630,11 +632,11 @@ export function berechneEndeErgebnisse(
 
       if (maxBezahlbaresBruttoGehalt < bruttoGehalt) {
         bruttoGehalt = maxBezahlbaresBruttoGehalt;
-        einkommensteuer = berechneEinkommensteuer(bruttoGehalt);
-        soli = berechneSoli(einkommensteuer);
-        nettoGehalt = berechneNettoGehalt(bruttoGehalt);
+        einkommensteuer = berechneEinkommensteuer(bruttoGehalt, steuerjahr);
+        soli = berechneSoli(einkommensteuer, steuerjahr);
+        nettoGehalt = berechneNettoGehalt(bruttoGehalt, steuerjahr);
 
-        const gesamtDarlehenZinsenSteuerNeu = berechneDarlehensZinsenSteuer(gesamtDarlehenZinsen, bruttoGehalt);
+        const gesamtDarlehenZinsenSteuerNeu = berechneDarlehensZinsenSteuer(gesamtDarlehenZinsen, bruttoGehalt, steuerjahr);
         darlehenZinsenSteuer = gesamtDarlehenZinsen > 0
           ? gesamtDarlehenZinsenSteuerNeu * (darlehenZinsen / gesamtDarlehenZinsen)
           : 0;
@@ -646,7 +648,10 @@ export function berechneEndeErgebnisse(
 
         beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
         gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
-          beitragspflichtigeEinnahmenGkv
+          beitragspflichtigeEinnahmenGkv,
+          undefined,
+          undefined,
+          steuerjahr
         );
         konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
         konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;

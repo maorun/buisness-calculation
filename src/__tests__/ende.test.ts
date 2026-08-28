@@ -17,9 +17,9 @@ import { GMBH_STEUER_GESAMT } from "@/lib/calculations/betrieb";
 import { EndeState } from "@/lib/types";
 
 describe("berechneEinkommensteuer", () => {
-  it("returns 0 below Grundfreibetrag (11.604 €)", () => {
+  it("returns 0 below Grundfreibetrag (12.096 € default for 2025)", () => {
     expect(berechneEinkommensteuer(0)).toBe(0);
-    expect(berechneEinkommensteuer(11604)).toBe(0);
+    expect(berechneEinkommensteuer(12096)).toBe(0);
   });
 
   it("returns positive tax for income above Grundfreibetrag", () => {
@@ -29,15 +29,15 @@ describe("berechneEinkommensteuer", () => {
   it("uses 42% rate for high incomes (up to 277.825 €)", () => {
     const income = 100000;
     const tax = berechneEinkommensteuer(income);
-    // approx: 0.42 × 100000 - 10602 = 31398
-    expect(tax).toBeCloseTo(31398, -2);
+    // 2025 default: 0.42 × 100000 - 11102.16 = 30897
+    expect(tax).toBeCloseTo(30897, -2);
   });
 
   it("uses 45% rate for very high incomes (above 277.825 €)", () => {
     const income = 300000;
     const tax45 = berechneEinkommensteuer(income);
-    // approx: 0.45 × 300000 - 17375 = 117625
-    expect(tax45).toBeCloseTo(117625, -2);
+    // 2025 default: 0.45 × 300000 - 19436.91 = 115563
+    expect(tax45).toBeCloseTo(115563, -2);
   });
 
   it("is progressive (higher income → higher tax rate)", () => {
@@ -51,15 +51,15 @@ describe("berechneEinkommensteuer", () => {
 
 describe("berechneSoli", () => {
   it("returns 0 for low income tax (abolished for most)", () => {
-    // Soli threshold ~16956 ESt
+    // Soli threshold 19228 ESt for 2025 default
     expect(berechneSoli(0)).toBe(0);
-    expect(berechneSoli(16956)).toBe(0);
+    expect(berechneSoli(19228)).toBe(0);
   });
 
-  it("calculates Soli using Milderungszone (11.9% of excess over 16956 €)", () => {
+  it("calculates Soli using Milderungszone (11.9% of excess over Soli-Freigrenze)", () => {
     const est = 20000;
-    // (20000 - 16956) * 0.119 = 3044 * 0.119 = 362.236 → Math.floor = 362
-    expect(berechneSoli(est)).toBe(362);
+    // 2025 default: (20000 - 19228) * 0.119 = 772 * 0.119 = 91.868 → Math.floor = 91
+    expect(berechneSoli(est)).toBe(91);
   });
 
   it("calculates 5.5% for high income tax above Milderungszone", () => {

@@ -18,6 +18,7 @@ import {
   berechnePrivatVergleichZeitreihe,
   berechneAlleInvestitionsErgebnisse,
 } from "@/lib/calculations/betrieb";
+import { getSteuerjahrParameter } from "@/lib/parameters";
 import { InvestitionsPosition } from "@/lib/types";
 import {
   berechneGesamtvergleichKpi,
@@ -383,6 +384,46 @@ export function BetriebSection() {
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Betrieb</h2>
         <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und freien Überschüssen sowie separatem Cash-Puffer</p>
+      </div>
+
+      {/* Steuerjahr Auswahl */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Steuer- & Sozialjahr Parametersatz</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Wählen Sie das Referenzjahr für Grundfreibetrag (ESt-Tarif), GKV-Beitragsbemessungsgrenze, GKV-Zusatzbeitrag, Midijob-Untergrenze und Basiszins:
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {([2024, 2025, 2026] as const).map((jahr) => {
+            const p = getSteuerjahrParameter(jahr);
+            const isSelected = (betrieb.steuerjahr ?? 2025) === jahr;
+            return (
+              <button
+                key={jahr}
+                type="button"
+                onClick={() => setBetrieb({ steuerjahr: jahr })}
+                className={`flex-1 min-w-[200px] text-left p-3 rounded-xl border transition-all ${
+                  isSelected
+                    ? "border-blue-600 bg-blue-50/70 ring-2 ring-blue-500/20"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-sm text-gray-900">{jahr}</span>
+                  {isSelected && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-600 text-white">Aktiv</span>
+                  )}
+                </div>
+                <div className="space-y-0.5 text-xs text-slate-600">
+                  <p><span className="font-medium">Grundfreibetrag:</span> {p.grundfreibetrag.toLocaleString("de-DE")} €</p>
+                  <p><span className="font-medium">GKV-BBG:</span> {p.gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat ({p.gkvBemessungJahrMax.toLocaleString("de-DE")} €/Jahr)</p>
+                  <p><span className="font-medium">GKV-Zusatzbeitrag:</span> {(p.gkvZusatzbeitrag * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })} % (Gesamt: {(p.gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })} %)</p>
+                  <p><span className="font-medium">Midijob-Untergrenze:</span> {p.midijobMonatMin.toLocaleString("de-DE")} €/Monat ({p.midijobJahrMin.toLocaleString("de-DE")} €/Jahr)</p>
+                  <p><span className="font-medium">Basiszins:</span> {(p.basiszins * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} %</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Laufzeit */}
@@ -1085,7 +1126,7 @@ export function BetriebSection() {
           dann aus vorhandenen Cash-Reserven und erst danach aus laufenden Darlehenszuzahlungen gedeckt.
           Reicht das nicht aus, werden zuerst die ETF-Positionen mit der geringsten steuerpflichtigen stillen Reserve verkauft.
         </p>
-        <p className="text-xs font-semibold text-slate-700 mb-2">📊 Steuerparameter (GmbH) – Steuern ans Finanzamt</p>
+        <p className="text-xs font-semibold text-slate-700 mb-2">📊 Steuerparameter ({getSteuerjahrParameter(betrieb.steuerjahr).jahr}) – Steuern ans Finanzamt</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
           <div><span className="font-medium">KSt:</span> 15,00%</div>
           <div><span className="font-medium">KSt + SolZ:</span> 15,825%</div>
@@ -1093,8 +1134,12 @@ export function BetriebSection() {
           <div><span className="font-medium">Gesamt GmbH:</span> ~29,825%</div>
           <div><span className="font-medium">Abgeltungsteuer:</span> 25%</div>
           <div><span className="font-medium">Abg. + SolZ:</span> 26,375%</div>
-          <div><span className="font-medium">Basiszins 2024:</span> 2,29%</div>
+          <div><span className="font-medium">Basiszins {getSteuerjahrParameter(betrieb.steuerjahr).jahr}:</span> {(getSteuerjahrParameter(betrieb.steuerjahr).basiszins * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })}%</div>
           <div><span className="font-medium">Teilfreistellung ETF-Verkauf:</span> {teilfreistellungGmbh}%</div>
+          <div><span className="font-medium">Grundfreibetrag:</span> {getSteuerjahrParameter(betrieb.steuerjahr).grundfreibetrag.toLocaleString("de-DE")} €</div>
+          <div><span className="font-medium">GKV-BBG:</span> {getSteuerjahrParameter(betrieb.steuerjahr).gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat</div>
+          <div><span className="font-medium">GKV-Zusatzbeitrag:</span> {(getSteuerjahrParameter(betrieb.steuerjahr).gkvZusatzbeitrag * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })}%</div>
+          <div><span className="font-medium">Midijob-Untergrenze:</span> {getSteuerjahrParameter(betrieb.steuerjahr).midijobMonatMin.toLocaleString("de-DE")} €/Monat</div>
         </div>
         <p className="text-xs text-gray-400 mt-2">
           Der GmbH-Gewinn ergibt sich aus realisiertem ETF-Ertrag (durch Verkäufe) abzüglich Betriebskosten und Darlehenszinsen.

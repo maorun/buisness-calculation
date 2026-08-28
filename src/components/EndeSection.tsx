@@ -19,6 +19,7 @@ import {
   berechnePrivatVergleichErgebnis,
   DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
+import { getSteuerjahrParameter } from "@/lib/parameters";
 import {
   berechneGesamtvergleichKpi,
   berechneGesamtvergleichZeitreihe,
@@ -817,7 +818,7 @@ export function EndeSection() {
 
       {/* Tax info */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-        <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
+        <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase (Referenzjahr {getSteuerjahrParameter(betrieb.steuerjahr).jahr})</p>
         <div className="text-xs text-gray-600 space-y-1">
           {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Progressive Einkommensteuer auf Zinsen + Gehalt (kombiniert, § 32d Abs. 2 Nr. 1b EStG)</p>}
           {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Frei konfigurierbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
