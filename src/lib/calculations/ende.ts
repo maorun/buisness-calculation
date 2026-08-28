@@ -10,12 +10,15 @@ import {
   berechneBenefitsKosten,
   berechneKonsumNutzenwertProJahr,
   berechneVerlustvortragAnrechnung,
+  berechneGesetzlicheKrankenversicherungBeitrag,
   DEFAULT_FIRMENHANDY_CONFIG,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
   KST_GESAMT,
   GEWERBESTEUER,
 } from "./betrieb";
+
+export { berechneGesetzlicheKrankenversicherungBeitrag };
 
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
 export const DEFAULT_ZIELNETTO_BEREICH2 = 17000;
@@ -192,25 +195,6 @@ function berechneMaxBezahlbaresBruttoGehalt(
   return Math.max(0, Math.min(bruttoNorm, maxBezahlbar));
 }
 
-/**
- * Gesetzlicher Kranken- und Pflegeversicherungsbeitrag (GKV + PV) für freiwillig
- * gesetzlich versicherte Personen (vereinfachte Näherung mit Beitragsbemessungsgrenze).
- * Enthält Krankenversicherung (14,6% + Zusatzbeitrag) sowie Pflegeversicherung (~4,0%).
- * Wird aus dem bereits versteuerten Netto getragen.
- */
-export function berechneGesetzlicheKrankenversicherungBeitrag(
-  jahresEinnahmen: number,
-  beitragssatz?: number,
-  beitragsbemessungJahrMax?: number,
-  steuerjahr?: Steuerjahr
-): number {
-  const params = getSteuerjahrParameter(steuerjahr);
-  const bss = beitragssatz ?? params.gkvBeitragssatz;
-  const maxBbm = beitragsbemessungJahrMax ?? params.gkvBemessungJahrMax;
-  const einnahmen = Math.max(0, jahresEinnahmen);
-  const beitragspflichtigeEinnahmen = Math.min(einnahmen, maxBbm);
-  return beitragspflichtigeEinnahmen * Math.max(0, bss);
-}
 
 export function berechneDarlehensAuszahlung(
   restschuld: number,

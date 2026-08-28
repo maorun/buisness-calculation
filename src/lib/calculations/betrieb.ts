@@ -184,6 +184,26 @@ export function berechneSoliBetrieb(einkommensteuer: number, steuerjahr?: Steuer
   return Math.floor(Math.min(volleSoli, milderungsSoli));
 }
 
+/**
+ * Gesetzlicher Kranken- und Pflegeversicherungsbeitrag (GKV + PV) für freiwillig
+ * gesetzlich versicherte Personen (vereinfachte Näherung mit Beitragsbemessungsgrenze).
+ * Enthält Krankenversicherung (14,6% + Zusatzbeitrag) sowie Pflegeversicherung (~4,0%).
+ * Wird aus dem bereits versteuerten Netto getragen.
+ */
+export function berechneGesetzlicheKrankenversicherungBeitrag(
+  jahresEinnahmen: number,
+  beitragssatz?: number,
+  beitragsbemessungJahrMax?: number,
+  steuerjahr?: Steuerjahr
+): number {
+  const params = getSteuerjahrParameter(steuerjahr);
+  const bss = beitragssatz ?? params.gkvBeitragssatz;
+  const maxBbm = beitragsbemessungJahrMax ?? params.gkvBemessungJahrMax;
+  const einnahmen = Math.max(0, jahresEinnahmen);
+  const beitragspflichtigeEinnahmen = Math.min(einnahmen, maxBbm);
+  return beitragspflichtigeEinnahmen * Math.max(0, bss);
+}
+
 export function berechneNettoGehaltBetrieb(bruttoGehalt: number, steuerjahr?: Steuerjahr): number {
   // Vereinfachung analog zur Ende-Phase: ohne Sozialversicherungsabzüge.
   const est = berechneEinkommensteuerBetrieb(bruttoGehalt, steuerjahr);
@@ -1130,11 +1150,18 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const gehaelterNetto = gehaelterGesamt - gehaelterSteuerGesamt;
     const darlehenszinsenSteuer = Math.max(0, gesellschafterSteuerGesamt - gehaelterSteuerGesamt);
     const darlehenszinsenNetto = Math.max(0, darlehenszinsJaehrlich - darlehenszinsenSteuer);
+    const beitragspflichtigeEinnahmenGkv = gesellschafterBruttoEinkommen;
+    const gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
+      beitragspflichtigeEinnahmenGkv,
+      undefined,
+      undefined,
+      state.steuerjahr
+    );
     const zielnettoGesellschafter = Math.max(
       0,
       state.zielnettoGesellschafter ?? DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB
     );
-    const gesellschafterNetto = gehaelterNetto + darlehenszinsenNetto;
+    const gesellschafterNetto = gehaelterNetto + darlehenszinsenNetto - gesetzlicheKrankenversicherungBeitrag;
     const zielnettoDifferenz = gesellschafterNetto - zielnettoGesellschafter;
 
     // Positive retained result is held as cash reserve (Aktiva).
@@ -1194,6 +1221,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         gesellschafterEinkommensteuer,
         gesellschafterSoli,
         gesellschafterSteuerGesamt,
+        beitragspflichtigeEinnahmenGkv,
+        gesetzlicheKrankenversicherungBeitrag,
         darlehenszinsenSteuer,
         darlehenszinsenNetto,
         gesellschafterNetto,

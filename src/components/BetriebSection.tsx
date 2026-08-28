@@ -163,6 +163,7 @@ export function BetriebSection() {
   const darlehenszinsenBrutto = (erstesJahrDetails?.darlehenszinsenNetto ?? 0) + (erstesJahrDetails?.darlehenszinsenSteuer ?? 0);
   const darlehenszinsenSteuer = erstesJahrDetails?.darlehenszinsenSteuer ?? 0;
   const darlehenszinsenNetto = erstesJahrDetails?.darlehenszinsenNetto ?? 0;
+  const gkvBeitrag = erstesJahrDetails?.gesetzlicheKrankenversicherungBeitrag ?? 0;
   const gesellschafterNetto = erstesJahrDetails?.gesellschafterNetto ?? 0;
   const zielnettoDifferenz = erstesJahrDetails?.zielnettoDifferenz ?? (gesellschafterNetto - zielnettoInsgesamt);
   // GmbH net asset development over the full Betrieb phase (start → last year).
@@ -1097,18 +1098,19 @@ export function BetriebSection() {
               <p>Darlehenszinsen brutto: <span className="font-semibold">{darlehenszinsenBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Zusätzliche Steuer durch Darlehenszinsen: <span className="font-semibold text-red-700">− {darlehenszinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Darlehenszinsen netto: <span className="font-semibold text-green-700">+ {darlehenszinsenNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Gesetzliche Kranken- & Pflegeversicherung (aus Netto): <span className="font-semibold text-red-700">− {gkvBeitrag.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></p>
             </div>
             <p className="mt-2 text-sm font-bold text-slate-800">
-              Summe Netto: {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              Summe Netto: {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </p>
             <p className="text-xs text-slate-700">
-              Zielnetto insgesamt: {zielnettoInsgesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              Zielnetto insgesamt: {zielnettoInsgesamt.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </p>
             <p
               className={`text-xs mt-1 font-semibold ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}
               aria-label={zielnettoDifferenz >= 0 ? "Zielnetto überschritten" : "Zielnetto unterschritten"}
             >
-              {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </p>
           </div>
           <div className={`rounded-lg border p-3 ${gmbhGesamteNettoveraenderung >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
