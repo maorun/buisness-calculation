@@ -16,7 +16,8 @@ describe("SteuerjahrParameter definitions", () => {
     expect(p.gkvBemessungMonatMax).toBe(5175.0);
     expect(p.gkvBemessungJahrMax).toBe(62100.0);
     expect(p.gkvZusatzbeitrag).toBe(0.017);
-    expect(p.gkvBeitragssatz).toBeCloseTo(0.163);
+    expect(p.pvBeitragssatz).toBe(0.040);
+    expect(p.gkvBeitragssatz).toBeCloseTo(0.203);
     expect(p.midijobMonatMin).toBe(538);
     expect(p.midijobJahrMin).toBe(6456);
     expect(p.basiszins).toBe(0.0229);
@@ -28,7 +29,8 @@ describe("SteuerjahrParameter definitions", () => {
     expect(p.gkvBemessungMonatMax).toBe(5512.5);
     expect(p.gkvBemessungJahrMax).toBe(66150.0);
     expect(p.gkvZusatzbeitrag).toBe(0.025);
-    expect(p.gkvBeitragssatz).toBeCloseTo(0.171);
+    expect(p.pvBeitragssatz).toBe(0.040);
+    expect(p.gkvBeitragssatz).toBeCloseTo(0.211);
     expect(p.midijobMonatMin).toBe(556);
     expect(p.midijobJahrMin).toBe(6672);
     expect(p.basiszins).toBe(0.0253);
@@ -40,7 +42,8 @@ describe("SteuerjahrParameter definitions", () => {
     expect(p.gkvBemessungMonatMax).toBe(5812.5);
     expect(p.gkvBemessungJahrMax).toBe(69750.0);
     expect(p.gkvZusatzbeitrag).toBe(0.029);
-    expect(p.gkvBeitragssatz).toBeCloseTo(0.175);
+    expect(p.pvBeitragssatz).toBe(0.040);
+    expect(p.gkvBeitragssatz).toBeCloseTo(0.215);
     expect(p.midijobMonatMin).toBe(603);
     expect(p.midijobJahrMin).toBe(7236);
     expect(p.basiszins).toBe(0.0253);
@@ -94,12 +97,12 @@ describe("GKV Contribution by Steuerjahr", () => {
     const gkv2025 = berechneGesetzlicheKrankenversicherungBeitrag(income, undefined, undefined, 2025);
     const gkv2026 = berechneGesetzlicheKrankenversicherungBeitrag(income, undefined, undefined, 2026);
 
-    // 2024: 62.100 € * 16.3% = 10.122.30 €
-    expect(gkv2024).toBeCloseTo(62100 * 0.163, 1);
-    // 2025: 66.150 € * 17.1% = 11.311.65 €
-    expect(gkv2025).toBeCloseTo(66150 * 0.171, 1);
-    // 2026: 69.750 € * 17.5% = 12.206.25 €
-    expect(gkv2026).toBeCloseTo(69750 * 0.175, 1);
+    // 2024: 62.100 € * 20.3% = 12.606.30 €
+    expect(gkv2024).toBeCloseTo(62100 * 0.203, 1);
+    // 2025: 66.150 € * 21.1% = 13.957.65 €
+    expect(gkv2025).toBeCloseTo(66150 * 0.211, 1);
+    // 2026: 69.750 € * 21.5% = 14.996.25 €
+    expect(gkv2026).toBeCloseTo(69750 * 0.215, 1);
 
     expect(gkv2025).toBeGreaterThan(gkv2024);
     expect(gkv2026).toBeGreaterThan(gkv2025);
@@ -178,7 +181,7 @@ describe("End-to-End Simulation with Steuerjahr", () => {
       0.29825, 0.15825, 0.14, 2026
     );
 
-    // GKV in 2026 is 17.5% vs 16.3% in 2024 on 30,000 €
+    // GKV in 2026 is 21.5% vs 20.3% in 2024 on 30,000 €
     expect(res2026[0].details.gesetzlicheKrankenversicherungBeitrag).toBeGreaterThan(
       res2024[0].details.gesetzlicheKrankenversicherungBeitrag
     );

@@ -193,8 +193,9 @@ function berechneMaxBezahlbaresBruttoGehalt(
 }
 
 /**
- * Gesetzlicher Krankenversicherungsbeitrag für freiwillig gesetzlich versicherte
- * Personen (vereinfachte Näherung mit Beitragsbemessungsgrenze).
+ * Gesetzlicher Kranken- und Pflegeversicherungsbeitrag (GKV + PV) für freiwillig
+ * gesetzlich versicherte Personen (vereinfachte Näherung mit Beitragsbemessungsgrenze).
+ * Enthält Krankenversicherung (14,6% + Zusatzbeitrag) sowie Pflegeversicherung (~4,0%).
  * Wird aus dem bereits versteuerten Netto getragen.
  */
 export function berechneGesetzlicheKrankenversicherungBeitrag(

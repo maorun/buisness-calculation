@@ -417,7 +417,7 @@ export function BetriebSection() {
                 <div className="space-y-0.5 text-xs text-slate-600">
                   <p><span className="font-medium">Grundfreibetrag:</span> {p.grundfreibetrag.toLocaleString("de-DE")} €</p>
                   <p><span className="font-medium">GKV-BBG:</span> {p.gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat ({p.gkvBemessungJahrMax.toLocaleString("de-DE")} €/Jahr)</p>
-                  <p><span className="font-medium">GKV-Zusatzbeitrag:</span> {(p.gkvZusatzbeitrag * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })} % (Gesamt: {(p.gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })} %)</p>
+                  <p><span className="font-medium">GKV & PV (inkl. Zusatz & PV 4,0%):</span> {(p.gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })} %</p>
                   <p><span className="font-medium">Midijob-Untergrenze:</span> {p.midijobMonatMin.toLocaleString("de-DE")} €/Monat ({p.midijobJahrMin.toLocaleString("de-DE")} €/Jahr)</p>
                   <p><span className="font-medium">Basiszins:</span> {(p.basiszins * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} %</p>
                 </div>
@@ -1150,7 +1150,7 @@ export function BetriebSection() {
           <div><span className="font-medium">Teilfreistellung ETF-Verkauf:</span> {teilfreistellungGmbh}%</div>
           <div><span className="font-medium">Grundfreibetrag:</span> {getSteuerjahrParameter(betrieb.steuerjahr).grundfreibetrag.toLocaleString("de-DE")} €</div>
           <div><span className="font-medium">GKV-BBG:</span> {getSteuerjahrParameter(betrieb.steuerjahr).gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat</div>
-          <div><span className="font-medium">GKV-Zusatzbeitrag:</span> {(getSteuerjahrParameter(betrieb.steuerjahr).gkvZusatzbeitrag * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })}%</div>
+          <div><span className="font-medium">GKV & PV gesamt:</span> {(getSteuerjahrParameter(betrieb.steuerjahr).gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })}%</div>
           <div><span className="font-medium">Midijob-Untergrenze:</span> {getSteuerjahrParameter(betrieb.steuerjahr).midijobMonatMin.toLocaleString("de-DE")} €/Monat</div>
         </div>
         <p className="text-xs text-gray-400 mt-2">
