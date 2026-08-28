@@ -30,6 +30,7 @@ import {
   UMSATZSTEUER_SATZ,
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
+  berechneGesetzlicheKrankenversicherungBeitrag,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -1031,7 +1032,8 @@ describe("berechneBetriebsErgebnisse", () => {
     const expectedSalaryNet = expectedSalaryTotal - expectedSalaryTax;
     const expectedInterestTax = expectedTotalTax - expectedSalaryTax;
     const expectedInterestNet = 875 - expectedInterestTax;
-    const expectedShareholderNet = expectedSalaryNet + expectedInterestNet;
+    const expectedGkv = berechneGesetzlicheKrankenversicherungBeitrag(expectedTotalIncome);
+    const expectedShareholderNet = expectedSalaryNet + expectedInterestNet - expectedGkv;
 
     expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
     expect(result.details.gehaelterGesamt).toBe(12000);
@@ -1040,9 +1042,27 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.gesellschafterBruttoEinkommen).toBeCloseTo(expectedTotalIncome);
     expect(result.details.gesellschafterSteuerGesamt).toBeCloseTo(expectedTotalTax);
     expect(result.details.darlehenszinsenNetto).toBeCloseTo(expectedInterestNet);
+    expect(result.details.beitragspflichtigeEinnahmenGkv).toBeCloseTo(expectedTotalIncome);
+    expect(result.details.gesetzlicheKrankenversicherungBeitrag).toBeCloseTo(expectedGkv);
     expect(result.details.gesellschafterNetto).toBeCloseTo(expectedShareholderNet);
     expect(result.details.zielnettoGesellschafter).toBe(36000);
     expect(result.details.zielnettoDifferenz).toBeCloseTo(expectedShareholderNet - 36000);
+  });
+
+  it("deducts GKV contribution from gesellschafterNetto based on total income and selected steuerjahr", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      steuerjahr: 2025,
+      geschaeftsfuehrergehalt: 30000,
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+    const expectedGkv = berechneGesetzlicheKrankenversicherungBeitrag(30000, undefined, undefined, 2025);
+
+    expect(result.details.beitragspflichtigeEinnahmenGkv).toBe(30000);
+    expect(result.details.gesetzlicheKrankenversicherungBeitrag).toBeCloseTo(expectedGkv);
+    expect(result.details.gesellschafterNetto).toBeCloseTo(result.details.gehaelterNetto - expectedGkv);
   });
 
   it("increases outstanding loan balance each year for monthly top-ups", () => {
