@@ -120,6 +120,7 @@ const EINKOMMENSTEUER_OFFSET_42 = 10602.13;
 const EINKOMMENSTEUER_SATZ_45 = 0.45;
 const EINKOMMENSTEUER_OFFSET_45 = 17374.99;
 const SOLI_FREIGRENZE_EINKOMMENSTEUER_2024 = 16956;
+export const SOLI_MILDERUNG_FAKTOR = 0.119;
 
 /** Default configuration for the company mobile-phone programme. */
 export const DEFAULT_FIRMENHANDY_CONFIG: FirmenhandyConfig = {
@@ -189,7 +190,9 @@ export function berechneEinkommensteuerBetrieb(zvE: number): number {
 
 export function berechneSoliBetrieb(einkommensteuer: number): number {
   if (einkommensteuer <= SOLI_FREIGRENZE_EINKOMMENSTEUER_2024) return 0;
-  return Math.floor(einkommensteuer * SOLI);
+  const volleSoli = einkommensteuer * SOLI;
+  const milderungsSoli = (einkommensteuer - SOLI_FREIGRENZE_EINKOMMENSTEUER_2024) * SOLI_MILDERUNG_FAKTOR;
+  return Math.floor(Math.min(volleSoli, milderungsSoli));
 }
 
 export function berechneNettoGehaltBetrieb(bruttoGehalt: number): number {

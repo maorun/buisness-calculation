@@ -173,6 +173,25 @@ describe("berechneEtfVerkaufssteuer", () => {
   });
 });
 
+describe("berechneSoliBetrieb", () => {
+  it("returns 0 for income tax <= 16,956 €", () => {
+    expect(berechneSoliBetrieb(0)).toBe(0);
+    expect(berechneSoliBetrieb(16956)).toBe(0);
+  });
+
+  it("calculates Soli using Milderungszone (11.9% of excess over 16956 €)", () => {
+    const est = 20000;
+    // (20000 - 16956) * 0.119 = 362.236 → Math.floor = 362
+    expect(berechneSoliBetrieb(est)).toBe(362);
+  });
+
+  it("calculates 5.5% for income tax above Milderungszone", () => {
+    const est = 40000;
+    // 40000 * 0.055 = 2200
+    expect(berechneSoliBetrieb(est)).toBe(2200);
+  });
+});
+
 describe("berechneDarlehenszinsen", () => {
   const darlehen: DarlehenConfig = {
     betrag: 25000,
