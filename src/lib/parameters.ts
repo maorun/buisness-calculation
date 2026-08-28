@@ -19,6 +19,7 @@ export interface SteuerjahrParameter {
   gkvBemessungMonatMax: number;
   gkvBemessungJahrMax: number;
   gkvZusatzbeitrag: number;
+  pvBeitragssatz: number;
   gkvBeitragssatz: number;
   midijobMonatMin: number;
   midijobJahrMin: number;
@@ -46,7 +47,8 @@ export const STEUERJAHR_PARAMETER: Record<Steuerjahr, SteuerjahrParameter> = {
     gkvBemessungMonatMax: 5175.0,
     gkvBemessungJahrMax: 62100.0,
     gkvZusatzbeitrag: 0.017,
-    gkvBeitragssatz: 0.146 + 0.017, // 16.3%
+    pvBeitragssatz: 0.040, // Pflegeversicherung für Kinderlose ab 2024
+    gkvBeitragssatz: 0.146 + 0.017 + 0.040, // 20.3% (GKV + PV)
     midijobMonatMin: 538,
     midijobJahrMin: 538 * 12, // 6456
     midijobJahrMax: 24000,
@@ -71,7 +73,8 @@ export const STEUERJAHR_PARAMETER: Record<Steuerjahr, SteuerjahrParameter> = {
     gkvBemessungMonatMax: 5512.5,
     gkvBemessungJahrMax: 5512.5 * 12, // 66150
     gkvZusatzbeitrag: 0.025,
-    gkvBeitragssatz: 0.146 + 0.025, // 17.1%
+    pvBeitragssatz: 0.040, // Pflegeversicherung für Kinderlose
+    gkvBeitragssatz: 0.146 + 0.025 + 0.040, // 21.1% (GKV + PV)
     midijobMonatMin: 556,
     midijobJahrMin: 556 * 12, // 6672
     midijobJahrMax: 24000,
@@ -96,7 +99,8 @@ export const STEUERJAHR_PARAMETER: Record<Steuerjahr, SteuerjahrParameter> = {
     gkvBemessungMonatMax: 5812.5,
     gkvBemessungJahrMax: 5812.5 * 12, // 69750
     gkvZusatzbeitrag: 0.029,
-    gkvBeitragssatz: 0.146 + 0.029, // 17.5%
+    pvBeitragssatz: 0.040, // Pflegeversicherung für Kinderlose
+    gkvBeitragssatz: 0.146 + 0.029 + 0.040, // 21.5% (GKV + PV)
     midijobMonatMin: 603,
     midijobJahrMin: 603 * 12, // 7236
     midijobJahrMax: 24000,

@@ -189,7 +189,7 @@ export function EndeSection() {
     <div className="space-y-6 pb-28 md:pb-32">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Ende / Auszahlungsphase</h2>
-        <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV-Beitrag und Gesamtergebnis</p>
+        <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV- & PV-Beitrag und Gesamtergebnis</p>
       </div>
 
       <div className={`rounded-xl border p-4 md:p-6 ${gesamtvergleich.vorteil >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
@@ -480,7 +480,7 @@ export function EndeSection() {
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
               <p className="text-xs text-amber-700">Einkommensteuer auf Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Gesetzliche Krankenversicherung (aus Netto): <span className="font-semibold text-red-700">− {gkvBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Gesetzliche Kranken- & Pflegeversicherung (aus Netto): <span className="font-semibold text-red-700">− {gkvBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Netto-Zinsen für Zielnetto: <span className="font-semibold text-green-700">+ {zinsenNettoBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Neues Gesellschafterdarlehen für Bereich 2: <span className="font-semibold text-blue-700">+ {neuesDarlehenBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
@@ -663,7 +663,7 @@ export function EndeSection() {
                   Einkommensteuer Zinsanteil: {zinsensteuerProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
                 <p className="text-xs text-amber-600 mt-1">
-                  GKV-Beitrag (aus Netto): {berechneGesetzlicheKrankenversicherungBeitrag(ende.geschaeftsfuehrergehalt + zinsertragProJahr + ende.gewinnausschuettung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  GKV- & PV-Beitrag (aus Netto): {berechneGesetzlicheKrankenversicherungBeitrag(ende.geschaeftsfuehrergehalt + zinsertragProJahr + ende.gewinnausschuettung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -824,7 +824,7 @@ export function EndeSection() {
           {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Frei konfigurierbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
           {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 2 – Darlehen:</span> Neues Gesellschafterdarlehen mit 3 % Zins; Tilgung wird flexibel nur bei Zielnetto-Lücke ausgezahlt.</p>}
           <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
-          <p><span className="font-medium">Gesetzliche Krankenversicherung:</span> Beitrag aus Gehalt + sonstigen Einnahmen (z. B. Zinsen, Ausschüttung) und vollständig aus dem Netto zu zahlen</p>
+          <p><span className="font-medium">Gesetzliche Kranken- & Pflegeversicherung:</span> Beitrag aus Gehalt + sonstigen Einnahmen (z. B. Zinsen, Ausschüttung) inkl. Pflegeversicherung (~4,0%) und vollständig aus dem Netto zu zahlen</p>
           <p><span className="font-medium">Darlehen (Zinsen):</span> Progressive Einkommensteuer (Marginalsteuersatz), Tilgungsanteil steuerfrei (§ 32d Abs. 2 Nr. 1b EStG)</p>
           <p><span className="font-medium">Teileinkünfteverfahren:</span> 60% des Betrags × persönlicher Steuersatz</p>
           <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt. Abgeltungssteuer gilt nur für Gewinnausschüttungen.</p>
