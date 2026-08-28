@@ -33,6 +33,9 @@ export const DEFAULT_KOERPERSCHAFTSTEUER_SATZ = 15;
 export const DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ = 5.5;
 export const DEFAULT_GEWERBESTEUER_SATZ = 14;
 
+/** Gewerbesteuer Freibetrag for Personengesellschaften / Mitunternehmerschaften (§ 11 Abs. 1 Satz 3 Nr. 1 GewStG). */
+export const GEWERBESTEUER_FREIBETRAG = 24500;
+
 /**
  * Calculates loss carryforward utilization and remaining loss carryforward balance
  * according to German tax law (§ 10d EStG / § 8 Abs. 1 KStG).
@@ -137,13 +140,7 @@ export const DEFAULT_STILLER_GESELLSCHAFTER_CONFIG: StillerGesellschafterConfig 
  * - Minimum interest on the Einlage (always, regardless of profit)
  * - Profit share on the simulated operating profit
  *
- * Both are fully deductible as Betriebsausgaben for both typisch and atypisch.
- *
- * Note: For the atypisch variant the profit share additionally creates a
- * Mitunternehmerschaft, which shifts part of the GmbH's taxable base to the
- * partner's income tax sphere.  The GmbH-side deduction is identical to the
- * typisch treatment within this model; the difference lies at the partner level
- * (income characterisation and loss-offset rules differ).
+ * Both are deductible as Betriebsausgaben for both typisch and atypisch.
  */
 export function berechneStillenGesellschafterKosten(
   config: StillerGesellschafterConfig | undefined,
@@ -153,6 +150,47 @@ export function berechneStillenGesellschafterKosten(
   const zinsen = Math.max(0, config.einlage) * (config.zinssatz / 100);
   const gewinnbeteiligung = Math.max(0, simulierterGewinn) * (config.gewinnbeteiligungProzent / 100);
   return zinsen + gewinnbeteiligung;
+}
+
+/**
+ * Calculates income tax for the silent partner on their received interest and profit share.
+ * - 'typisch': Income from capital assets (§ 20 EStG) taxed at capital gains tax rate (Abgeltungssteuer), Sparerpauschbetrag applies.
+ * - 'atypisch': Income from trade or business (§ 15 EStG - Mitunternehmerschaft) taxed at personal income tax / marginal rate, NO Sparerpauschbetrag.
+ */
+export function berechneStillerGesellschafterSteuer(
+  bruttoEinkommen: number,
+  config: StillerGesellschafterConfig | undefined,
+  persoenlicherGrenzsteuersatz?: number,
+  kapitalertragsteuerSatz?: number,
+  sparerpauschbetrag: number = 0,
+  steuerjahr?: Steuerjahr
+): { steuer: number; einkommensteuer: number; soli: number } {
+  if (!config?.aktiv || bruttoEinkommen <= 0) {
+    return { steuer: 0, einkommensteuer: 0, soli: 0 };
+  }
+
+  if (config.typ === 'atypisch') {
+    // Atypisch stiller Gesellschafter: gewerbliche Einkünfte (§ 15 EStG - Mitunternehmerschaft).
+    // Taxed with personal income tax / marginal tax rate (+ Soli), NO Sparerpauschbetrag.
+    const grenztarif = Math.max(0, Math.min(100, persoenlicherGrenzsteuersatz ?? 0));
+    if (grenztarif > 0) {
+      const einkommensteuer = bruttoEinkommen * (grenztarif / 100);
+      const soli = einkommensteuer * SOLI;
+      return { steuer: einkommensteuer + soli, einkommensteuer, soli };
+    }
+    const einkommensteuer = berechneEinkommensteuerBetrieb(bruttoEinkommen, steuerjahr);
+    const soli = berechneSoliBetrieb(einkommensteuer, steuerjahr);
+    return { steuer: einkommensteuer + soli, einkommensteuer, soli };
+  } else {
+    // Typisch stiller Gesellschafter: Einkünfte aus Kapitalvermögen (§ 20 EStG).
+    // Taxed at Abgeltungssteuer rate, Sparerpauschbetrag applies.
+    const kestRate = Math.max(0, Math.min(100, kapitalertragsteuerSatz ?? DEFAULT_KAPITALERTRAGSTEUER_SATZ)) / 100;
+    const steuerpflichtig = Math.max(0, bruttoEinkommen - Math.max(0, sparerpauschbetrag));
+    const steuer = steuerpflichtig * kestRate;
+    const einkommensteuer = steuer / (1 + SOLI);
+    const soli = steuer - einkommensteuer;
+    return { steuer, einkommensteuer, soli };
+  }
 }
 
 export function berechneEinkommensteuerBetrieb(zvE: number, steuerjahr?: Steuerjahr): number {
@@ -277,6 +315,8 @@ export interface PrivatVergleichJahreswert {
   zinsEntnahme: number;
   entnahmeAusSparplanDefizit: number;
   stillerGesellschafterEntnahme: number;
+  stillerGesellschafterSteuer?: number;
+  stillerGesellschafterNetto?: number;
   entnahmenVorSteuern: number;
   etfVerkauf: number;
   vorabpauschalesteuer: number;
@@ -743,6 +783,8 @@ function simulierePrivatVergleich(
     let zinsEntnahme: number;
     let entnahmeAusSparplanDefizit: number;
     let stillerGesellschafterEntnahme: number;
+    let stillerGesellschafterSteuerPrivat: number = 0;
+    let stillerGesellschafterNettoPrivat: number = 0;
     let entnahmenVorSteuern: number;
     if (jahresOverride !== undefined) {
       gehaltsEntnahme = gehaltsOverrideJahr !== undefined ? Math.max(0, gehaltsOverrideJahr) : 0;
@@ -760,6 +802,16 @@ function simulierePrivatVergleich(
         state.stillerGesellschafter,
         simulierterGewinn
       );
+      const sgtRes = berechneStillerGesellschafterSteuer(
+        stillerGesellschafterEntnahme,
+        state.stillerGesellschafter,
+        state.persoenlicherGrenzsteuersatz,
+        state.kapitalertragsteuerSatz,
+        state.sparerpauschbetrag,
+        state.steuerjahr
+      );
+      stillerGesellschafterSteuerPrivat = sgtRes.steuer;
+      stillerGesellschafterNettoPrivat = Math.max(0, stillerGesellschafterEntnahme - stillerGesellschafterSteuerPrivat);
       entnahmenVorSteuern = gehaltsEntnahme + zinsEntnahme + entnahmeAusSparplanDefizit + stillerGesellschafterEntnahme;
     }
     kumulierteEntnahmen += entnahmenVorSteuern;
@@ -848,6 +900,8 @@ function simulierePrivatVergleich(
       zinsEntnahme,
       entnahmeAusSparplanDefizit,
       stillerGesellschafterEntnahme,
+      stillerGesellschafterSteuer: stillerGesellschafterSteuerPrivat,
+      stillerGesellschafterNetto: stillerGesellschafterNettoPrivat,
       entnahmenVorSteuern,
       etfVerkauf: verkauf.etfVerkauf,
       vorabpauschalesteuer,
@@ -1040,6 +1094,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const auszahlungenOhneVerkaufssteuern = ungedeckteBetriebsausgaben + jaehrlicheZinsen + investitionsCashAbfluss;
     const verfuegbareLiquiditaetVorEtfVerkauf = verbleibenderGewinnVorSteuern + cashReserve + verbleibendeDarlehensZuzahlungen;
 
+    const isAtypischStiller = Boolean(state.stillerGesellschafter?.aktiv && state.stillerGesellschafter?.typ === 'atypisch');
+
     // Solve sale amount iteratively because taxes depend on realized sale gain.
     let etfVerkauf = Math.min(
       etfWertNachWachstum,
@@ -1055,9 +1111,12 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - jaehrlicheZinsen;
       const { versteuerterGewinn: versteuerterGewinnIter } =
         berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
-      const gmbhSteuerIter = versteuerterGewinnIter > 0
-        ? versteuerterGewinnIter * effGmbhSteuerGesamt
-        : 0;
+      const gewerbeertragGewStIter = isAtypischStiller
+        ? Math.max(0, versteuerterGewinnIter - GEWERBESTEUER_FREIBETRAG)
+        : versteuerterGewinnIter;
+      const gmbhSteuerKstIter = versteuerterGewinnIter > 0 ? versteuerterGewinnIter * effKstGesamt : 0;
+      const gmbhSteuerGewStIter = gewerbeertragGewStIter > 0 ? gewerbeertragGewStIter * effGewerbesteuer : 0;
+      const gmbhSteuerIter = gmbhSteuerKstIter + gmbhSteuerGewStIter;
       const benoetigterVerkauf = Math.min(
         etfWertNachWachstum,
         Math.max(
@@ -1088,16 +1147,19 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgaben, verlustvortrag);
     verlustvortrag = neuerVerlustvortrag;
 
-    // GmbH taxes (KSt + GewSt) on positive taxable profit after loss carryforward, paid to Finanzamt
-    const gmbhSteuer = versteuerterGewinn > 0
-      ? versteuerterGewinn * effGmbhSteuerGesamt
-      : 0;
+    // GmbH taxes (KSt + GewSt) on positive taxable profit after loss carryforward, paid to Finanzamt.
+    // For atypisch stiller Gesellschafter, a Mitunternehmerschaft (GmbH & Still) exists,
+    // granting a Gewerbesteuer Freibetrag of 24.500 € (§ 11 Abs. 1 S. 3 Nr. 1 GewStG).
+    const gewerbeertragGewSt = isAtypischStiller
+      ? Math.max(0, versteuerterGewinn - GEWERBESTEUER_FREIBETRAG)
+      : versteuerterGewinn;
     const gmbhSteuerKst = versteuerterGewinn > 0
       ? versteuerterGewinn * effKstGesamt
       : 0;
-    const gmbhSteuerGewSt = versteuerterGewinn > 0
-      ? versteuerterGewinn * effGewerbesteuer
+    const gmbhSteuerGewSt = gewerbeertragGewSt > 0
+      ? gewerbeertragGewSt * effGewerbesteuer
       : 0;
+    const gmbhSteuer = gmbhSteuerKst + gmbhSteuerGewSt;
 
     // Tax on realized ETF gain due to selling
     const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, effGmbhSteuerGesamt);
@@ -1257,6 +1319,26 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         offenesDarlehen,
         nettovermoegen,
         stillerGesellschafterKosten,
+        stillerGesellschafterSteuer: berechneStillerGesellschafterSteuer(
+          stillerGesellschafterKosten,
+          state.stillerGesellschafter,
+          state.persoenlicherGrenzsteuersatz,
+          state.kapitalertragsteuerSatz,
+          state.sparerpauschbetrag,
+          state.steuerjahr
+        ).steuer,
+        stillerGesellschafterNetto: Math.max(
+          0,
+          stillerGesellschafterKosten -
+            berechneStillerGesellschafterSteuer(
+              stillerGesellschafterKosten,
+              state.stillerGesellschafter,
+              state.persoenlicherGrenzsteuersatz,
+              state.kapitalertragsteuerSatz,
+              state.sparerpauschbetrag,
+              state.steuerjahr
+            ).steuer
+        ),
         stillerGesellschafterEinlage: sumEtfWertNachTyp(etfLots, "stillerGesellschafter"),
         investitionsKapitalGesamt,
         investitionsGewinnVerlustProJahr,

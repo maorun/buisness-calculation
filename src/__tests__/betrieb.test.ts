@@ -17,12 +17,14 @@ import {
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneVerlustvortragAnrechnung,
+  berechneStillerGesellschafterSteuer,
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
   TEILFREISTELLUNG_AKTIEN_PRIVAT,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
+  GEWERBESTEUER_FREIBETRAG,
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
@@ -213,6 +215,29 @@ describe("berechneSoliBetrieb", () => {
     const est = 40000;
     // 40000 * 0.055 = 2200
     expect(berechneSoliBetrieb(est)).toBe(2200);
+  });
+});
+
+describe("berechneStillerGesellschafterSteuer", () => {
+  it("returns 0 tax when silent partner is inactive or income <= 0", () => {
+    const config = { aktiv: false, typ: 'typisch' as const, einlage: 25000, gewinnbeteiligungProzent: 20, zinssatz: 4 };
+    expect(berechneStillerGesellschafterSteuer(1000, config).steuer).toBe(0);
+    expect(berechneStillerGesellschafterSteuer(0, { ...config, aktiv: true }).steuer).toBe(0);
+  });
+
+  it("taxes typisch stiller Gesellschafter as capital income with Abgeltungsteuer and Sparerpauschbetrag", () => {
+    const config = { aktiv: true, typ: 'typisch' as const, einlage: 25000, gewinnbeteiligungProzent: 20, zinssatz: 4 };
+    // Gross income: 3000 €. Sparerpauschbetrag: 1000 € -> Taxable: 2000 €
+    // Abgeltungsteuer 26.375% -> Tax: 527.50 €
+    const res = berechneStillerGesellschafterSteuer(3000, config, undefined, 26.375, 1000);
+    expect(res.steuer).toBeCloseTo(527.50);
+  });
+
+  it("taxes atypisch stiller Gesellschafter as trade income using marginal tax rate and NO Sparerpauschbetrag", () => {
+    const config = { aktiv: true, typ: 'atypisch' as const, einlage: 25000, gewinnbeteiligungProzent: 20, zinssatz: 4 };
+    // Gross income: 3000 €. Marginal rate: 42% -> ESt: 1260 €, Soli: 1260 * 0.055 = 69.30 € -> Total tax: 1329.30 €
+    const res = berechneStillerGesellschafterSteuer(3000, config, 42, 26.375, 1000);
+    expect(res.steuer).toBeCloseTo(1329.30);
   });
 });
 
@@ -1075,6 +1100,48 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[0].details.offenesDarlehen).toBeCloseTo(26200);
     expect(results[1].details.offenesDarlehen).toBeCloseTo(27400);
     expect(results[0].details.jaehrlicheZinsen).toBeGreaterThan(875);
+  });
+
+  it("applies Gewerbesteuer Freibetrag § 11 GewStG (24,500 €) for atypisch stiller Gesellschafter", () => {
+    const stateTypisch: BetriebState = {
+      ...defaultState,
+      simulierterGewinn: 50000,
+      stillerGesellschafter: { aktiv: true, typ: 'typisch', einlage: 25000, gewinnbeteiligungProzent: 10, zinssatz: 0 },
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+    };
+    const stateAtypisch: BetriebState = {
+      ...stateTypisch,
+      stillerGesellschafter: { aktiv: true, typ: 'atypisch', einlage: 25000, gewinnbeteiligungProzent: 10, zinssatz: 0 },
+    };
+
+    const resTypisch = berechneBetriebsErgebnisse(stateTypisch)[0];
+    const resAtypisch = berechneBetriebsErgebnisse(stateAtypisch)[0];
+
+    // Körperschaftsteuer (KSt) should be identical for both
+    expect(resAtypisch.details.gmbhSteuerKst).toBeCloseTo(resTypisch.details.gmbhSteuerKst);
+
+    // Gewerbesteuer (GewSt) for atypisch should be lower due to 24,500 € Freibetrag
+    expect(resAtypisch.details.gmbhSteuerGewSt).toBeLessThan(resTypisch.details.gmbhSteuerGewSt);
+
+    // Specifically, gewerbeertrag is reduced by 24,500 €
+    const expectedGewStDiff = GEWERBESTEUER_FREIBETRAG * 0.14; // 24500 * 0.14 = 3430 €
+    expect(resTypisch.details.gmbhSteuerGewSt - resAtypisch.details.gmbhSteuerGewSt).toBeCloseTo(expectedGewStDiff, 1);
+  });
+
+  it("includes silent partner tax and net income in details", () => {
+    const stateAtypisch: BetriebState = {
+      ...defaultState,
+      simulierterGewinn: 20000,
+      persoenlicherGrenzsteuersatz: 42,
+      stillerGesellschafter: { aktiv: true, typ: 'atypisch', einlage: 25000, gewinnbeteiligungProzent: 10, zinssatz: 4 },
+    };
+    const res = berechneBetriebsErgebnisse(stateAtypisch)[0];
+    // Kosten = 25000*0.04 + 20000*0.10 = 1000 + 2000 = 3000 €
+    expect(res.details.stillerGesellschafterKosten).toBe(3000);
+    // Tax at 42% + Soli = 3000 * 0.42 * 1.055 = 1329.30 €
+    expect(res.details.stillerGesellschafterSteuer).toBeCloseTo(1329.30);
+    expect(res.details.stillerGesellschafterNetto).toBeCloseTo(3000 - 1329.30);
   });
 });
 
