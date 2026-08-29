@@ -1,6 +1,6 @@
 import { DarlehenConfig } from "../types";
 import { Steuerjahr } from "../parameters";
-import { berechneEinkommensteuerBetrieb, berechneSoliBetrieb } from "./steuer";
+import { berechneEinkommensteuer, berechneSoli } from "./steuer";
 import { MONATE_PRO_JAHR } from "./benefits";
 
 export const DARLEHEN_MONATE_PRO_JAHR = MONATE_PRO_JAHR;
@@ -35,16 +35,21 @@ export function berechneDarlehensjahr(
   return { zinsenJaehrlich, darlehenBetragEnde: darlehenBetrag };
 }
 
-export function berechneDarlehensZinsenSteuerBetrieb(
+/**
+ * Marginal income tax attributable to shareholder-loan interest.
+ */
+export function berechneDarlehensZinsenSteuer(
   zinsen: number,
   bruttoGehalt: number,
   steuerjahr?: Steuerjahr
 ): number {
   if (zinsen <= 0) return 0;
   const gehaltNorm = Math.max(0, bruttoGehalt);
-  const estNurGehalt = berechneEinkommensteuerBetrieb(gehaltNorm, steuerjahr);
-  const soliNurGehalt = berechneSoliBetrieb(estNurGehalt, steuerjahr);
-  const estKombiniert = berechneEinkommensteuerBetrieb(gehaltNorm + zinsen, steuerjahr);
-  const soliKombiniert = berechneSoliBetrieb(estKombiniert, steuerjahr);
+  const estNurGehalt = berechneEinkommensteuer(gehaltNorm, steuerjahr);
+  const soliNurGehalt = berechneSoli(estNurGehalt, steuerjahr);
+  const estKombiniert = berechneEinkommensteuer(gehaltNorm + zinsen, steuerjahr);
+  const soliKombiniert = berechneSoli(estKombiniert, steuerjahr);
   return (estKombiniert + soliKombiniert) - (estNurGehalt + soliNurGehalt);
 }
+
+export const berechneDarlehensZinsenSteuerBetrieb = berechneDarlehensZinsenSteuer;
