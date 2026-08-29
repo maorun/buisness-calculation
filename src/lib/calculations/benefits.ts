@@ -100,11 +100,11 @@ export function berechneGmbhKonsumwertProJahr(
  * the acquisition year – no multi-year linear depreciation is required.
  *
  * When an old phone is sold before buying its replacement (from the second cycle
- * onward), the sale proceeds reduce the net cost. The very first purchase has no
+ * onward), the sale proceeds reduce the net cost.  The very first purchase has no
  * prior device to sell, so the full acquisition cost applies.
  *
- * @param jahr 1-based year within the current phase (Betrieb or Ende).
- * @param config Configuration for the phone programme; defaults to DEFAULT_FIRMENHANDY_CONFIG.
+ * @param jahr  1-based year within the current phase (Betrieb or Ende).
+ * @param config  Configuration for the phone programme; defaults to DEFAULT_FIRMENHANDY_CONFIG.
  */
 export function berechneHandyNettoKostenProJahr(
   jahr: number,

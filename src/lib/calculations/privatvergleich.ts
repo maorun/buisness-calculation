@@ -30,7 +30,7 @@ import {
   verkaufeEtfLotsSteueroptimal,
   wachseEtfLots,
 } from "./etf";
-import { berechneInvestitionsZusammenfassung } from "./betrieb";
+import { berechneInvestitionsZusammenfassung } from "./investition";
 
 export interface PrivatVergleichErgebnis {
   anfangskapitalPrivat: number;
@@ -132,11 +132,11 @@ function simulierePrivatVergleich(
     // In these years the private comparison should NOT reinvest the simulated business income
     // (the GmbH is paying out from its ETF, not from ongoing operations), but the benefit
     // consumption value is still relevant: the GmbH continues to provide benefits tax-free while
-    // the private person pays for the same goods out of pocket. Setting sparplanNetto to the
+    // the private person pays for the same goods out of pocket.  Setting sparplanNetto to the
     // negative benefit cost (instead of income − cost) ensures:
-    // • The ETF is sold to cover the benefit expenditure (private person pays for benefits).
-    // • kumulierterKonsumwert is still credited, keeping the comparison fair (neutral net effect).
-    // • No spurious business-income reinvestment inflates the private ETF during the Ende phase.
+    //   • The ETF is sold to cover the benefit expenditure (private person pays for benefits).
+    //   • kumulierterKonsumwert is still credited, keeping the comparison fair (neutral net effect).
+    //   • No spurious business-income reinvestment inflates the private ETF during the Ende phase.
     const isEndeJahr = gehaltsOverrideJahr !== undefined;
     // Benefits are relevant unless a full explicit withdrawal override (jahresOverride) is active,
     // in which case the withdrawal already encodes the net GmbH payout and crediting benefits
@@ -334,3 +334,7 @@ export function berechnePrivatVergleichZeitreihe(
 ): PrivatVergleichJahreswert[] {
   return simulierePrivatVergleich(state, entnahmenOverride, offeneDarlehenOverride, gehaltsEntnahmeOverride).jahreswerte;
 }
+
+/**
+ * Calculate yearly Betrieb results for each year of the operating phase.
+ */
