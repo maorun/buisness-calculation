@@ -208,4 +208,30 @@ describe("EndeSection", () => {
     expect(screen.queryByText("Zielnetto Bereich 2 (€/Jahr)")).not.toBeNull();
     expect(screen.queryByText("Zielabgleich Auszahlungsphase")).not.toBeNull();
   });
+
+  it("transfers loss carryforward from last Betrieb year to Ende phase in calculatorStore", () => {
+    // Setup high costs in Betrieb phase so that a loss carryforward remains
+    useCalculatorStore.setState((state) => ({
+      betrieb: {
+        ...state.betrieb,
+        simulierterGewinn: 0,
+        geschaeftsfuehrergehalt: 20000,
+        laufzeitJahre: 1,
+      },
+      ende: {
+        ...state.ende,
+        simulierterGewinn: 30000,
+        geschaeftsfuehrergehalt: 0,
+        laufzeitJahre: 1,
+      },
+    }));
+
+    const betriebErgebnisse = useCalculatorStore.getState().getBetriebsErgebnisse();
+    const verlustvortragBetrieb = betriebErgebnisse[betriebErgebnisse.length - 1].details.verlustvortrag;
+    expect(verlustvortragBetrieb).toBeGreaterThan(0);
+
+    const endeErgebnisse = useCalculatorStore.getState().getEndeErgebnisse();
+    // Ende Y1 should use the loss carryforward from Betrieb
+    expect(endeErgebnisse[0].details.verlustVortragGenutzt).toBeGreaterThan(0);
+  });
 });

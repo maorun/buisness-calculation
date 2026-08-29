@@ -229,7 +229,8 @@ export function berechneEndeErgebnisse(
   gmbhSteuerGesamt: number = GMBH_STEUER_GESAMT,
   kstGesamt: number = KST_GESAMT,
   gewerbesteuer: number = GEWERBESTEUER,
-  steuerjahr?: Steuerjahr
+  steuerjahr?: Steuerjahr,
+  initialVerlustvortrag: number = 0
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
@@ -237,7 +238,7 @@ export function berechneEndeErgebnisse(
   let privatvermoegen = 0;
   let firmenEtfVermoegen = Math.max(0, etfWertAnfang) + stammkapitalErhoehungEtf;
   let reinvestiertesDarlehen = 0;
-  let verlustvortrag = 0;
+  let verlustvortrag = Math.max(0, initialVerlustvortrag);
   // Tracks the sequential year within the Ende phase for the 3-year phone replacement cycle.
   let endePhaseJahr = 1;
   // Tracks the cumulative benefit consumption value (Tankgutschein, Essenszuschuss, Firmenhandy)

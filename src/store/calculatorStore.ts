@@ -258,6 +258,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
       ?? Math.max(0, get().betrieb.darlehen.betrag);
     const aufgelaufeneZinsen = letztesBetriebsergebnis?.details.aufgelaufeneZinsen ?? 0;
     const betriebDarlehenEndfaellig = get().betrieb.darlehen.endfaellig;
+    const verlustvortragBetriebEnde = letztesBetriebsergebnis?.details.verlustvortrag ?? 0;
     const { gmbhSteuerGesamt, kstGesamt, gewerbesteuer } = berechneGmbhSteuerRaten(
       get().betrieb.koerperschaftsteuerSatz ?? DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
       get().betrieb.solidaritaetszuschlagSatz ?? DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
@@ -282,7 +283,9 @@ export const useCalculatorStore = create<CalculatorStore>()(
       },
       gmbhSteuerGesamt,
       kstGesamt,
-      gewerbesteuer
+      gewerbesteuer,
+      get().betrieb.steuerjahr,
+      verlustvortragBetriebEnde
     );
   },
     }),

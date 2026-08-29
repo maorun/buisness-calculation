@@ -918,6 +918,29 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.verlustvortrag).toBeGreaterThan(0);
     });
 
+    it("uses initialVerlustvortrag from Betriebsphase to offset profit in Ende phase", () => {
+      const state: EndeState = {
+        ...baseState,
+        geschaeftsfuehrergehalt: 0,
+        simulierterGewinn: 10000,
+        laufzeitJahre: 2,
+      };
+
+      // With 10,000 initial loss carryforward and 10,000 profit (minus 1,000 phone cost in Y1 = 9,000 net gain),
+      // the profit in Y1 is fully offset by loss carryforward so gmbhSteuer is 0.
+      const initialVerlust = 15000;
+      const results = berechneEndeErgebnisse(
+        state, 100000, 0, 0, 0, false, 0, [],
+        { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+        GMBH_STEUER_GESAMT, 0.15, 0.14, undefined, initialVerlust
+      );
+
+      expect(results[0].details.verlustVortragGenutzt).toBe(10000);
+      expect(results[0].details.gmbhSteuer).toBe(0);
+      expect(results[0].details.verlustvortrag).toBe(5000);
+    });
+
     it("defers Ende-darlehen payout to the final year when ende.darlehenEndfaellig is active", () => {
       const state: EndeState = {
         ...baseState,
