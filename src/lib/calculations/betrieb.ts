@@ -1,7 +1,7 @@
 import { BetriebState, JahresErgebnis, KostenPosition } from "../types";
 
-export * from "./etf";
 export * from "./steuer";
+export * from "./etf";
 export * from "./benefits";
 export * from "./darlehen";
 export * from "./investition";
@@ -12,6 +12,7 @@ import {
   DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
   DEFAULT_GEWERBESTEUER_SATZ,
   GEWERBESTEUER_FREIBETRAG,
+  TEILFREISTELLUNG_AKTIEN_GMBH,
   berechneGmbhSteuerRaten,
   berechneVerlustvortragAnrechnung,
   berechneEinkommensteuerBetrieb,
@@ -23,6 +24,8 @@ import {
 
 import {
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_GF_GEHALT_BETRIEB,
+  DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   berechneHandyNettoKostenProJahr,
   berechneBenefitsKosten,
   berechneKonsumNutzenwertProJahr,
@@ -39,7 +42,6 @@ import {
   EtfLot,
   MAX_SALE_CONVERGENCE_ITERATIONS,
   SALE_CONVERGENCE_THRESHOLD,
-  TEILFREISTELLUNG_AKTIEN_GMBH,
   berechneVorabpauschale,
   berechneVorabpauschaleNachEtfVerkauf,
   berechneVorabpauschalesteuer,
@@ -52,9 +54,10 @@ import {
   wachseEtfLots,
 } from "./etf";
 
-export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
-export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
-
+/**
+ * Sum all operating cost positions (monthly × 12 + annual).
+ * Supports KostenPositions with periode: 'monatlich' (multiplied by 12) or 'jaehrlich' (as-is).
+ */
 export function berechneBetriebskosten(kosten: KostenPosition[]): number {
   return kosten.reduce((sum, k) => {
     return sum + berechneKostenPositionJahresBetrag(k);
@@ -62,12 +65,12 @@ export function berechneBetriebskosten(kosten: KostenPosition[]): number {
 }
 
 function berechneKostenPositionJahresBetrag(kostenPosition: KostenPosition): number {
-  return kostenPosition.periode === "monatlich" ? kostenPosition.betrag * 12 : kostenPosition.betrag;
+  return kostenPosition.periode === 'monatlich' ? kostenPosition.betrag * 12 : kostenPosition.betrag;
 }
 
 export function berechneBetriebskostenPosten(
   kosten: KostenPosition[],
-  benefits: BetriebState["benefits"],
+  benefits: BetriebState['benefits'],
   handyNettoKosten: number,
   handyConfig = DEFAULT_FIRMENHANDY_CONFIG,
   geschaeftsfuehrergehalt: number = 0,
@@ -94,6 +97,9 @@ export function berechneBetriebskostenPosten(
   return [...kostenPosten, ...benefitsPosten];
 }
 
+/**
+ * Calculate yearly Betrieb results for each year of the operating phase.
+ */
 export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const { kstGesamt: effKstGesamt, gewerbesteuer: effGewerbesteuer, gmbhSteuerGesamt: effGmbhSteuerGesamt } =
@@ -172,7 +178,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
     // Use the nominal consumption value (what the shareholder actually receives) rather than the
-    // GmbH's net cost after tax deduction.  The tax saving on benefits is already reflected in a
+    // GmbH's net cost after tax deduction. The tax saving on benefits is already reflected in a
     // lower gmbhSteuer → higher ETF value, so crediting only the after-tax cost would zero-out
     // the benefit advantage instead of correctly showing the tax saving as a GmbH gain.
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(jahr, state.benefits, handyConfig);
@@ -487,12 +493,3 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
 
   return ergebnisse;
 }
-
-/**
- * Calculate annual results for a single investment position.
- *
- * In each year the capital grows by `wertsteigerung` percent and the
- * `gewinnVerlustProJahr` cash flow is received (or paid out if negative).
- * The cumulative profit/loss includes both the annual cash flows and the
- * capital appreciation.
- */

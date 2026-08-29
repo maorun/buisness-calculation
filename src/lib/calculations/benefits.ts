@@ -1,6 +1,9 @@
 import { BenefitConfig, FirmenhandyConfig } from "../types";
 import { GMBH_STEUER_GESAMT } from "./steuer";
 
+export const DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB = 36000;
+export const DEFAULT_GF_GEHALT_BETRIEB = 17000;
+
 export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
