@@ -105,7 +105,10 @@ export function berechneGmbhSteuerRaten(
   return { kstGesamt, gewerbesteuer: gst, gmbhSteuerGesamt: kstGesamt + gst };
 }
 
-export function berechneEinkommensteuerBetrieb(zvE: number, steuerjahr?: Steuerjahr): number {
+/**
+ * Progressive German income tax brackets according to selected Steuerjahr.
+ */
+export function berechneEinkommensteuer(zvE: number, steuerjahr?: Steuerjahr): number {
   const params = getSteuerjahrParameter(steuerjahr);
   if (zvE <= params.grundfreibetrag) return 0;
 
@@ -126,13 +129,20 @@ export function berechneEinkommensteuerBetrieb(zvE: number, steuerjahr?: Steuerj
   return Math.floor(0.45 * zvE - params.offset45);
 }
 
-export function berechneSoliBetrieb(einkommensteuer: number, steuerjahr?: Steuerjahr): number {
+export const berechneEinkommensteuerBetrieb = berechneEinkommensteuer;
+
+/**
+ * Solidaritätszuschlag on income tax according to selected Steuerjahr.
+ */
+export function berechneSoli(einkommensteuer: number, steuerjahr?: Steuerjahr): number {
   const params = getSteuerjahrParameter(steuerjahr);
   if (einkommensteuer <= params.soliFreigrenzeEinkommensteuer) return 0;
   const volleSoli = einkommensteuer * SOLI;
   const milderungsSoli = (einkommensteuer - params.soliFreigrenzeEinkommensteuer) * params.soliMilderungFaktor;
   return Math.floor(Math.min(volleSoli, milderungsSoli));
 }
+
+export const berechneSoliBetrieb = berechneSoli;
 
 /**
  * Gesetzlicher Kranken- und Pflegeversicherungsbeitrag (GKV + PV) für freiwillig
@@ -154,12 +164,16 @@ export function berechneGesetzlicheKrankenversicherungBeitrag(
   return beitragspflichtigeEinnahmen * Math.max(0, bss);
 }
 
-export function berechneNettoGehaltBetrieb(bruttoGehalt: number, steuerjahr?: Steuerjahr): number {
-  // Vereinfachung analog zur Ende-Phase: ohne Sozialversicherungsabzüge.
-  const est = berechneEinkommensteuerBetrieb(bruttoGehalt, steuerjahr);
-  const soli = berechneSoliBetrieb(est, steuerjahr);
+/**
+ * Net salary after income tax and Soli.
+ */
+export function berechneNettoGehalt(bruttoGehalt: number, steuerjahr?: Steuerjahr): number {
+  const est = berechneEinkommensteuer(bruttoGehalt, steuerjahr);
+  const soli = berechneSoli(est, steuerjahr);
   return bruttoGehalt - est - soli;
 }
+
+export const berechneNettoGehaltBetrieb = berechneNettoGehalt;
 
 /**
  * Annual costs the GmbH pays to the silent partner:
