@@ -55,7 +55,6 @@ export function berechneGewerbesteuerHinzurechnung(
   if (finanzierungskosten <= freibetrag) return 0;
   return (finanzierungskosten - freibetrag) * GEWERBESTEUER_HINZURECHNUNG_SATZ;
 }
-
 import {
   EtfLot,
   MAX_SALE_CONVERGENCE_ITERATIONS,
