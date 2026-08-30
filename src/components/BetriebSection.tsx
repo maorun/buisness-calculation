@@ -6,18 +6,24 @@ import {
   TEILFREISTELLUNG_AKTIEN_GMBH,
   TEILFREISTELLUNG_AKTIEN_PRIVAT,
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_DIENSTWAGEN_CONFIG,
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_KAPITALERTRAGSTEUER_SATZ,
+  DEFAULT_SPARERPAUSCHBETRAG,
   DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
   DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
   DEFAULT_GEWERBESTEUER_SATZ,
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneAlleInvestitionsErgebnisse,
+  pruefeDienstwagenMoeglichkeit,
+  berechneDienstwagenGeldwerterVorteil,
+  berechneDienstwagenGmbhKosten,
 } from "@/lib/calculations/betrieb";
+import { getSteuerjahrParameter } from "@/lib/parameters";
 import { InvestitionsPosition } from "@/lib/types";
 import {
   berechneGesamtvergleichKpi,
@@ -161,6 +167,7 @@ export function BetriebSection() {
   const darlehenszinsenBrutto = (erstesJahrDetails?.darlehenszinsenNetto ?? 0) + (erstesJahrDetails?.darlehenszinsenSteuer ?? 0);
   const darlehenszinsenSteuer = erstesJahrDetails?.darlehenszinsenSteuer ?? 0;
   const darlehenszinsenNetto = erstesJahrDetails?.darlehenszinsenNetto ?? 0;
+  const gkvBeitrag = erstesJahrDetails?.gesetzlicheKrankenversicherungBeitrag ?? 0;
   const gesellschafterNetto = erstesJahrDetails?.gesellschafterNetto ?? 0;
   const zielnettoDifferenz = erstesJahrDetails?.zielnettoDifferenz ?? (gesellschafterNetto - zielnettoInsgesamt);
   // GmbH net asset development over the full Betrieb phase (start → last year).
@@ -320,6 +327,39 @@ export function BetriebSection() {
     });
   };
 
+  const dienstwagen = betrieb.benefits.dienstwagen ?? DEFAULT_DIENSTWAGEN_CONFIG;
+  const dienstwagenPruefung = pruefeDienstwagenMoeglichkeit(dienstwagen);
+  const dienstwagenGeldwerterVorteil = dienstwagen.aktiv
+    ? berechneDienstwagenGeldwerterVorteil(dienstwagen)
+    : 0;
+  const dienstwagenGmbhKosten = dienstwagen.aktiv
+    ? berechneDienstwagenGmbhKosten(betrieb.benefits)
+    : 0;
+
+  const updateDienstwagen = (
+    field: keyof NonNullable<typeof betrieb.benefits.dienstwagen>,
+    value: string | boolean | number
+  ) => {
+    const current = betrieb.benefits.dienstwagen ?? DEFAULT_DIENSTWAGEN_CONFIG;
+    let coerced: string | boolean | number;
+    if (typeof value === "boolean" || typeof value === "number") {
+      coerced = value;
+    } else if (field === "methode" || field === "antriebsart") {
+      coerced = value;
+    } else {
+      coerced = parseFloat(value) || 0;
+    }
+    setBetrieb({
+      benefits: {
+        ...betrieb.benefits,
+        dienstwagen: {
+          ...current,
+          [field]: coerced,
+        },
+      },
+    });
+  };
+
   const updateFirmenhandy = (field: keyof NonNullable<typeof betrieb.firmenhandy>, value: string | boolean | number) => {
     const currentHandy = betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     setBetrieb({
@@ -383,6 +423,55 @@ export function BetriebSection() {
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Betrieb</h2>
         <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und freien Überschüssen sowie separatem Cash-Puffer</p>
+      </div>
+
+      {/* Steuerjahr Auswahl & Kinderanzahl */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-2">Steuer- & Sozialjahr Parametersatz</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Wählen Sie das Referenzjahr für Grundfreibetrag (ESt-Tarif), GKV-Beitragsbemessungsgrenze, GKV-Zusatzbeitrag, Midijob-Untergrenze und Basiszins:
+        </p>
+        <div className="flex flex-wrap gap-3 mb-4">
+          {([2024, 2025, 2026] as const).map((jahr) => {
+            const p = getSteuerjahrParameter(jahr, betrieb.anzahlKinder);
+            const isSelected = (betrieb.steuerjahr ?? 2025) === jahr;
+            return (
+              <button
+                key={jahr}
+                type="button"
+                onClick={() => setBetrieb({ steuerjahr: jahr })}
+                className={`flex-1 min-w-[200px] text-left p-3 rounded-xl border transition-all ${
+                  isSelected
+                    ? "border-blue-600 bg-blue-50/70 ring-2 ring-blue-500/20"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-sm text-gray-900">{jahr}</span>
+                  {isSelected && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-600 text-white">Aktiv</span>
+                  )}
+                </div>
+                <div className="space-y-0.5 text-xs text-slate-600">
+                  <p><span className="font-medium">Grundfreibetrag:</span> {p.grundfreibetrag.toLocaleString("de-DE")} €</p>
+                  <p><span className="font-medium">GKV-BBG:</span> {p.gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat ({p.gkvBemessungJahrMax.toLocaleString("de-DE")} €/Jahr)</p>
+                  <p><span className="font-medium">GKV & PV (PV {(p.pvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })}%):</span> {(p.gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} %</p>
+                  <p><span className="font-medium">Midijob-Untergrenze:</span> {p.midijobMonatMin.toLocaleString("de-DE")} €/Monat ({p.midijobJahrMin.toLocaleString("de-DE")} €/Jahr)</p>
+                  <p><span className="font-medium">Basiszins:</span> {(p.basiszins * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} %</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="max-w-xs">
+          <InputField
+            label="Anzahl Kinder (Pflegeversicherung)"
+            value={betrieb.anzahlKinder ?? 0}
+            onChange={(v) => setBetrieb({ anzahlKinder: Math.max(0, parseInt(v) || 0) })}
+            min={0}
+            hint="Staffelung PV: 0 Kinder = 4,00%, 1 Kind = 3,40%, 2 = 3,15%, 3 = 2,90%, 4 = 2,65%, 5+ = 2,40%"
+          />
+        </div>
       </div>
 
       {/* Laufzeit */}
@@ -452,6 +541,17 @@ export function BetriebSection() {
             }
             suffix="%"
             hint="Steuert Vorabpauschale- und ETF-Verkaufssteuer im Privatvergleich (Default: 26,375 %)."
+          />
+          <InputField
+            label="Sparerpauschbetrag Privat (€/Jahr)"
+            value={betrieb.sparerpauschbetrag ?? DEFAULT_SPARERPAUSCHBETRAG}
+            onChange={(v) =>
+              setBetrieb({
+                sparerpauschbetrag: Math.max(0, parseFloat(v) || 0),
+              })
+            }
+            suffix="€/Jahr"
+            hint="Freibetrag für private Kapitalerträge (§ 20 Abs. 9 EStG, Default: 1.000 €/Jahr bzw. 2.000 € bei Zusammenveranlagung)."
           />
           <InputField
             label="Körperschaftsteuer GmbH (%)"
@@ -569,6 +669,140 @@ export function BetriebSection() {
                 hint="Max. 50 €/Monat steuerfrei"
                 max={50}
               />
+            </div>
+          )}
+        </div>
+
+        {/* Dienstwagen */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="dienstwagenAktiv"
+              checked={dienstwagen.aktiv}
+              onChange={(e) => updateDienstwagen("aktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="dienstwagenAktiv" className="text-sm text-gray-700 font-medium">Dienstwagen aktiv</label>
+          </div>
+
+          {dienstwagen.aktiv && (
+            <div className="pl-7 space-y-4">
+              {/* Feasibility Notice */}
+              <div
+                className={`p-3 rounded-lg border text-xs space-y-1 ${
+                  dienstwagenPruefung.hinweisTyp === "kritisch"
+                    ? "bg-red-50 border-red-200 text-red-800"
+                    : dienstwagenPruefung.hinweisTyp === "warnung"
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-green-50 border-green-200 text-green-800"
+                }`}
+              >
+                <p className="font-semibold">
+                  {dienstwagenPruefung.hinweisTyp === "kritisch"
+                    ? "⚠️ Dienstwagen steuerlich kritisch"
+                    : dienstwagenPruefung.hinweisTyp === "warnung"
+                    ? "⚡ Hinweis zur Dienstwagennutzung"
+                    : "✓ Dienstwagen steuerlich anerkannt"}
+                </p>
+                <p>{dienstwagenPruefung.nachricht}</p>
+                <p className="text-[11px] opacity-80">
+                  Betriebliche Nutzung: {dienstwagenPruefung.betrieblicheNutzungProzent} % · Private Nutzung: {dienstwagen.anteilPrivatProzent} %
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputField
+                  label="Bruttolistenpreis (BLP in €)"
+                  value={dienstwagen.bruttolistenpreis}
+                  onChange={(v) => updateDienstwagen("bruttolistenpreis", v)}
+                  suffix="€"
+                  hint="Inkl. USt und Sonderausstattung ab Werk"
+                />
+                <InputField
+                  label="Jährliche Gesamtkosten GmbH (€/Jahr)"
+                  value={dienstwagen.jaehrlicheGesamtkosten}
+                  onChange={(v) => updateDienstwagen("jaehrlicheGesamtkosten", v)}
+                  suffix="€/Jahr"
+                  hint="Leasingrate, Versicherung, Strom/Treibstoff, Wartung"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Versteuerungsmethode</label>
+                  <div className="flex gap-4 items-center mt-1">
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="dienstwagenMethode"
+                        value="pauschal"
+                        checked={dienstwagen.methode === "pauschal"}
+                        onChange={() => updateDienstwagen("methode", "pauschal")}
+                        className="h-4 w-4 text-blue-600 border-gray-300"
+                      />
+                      1 %-Regelung (pauschal)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="dienstwagenMethode"
+                        value="fahrtenbuch"
+                        checked={dienstwagen.methode === "fahrtenbuch"}
+                        onChange={() => updateDienstwagen("methode", "fahrtenbuch")}
+                        className="h-4 w-4 text-blue-600 border-gray-300"
+                      />
+                      Fahrtenbuch
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Antriebsart</label>
+                  <select
+                    value={dienstwagen.antriebsart}
+                    onChange={(e) => updateDienstwagen("antriebsart", e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="benzin_diesel">Benzin / Diesel (1,0 % p.M.)</option>
+                    <option value="hybrid">Hybrid / Plug-in (0,5 % p.M.)</option>
+                    <option value="elektro">Elektro-Auto (0,25 % bis 70k € BLP, darüber 0,5 % p.M.)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputField
+                  label="Anteil private Nutzung (%)"
+                  value={dienstwagen.anteilPrivatProzent}
+                  onChange={(v) => updateDienstwagen("anteilPrivatProzent", Math.max(0, Math.min(100, parseFloat(v) || 0)))}
+                  suffix="%"
+                  hint="Relativ zur Gesamtnutzung (z. B. 30 % = 70 % betrieblich)"
+                  min={0}
+                  max={100}
+                />
+                {dienstwagen.methode === "pauschal" && (
+                  <InputField
+                    label="Entfernung Wohnung – Arbeitsstätte (km)"
+                    value={dienstwagen.entfernungWohnungArbeitsstaetteKm}
+                    onChange={(v) => updateDienstwagen("entfernungWohnungArbeitsstaetteKm", Math.max(0, parseFloat(v) || 0))}
+                    suffix="km"
+                    hint="0,03 % des BLP pro km und Monat"
+                    min={0}
+                  />
+                )}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-600 block">Betriebsausgabe GmbH:</span>
+                  <span className="font-bold text-slate-800">{dienstwagenGmbhKosten.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr</span>
+                </div>
+                <div>
+                  <span className="text-slate-600 block">Geldwerter Vorteil Gesellschafter:</span>
+                  <span className="font-bold text-blue-700">{dienstwagenGeldwerterVorteil.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1044,18 +1278,19 @@ export function BetriebSection() {
               <p>Darlehenszinsen brutto: <span className="font-semibold">{darlehenszinsenBrutto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Zusätzliche Steuer durch Darlehenszinsen: <span className="font-semibold text-red-700">− {darlehenszinsenSteuer.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p>Darlehenszinsen netto: <span className="font-semibold text-green-700">+ {darlehenszinsenNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Gesetzliche Kranken- & Pflegeversicherung (aus Netto): <span className="font-semibold text-red-700">− {gkvBeitrag.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></p>
             </div>
             <p className="mt-2 text-sm font-bold text-slate-800">
-              Summe Netto: {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              Summe Netto: {gesellschafterNetto.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </p>
             <p className="text-xs text-slate-700">
-              Zielnetto insgesamt: {zielnettoInsgesamt.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              Zielnetto insgesamt: {zielnettoInsgesamt.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </p>
             <p
               className={`text-xs mt-1 font-semibold ${zielnettoDifferenz >= 0 ? "text-green-700" : "text-red-700"}`}
               aria-label={zielnettoDifferenz >= 0 ? "Zielnetto überschritten" : "Zielnetto unterschritten"}
             >
-              {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              {zielnettoDifferenz >= 0 ? "▲ Überschuss" : "▼ Fehlbetrag"}: {Math.abs(zielnettoDifferenz).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </p>
           </div>
           <div className={`rounded-lg border p-3 ${gmbhGesamteNettoveraenderung >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
@@ -1085,7 +1320,7 @@ export function BetriebSection() {
           dann aus vorhandenen Cash-Reserven und erst danach aus laufenden Darlehenszuzahlungen gedeckt.
           Reicht das nicht aus, werden zuerst die ETF-Positionen mit der geringsten steuerpflichtigen stillen Reserve verkauft.
         </p>
-        <p className="text-xs font-semibold text-slate-700 mb-2">📊 Steuerparameter (GmbH) – Steuern ans Finanzamt</p>
+        <p className="text-xs font-semibold text-slate-700 mb-2">📊 Steuerparameter ({getSteuerjahrParameter(betrieb.steuerjahr).jahr}) – Steuern ans Finanzamt</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
           <div><span className="font-medium">KSt:</span> 15,00%</div>
           <div><span className="font-medium">KSt + SolZ:</span> 15,825%</div>
@@ -1093,8 +1328,12 @@ export function BetriebSection() {
           <div><span className="font-medium">Gesamt GmbH:</span> ~29,825%</div>
           <div><span className="font-medium">Abgeltungsteuer:</span> 25%</div>
           <div><span className="font-medium">Abg. + SolZ:</span> 26,375%</div>
-          <div><span className="font-medium">Basiszins 2024:</span> 2,29%</div>
+          <div><span className="font-medium">Basiszins {getSteuerjahrParameter(betrieb.steuerjahr).jahr}:</span> {(getSteuerjahrParameter(betrieb.steuerjahr).basiszins * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })}%</div>
           <div><span className="font-medium">Teilfreistellung ETF-Verkauf:</span> {teilfreistellungGmbh}%</div>
+          <div><span className="font-medium">Grundfreibetrag:</span> {getSteuerjahrParameter(betrieb.steuerjahr).grundfreibetrag.toLocaleString("de-DE")} €</div>
+          <div><span className="font-medium">GKV-BBG:</span> {getSteuerjahrParameter(betrieb.steuerjahr).gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat</div>
+          <div><span className="font-medium">GKV & PV gesamt:</span> {(getSteuerjahrParameter(betrieb.steuerjahr, betrieb.anzahlKinder).gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })}%</div>
+          <div><span className="font-medium">Midijob-Untergrenze:</span> {getSteuerjahrParameter(betrieb.steuerjahr).midijobMonatMin.toLocaleString("de-DE")} €/Monat</div>
         </div>
         <p className="text-xs text-gray-400 mt-2">
           Der GmbH-Gewinn ergibt sich aus realisiertem ETF-Ertrag (durch Verkäufe) abzüglich Betriebskosten und Darlehenszinsen.
@@ -1178,7 +1417,7 @@ export function BetriebSection() {
             <li>Sparplan privat = jährlicher Cash-Zuschuss + monatlicher Darlehenszuschuss + simulierter Gewinn nach ESt/Soli minus Tankgutschein minus Essenszuschuss minus Firmenhandy</li>
             <li>In der GmbH wird der Konsumwert steuerbereinigt gezeigt (inkl. Vorsteuerabzug beim Firmenhandy)</li>
             <li>Nicht-endfällige Zinsen und GF-Gehalt werden privat über ETF-Verkäufe entnommen</li>
-            <li>Privat-Steuern: Kapitalertragsteuer ({kapitalertragsteuerSatz.toLocaleString("de-DE")}%) und Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%)</li>
+            <li>Privat-Steuern: Kapitalertragsteuer ({kapitalertragsteuerSatz.toLocaleString("de-DE")}%), Teilfreistellung ({(TEILFREISTELLUNG_AKTIEN_PRIVAT * 100).toLocaleString("de-DE")}%) und Sparerpauschbetrag ({(betrieb.sparerpauschbetrag ?? DEFAULT_SPARERPAUSCHBETRAG).toLocaleString("de-DE")} €/Jahr, § 20 Abs. 9 EStG)</li>
           </ul>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

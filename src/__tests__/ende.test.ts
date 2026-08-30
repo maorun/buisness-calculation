@@ -14,12 +14,13 @@ import {
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
 import { GMBH_STEUER_GESAMT } from "@/lib/calculations/betrieb";
+import { DEFAULT_FIRMENHANDY_CONFIG } from "@/lib/calculations/betrieb";
 import { EndeState } from "@/lib/types";
 
 describe("berechneEinkommensteuer", () => {
-  it("returns 0 below Grundfreibetrag (11.604 €)", () => {
+  it("returns 0 below Grundfreibetrag (12.096 € default for 2025)", () => {
     expect(berechneEinkommensteuer(0)).toBe(0);
-    expect(berechneEinkommensteuer(11604)).toBe(0);
+    expect(berechneEinkommensteuer(12096)).toBe(0);
   });
 
   it("returns positive tax for income above Grundfreibetrag", () => {
@@ -29,15 +30,15 @@ describe("berechneEinkommensteuer", () => {
   it("uses 42% rate for high incomes (up to 277.825 €)", () => {
     const income = 100000;
     const tax = berechneEinkommensteuer(income);
-    // approx: 0.42 × 100000 - 10602 = 31398
-    expect(tax).toBeCloseTo(31398, -2);
+    // 2025 default: 0.42 × 100000 - 11102.16 = 30897
+    expect(tax).toBeCloseTo(30897, -2);
   });
 
   it("uses 45% rate for very high incomes (above 277.825 €)", () => {
     const income = 300000;
     const tax45 = berechneEinkommensteuer(income);
-    // approx: 0.45 × 300000 - 17375 = 117625
-    expect(tax45).toBeCloseTo(117625, -2);
+    // 2025 default: 0.45 × 300000 - 19436.91 = 115563
+    expect(tax45).toBeCloseTo(115563, -2);
   });
 
   it("is progressive (higher income → higher tax rate)", () => {
@@ -51,14 +52,21 @@ describe("berechneEinkommensteuer", () => {
 
 describe("berechneSoli", () => {
   it("returns 0 for low income tax (abolished for most)", () => {
-    // Soli threshold ~16956 ESt
+    // Soli threshold 19228 ESt for 2025 default
     expect(berechneSoli(0)).toBe(0);
-    expect(berechneSoli(16956)).toBe(0);
+    expect(berechneSoli(19228)).toBe(0);
   });
 
-  it("calculates 5.5% for high income tax", () => {
-    const est = 30000;
-    expect(berechneSoli(est)).toBeCloseTo(Math.floor(est * 0.055));
+  it("calculates Soli using Milderungszone (11.9% of excess over Soli-Freigrenze)", () => {
+    const est = 20000;
+    // 2025 default: (20000 - 19228) * 0.119 = 772 * 0.119 = 91.868 → Math.floor = 91
+    expect(berechneSoli(est)).toBe(91);
+  });
+
+  it("calculates 5.5% for high income tax above Milderungszone", () => {
+    const est = 40000;
+    // 40000 * 0.055 = 2200
+    expect(berechneSoli(est)).toBe(2200);
   });
 });
 
@@ -89,6 +97,14 @@ describe("berechneGewinnausschuettungsteuer", () => {
     expect(methode).toMatch(/Abgeltungssteuer|Teileinkünfteverfahren/);
   });
 
+  it("chooses Teileinkünfteverfahren for low personal tax rate", () => {
+    // At 20% personal rate → Teileinkünfte = 10000 * 0.6 * 0.20 = 1200 + Soli (0 if below limit)
+    // Abgeltungssteuer = 2637.5 → Teileinkünfteverfahren is significantly cheaper
+    const { methode, steuer } = berechneGewinnausschuettungsteuer(10000, 0.20);
+    expect(methode).toBe("Teileinkünfteverfahren");
+    expect(steuer).toBeCloseTo(1200, 0);
+  });
+
   it("chooses Teileinkünfteverfahren for very high personal tax rate", () => {
     // At 45% personal rate → Teileinkünfte = 10000 * 0.6 * 0.45 = 2700, Abgeltungsteuer = 2637.5
     // Abgeltungsteuer should be cheaper
@@ -104,7 +120,7 @@ describe("berechneGewinnausschuettungsteuer", () => {
 
   it("Abgeltungssteuer is approx 26.375% of gross", () => {
     const ausschuettung = 100000;
-    const { steuer, methode } = berechneGewinnausschuettungsteuer(ausschuettung, 0.1); // low personal rate → Abgeltungsteuer
+    const { steuer, methode } = berechneGewinnausschuettungsteuer(ausschuettung, 0.45);
     if (methode === "Abgeltungssteuer") {
       expect(steuer).toBeCloseTo(100000 * 0.25 * 1.055, 0);
     }
@@ -118,6 +134,12 @@ describe("berechneNettoAusschuettung", () => {
     expect(kstSteuer).toBeCloseTo(15825);
     const ausschuettung = 100000 - kstSteuer;
     expect(nettoAusschuettung).toBeCloseTo(ausschuettung - ausschuettungsteuer);
+  });
+
+  it("uses custom personal tax rate for dividend taxation", () => {
+    const { ausschuettungsteuer: steuerHigh } = berechneNettoAusschuettung(100000, 0.15825, undefined, 0.45);
+    const { ausschuettungsteuer: steuerLow } = berechneNettoAusschuettung(100000, 0.15825, undefined, 0.15);
+    expect(steuerLow).toBeLessThan(steuerHigh);
   });
 
   it("returns 0 netto for 0 input", () => {
@@ -383,6 +405,14 @@ describe("berechneEndeErgebnisse", () => {
     const state = { ...defaultState, gewinnausschuettung: 0 };
     const results = berechneEndeErgebnisse(state);
     expect(results[0].details.nettoAusschuettung).toBe(0);
+  });
+
+  it("respects custom persoenlicherSteuersatz in berechneEndeErgebnisse", () => {
+    const stateHigh = { ...defaultState, gewinnausschuettung: 50000, persoenlicherSteuersatz: 45 };
+    const stateLow = { ...defaultState, gewinnausschuettung: 50000, persoenlicherSteuersatz: 15 };
+    const resultsHigh = berechneEndeErgebnisse(stateHigh);
+    const resultsLow = berechneEndeErgebnisse(stateLow);
+    expect(resultsLow[0].details.ausschuettungsteuer).toBeLessThan(resultsHigh[0].details.ausschuettungsteuer);
   });
 
   it("handles laufzeitJahre = 0", () => {
@@ -889,36 +919,48 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.verlustvortrag).toBeGreaterThan(0);
     });
 
-    it("applies Gewerbesteuer-Hinzurechnung in Ende phase when interest exceeds 200,000 €", () => {
-      // Deferred interest of 300,000 € in Bereich 1
-      // Hinzurechnung = 25% of (300,000 - 200,000) = 25,000 €
+    it("uses initialVerlustvortrag from Betriebsphase to offset profit in Ende phase", () => {
       const state: EndeState = {
         ...baseState,
-        simulierterGewinn: 500000,
-        gehaltBereich1: 0,
         geschaeftsfuehrergehalt: 0,
-        laufzeitJahre: 1,
+        simulierterGewinn: 10000,
+        laufzeitJahre: 2,
       };
+
+      // With 10,000 initial loss carryforward and 10,000 profit (minus 1,000 phone cost in Y1 = 9,000 net gain),
+      // the profit in Y1 is fully offset by loss carryforward so gmbhSteuer is 0.
+      const initialVerlust = 15000;
       const results = berechneEndeErgebnisse(
-        state,
-        100000,
-        0,
-        0,
-        300000,
-        true,
-        0,
-        [],
+        state, 100000, 0, 0, 0, false, 0, [],
         { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
-        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 }
+        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+        GMBH_STEUER_GESAMT, 0.15, 0.14, undefined, initialVerlust
       );
-      const r1 = results[0];
-      // Profit base for KSt = 500,000 € (since interest was already deferred and not deducted from operating profit in B1)
-      // Profit base for GewSt = 500,000 + 25,000 = 525,000 €
-      // KSt (15.825%) = 79,125 €
-      // GewSt (14%) = 525,000 * 0.14 = 73,500 €
-      expect(r1.details.gmbhSteuerKst).toBeCloseTo(79125);
-      expect(r1.details.gmbhSteuerGewSt).toBeCloseTo(73500);
-      expect(r1.details.gmbhSteuer).toBeCloseTo(79125 + 73500);
+
+      expect(results[0].details.verlustVortragGenutzt).toBe(10000);
+      expect(results[0].details.gmbhSteuer).toBe(0);
+      expect(results[0].details.verlustvortrag).toBe(5000);
+    });
+
+    it("applies Gewerbesteuer-Hinzurechnung in Ende phase when interest exceeds 200,000 €", () => {
+      const state: EndeState = {
+        geschaeftsfuehrergehalt: 0,
+        stammkapitalErhoehungEtf: 0,
+        gehaltBereich1: 0,
+        teiltilgungBereich1: 0,
+        gewinnausschuettung: 0,
+        tilgungsrate: 0,
+        laufzeitJahre: 1,
+        simulierterGewinn: 500000,
+      };
+      const res = berechneEndeErgebnisse(
+        state, 0, 10000000, 3, 0, false, 0, [],
+        { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+        { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false }
+      )[0];
+      const expectedGewStBase = 200000 + 25000;
+      const expectedGewSt = expectedGewStBase * 0.14;
+      expect(res.details.gmbhSteuerGewSt).toBeCloseTo(expectedGewSt);
     });
 
     it("defers Ende-darlehen payout to the final year when ende.darlehenEndfaellig is active", () => {

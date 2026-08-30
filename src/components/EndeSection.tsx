@@ -19,6 +19,7 @@ import {
   berechnePrivatVergleichErgebnis,
   DEFAULT_FIRMENHANDY_CONFIG,
 } from "@/lib/calculations/betrieb";
+import { getSteuerjahrParameter } from "@/lib/parameters";
 import {
   berechneGesamtvergleichKpi,
   berechneGesamtvergleichZeitreihe,
@@ -96,7 +97,8 @@ export function EndeSection() {
   const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(endeBenefits);
 
   const nettoGehalt = berechneNettoGehalt(ende.geschaeftsfuehrergehalt);
-  const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung);
+  const persoenlicherSteuersatz = (ende.persoenlicherSteuersatz ?? 42) / 100;
+  const { steuer: ausschuettungsteuer, methode } = berechneGewinnausschuettungsteuer(ende.gewinnausschuettung, persoenlicherSteuersatz);
   const benefitsSteuerersparnis = berechneBenefitsSteuerersparnis(endeBenefits);
 
   // Split ergebnisse for display
@@ -188,7 +190,7 @@ export function EndeSection() {
     <div className="space-y-6 pb-28 md:pb-32">
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Ende / Auszahlungsphase</h2>
-        <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV-Beitrag und Gesamtergebnis</p>
+        <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV- & PV-Beitrag und Gesamtergebnis</p>
       </div>
 
       <div className={`rounded-xl border p-4 md:p-6 ${gesamtvergleich.vorteil >= 0 ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}`}>
@@ -479,7 +481,7 @@ export function EndeSection() {
               <p className="text-xs text-amber-700 border-b border-amber-200 pb-1 mb-1 font-medium mt-2">Steuern (Gesamtlast)</p>
               <p className="text-xs text-amber-700">Einkommensteuer auf Zinsen (progressiv): <span className="font-semibold text-red-700">− {zinsSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Einkommensteuer + SolZ Gehalt: <span className="font-semibold text-red-700">− {(einkommensteuerBereich1 + soliBereich1).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
-              <p className="text-xs text-amber-700">Gesetzliche Krankenversicherung (aus Netto): <span className="font-semibold text-red-700">− {gkvBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
+              <p className="text-xs text-amber-700">Gesetzliche Kranken- & Pflegeversicherung (aus Netto): <span className="font-semibold text-red-700">− {gkvBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs font-semibold text-amber-800">Steuern gesamt: <span className="text-red-700">− {gesamtSteuerBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Netto-Zinsen für Zielnetto: <span className="font-semibold text-green-700">+ {zinsenNettoBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
               <p className="text-xs text-amber-700">Neues Gesellschafterdarlehen für Bereich 2: <span className="font-semibold text-blue-700">+ {neuesDarlehenBereich1.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></p>
@@ -662,7 +664,7 @@ export function EndeSection() {
                   Einkommensteuer Zinsanteil: {zinsensteuerProJahr.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
                 <p className="text-xs text-amber-600 mt-1">
-                  GKV-Beitrag (aus Netto): {berechneGesetzlicheKrankenversicherungBeitrag(ende.geschaeftsfuehrergehalt + zinsertragProJahr + ende.gewinnausschuettung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  GKV- & PV-Beitrag (aus Netto): {berechneGesetzlicheKrankenversicherungBeitrag(ende.geschaeftsfuehrergehalt + zinsertragProJahr + ende.gewinnausschuettung).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
                 </p>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -699,13 +701,22 @@ export function EndeSection() {
         {/* Profit distribution */}
         <div className="mb-4">
           <h4 className="font-semibold text-gray-600 mb-3">Gewinnausschüttung</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <InputField
               label="Jährliche Ausschüttung (€)"
               value={ende.gewinnausschuettung}
               onChange={(v) => setEnde({ gewinnausschuettung: parseFloat(v) || 0 })}
               suffix="€/Jahr"
               hint="Gewinn nach GmbH-Steuern"
+            />
+            <InputField
+              label="Persönlicher Steuersatz (%)"
+              value={ende.persoenlicherSteuersatz ?? 42}
+              onChange={(v) => setEnde({ persoenlicherSteuersatz: Math.max(0, Math.min(100, parseFloat(v) || 0)) })}
+              suffix="%"
+              hint="Relevant für das Teileinkünfteverfahren (Default 42 %)"
+              min={0}
+              max={100}
             />
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
               <p className="text-xs text-purple-600 font-medium">Ausschüttungsteuer ({methode})</p>
@@ -806,6 +817,23 @@ export function EndeSection() {
             </div>
             <p className="text-xs text-slate-600 pl-7">{handyAnschaffung} € alle {handyZyklus} Jahre · {handyVerkaufsquote}% Verkaufserlös</p>
           </div>
+
+          {/* Dienstwagen */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-1">
+              <input
+                type="checkbox"
+                id="endeDienstwagenAktiv"
+                checked={ende.benefitAktiv?.dienstwagenAktiv ?? (betrieb.benefits.dienstwagen?.aktiv ?? false)}
+                onChange={(e) => toggleBenefitAktiv("dienstwagenAktiv", e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              <label htmlFor="endeDienstwagenAktiv" className="text-sm font-medium text-gray-700">Dienstwagen aktiv</label>
+            </div>
+            <p className="text-xs text-slate-600 pl-7">
+              BLP {(betrieb.benefits.dienstwagen?.bruttolistenpreis ?? 50000).toLocaleString("de-DE")} € · {(betrieb.benefits.dienstwagen?.jaehrlicheGesamtkosten ?? 6000).toLocaleString("de-DE")} €/Jahr Kosten
+            </p>
+          </div>
         </div>
         <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
           <p className="text-xs text-green-700 font-medium">Jährliche Steuerersparnis durch Benefits</p>
@@ -817,13 +845,13 @@ export function EndeSection() {
 
       {/* Tax info */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-        <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase</p>
+        <p className="text-xs font-semibold text-slate-700 mb-2">Steuerinfo Auszahlungsphase (Referenzjahr {getSteuerjahrParameter(betrieb.steuerjahr).jahr})</p>
         <div className="text-xs text-gray-600 space-y-1">
           {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 1 – Zinsen:</span> Progressive Einkommensteuer auf Zinsen + Gehalt (kombiniert, § 32d Abs. 2 Nr. 1b EStG)</p>}
           {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 1 – Gehalt:</span> Frei konfigurierbar; zusammen mit Netto-Zinsen und Teil-Tilgung wird das Zielnetto abgeglichen.</p>}
           {betriebDarlehenEndfaellig && <p><span className="font-medium">Bereich 2 – Darlehen:</span> Neues Gesellschafterdarlehen mit 3 % Zins; Tilgung wird flexibel nur bei Zielnetto-Lücke ausgezahlt.</p>}
           <p><span className="font-medium">GF-Gehalt Bereich 2:</span> progressive Einkommensteuer (14%–45%) + ggf. SolZ</p>
-          <p><span className="font-medium">Gesetzliche Krankenversicherung:</span> Beitrag aus Gehalt + sonstigen Einnahmen (z. B. Zinsen, Ausschüttung) und vollständig aus dem Netto zu zahlen</p>
+          <p><span className="font-medium">Gesetzliche Kranken- & Pflegeversicherung:</span> Beitrag aus Gehalt + sonstigen Einnahmen (z. B. Zinsen, Ausschüttung) inkl. Pflegeversicherung (~4,0%) und vollständig aus dem Netto zu zahlen</p>
           <p><span className="font-medium">Darlehen (Zinsen):</span> Progressive Einkommensteuer (Marginalsteuersatz), Tilgungsanteil steuerfrei (§ 32d Abs. 2 Nr. 1b EStG)</p>
           <p><span className="font-medium">Teileinkünfteverfahren:</span> 60% des Betrags × persönlicher Steuersatz</p>
           <p className="text-slate-500 mt-1">Das günstigere Verfahren wird automatisch gewählt. Abgeltungssteuer gilt nur für Gewinnausschüttungen.</p>

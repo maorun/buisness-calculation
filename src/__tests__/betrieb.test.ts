@@ -3,7 +3,6 @@ import {
   berechneVorabpauschaleNachEtfVerkauf,
   berechneVorabpauschalesteuer,
   berechneEtfVerkaufssteuer,
-  berechneGewerbesteuerHinzurechnung,
   berechneEtfWachstum,
   berechneDarlehenszinsen,
   berechneDarlehensjahr,
@@ -18,11 +17,17 @@ import {
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneVerlustvortragAnrechnung,
+  berechneStillerGesellschafterSteuer,
+  berechneGewerbesteuerHinzurechnung,
+  GEWERBESTEUER_HINZURECHNUNG_FREIBETRAG,
+  GEWERBESTEUER_HINZURECHNUNG_SATZ,
   BASISZINS_2024,
   ABGELTUNGSSTEUER_GESAMT,
   TEILFREISTELLUNG_AKTIEN,
+  TEILFREISTELLUNG_AKTIEN_PRIVAT,
   TEILFREISTELLUNG_AKTIEN_GMBH,
   GMBH_STEUER_GESAMT,
+  GEWERBESTEUER_FREIBETRAG,
   HANDY_ANSCHAFFUNGSKOSTEN,
   HANDY_VERKAUFSQUOTE,
   DEFAULT_FIRMENHANDY_CONFIG,
@@ -30,8 +35,31 @@ import {
   UMSATZSTEUER_SATZ,
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
+  berechneGesetzlicheKrankenversicherungBeitrag,
+  berechneDienstwagenGeldwerterVorteil,
+  berechneDienstwagenGmbhKosten,
+  pruefeDienstwagenMoeglichkeit,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
+
+describe("berechneGewerbesteuerHinzurechnung", () => {
+  it("returns 0 when financing costs are below or equal to Freibetrag (200,000 €)", () => {
+    expect(berechneGewerbesteuerHinzurechnung(0)).toBe(0);
+    expect(berechneGewerbesteuerHinzurechnung(150000)).toBe(0);
+    expect(berechneGewerbesteuerHinzurechnung(200000)).toBe(0);
+  });
+
+  it("calculates 25% add-back on financing costs exceeding Freibetrag (200,000 €)", () => {
+    // 300,000 € - 200,000 € = 100,000 € excess → 25% = 25,000 € add-back
+    expect(berechneGewerbesteuerHinzurechnung(300000)).toBe(25000);
+    // 600,000 € - 200,000 € = 400,000 € excess → 25% = 100,000 € add-back
+    expect(berechneGewerbesteuerHinzurechnung(600000)).toBe(100000);
+  });
+
+  it("supports custom Freibetrag", () => {
+    expect(berechneGewerbesteuerHinzurechnung(150000, 100000)).toBe(12500);
+  });
+});
 
 describe("berechneVerlustvortragAnrechnung", () => {
   it("accumulates loss when profit is negative", () => {
@@ -108,11 +136,11 @@ describe("berechneVorabpauschale", () => {
     expect(result).toBeLessThan(actualReturn);
   });
 
-  it("calculates correctly with default 2024 basiszins", () => {
+  it("calculates correctly with explicit 2024 basiszins", () => {
     const navStart = 50000;
     const navEnd = 53500; // 7% gain
     const expected = BASISZINS_2024 * 0.7 * navStart; // ~801.5
-    expect(berechneVorabpauschale(navStart, navEnd)).toBeCloseTo(expected);
+    expect(berechneVorabpauschale(navStart, navEnd, BASISZINS_2024)).toBeCloseTo(expected);
   });
 });
 
@@ -151,6 +179,20 @@ describe("berechneVorabpauschalesteuer", () => {
     const expectedTax = taxableAmount * GMBH_STEUER_GESAMT;
     expect(berechneVorabpauschalesteuer(vp, TEILFREISTELLUNG_AKTIEN_GMBH, GMBH_STEUER_GESAMT)).toBeCloseTo(expectedTax);
   });
+
+  it("subtracts Sparerpauschbetrag from taxable amount", () => {
+    const vp = 2000; // taxable after 30% Teilfreistellung: 1400 €
+    const sparerpauschbetrag = 1000;
+    const expectedTaxable = 1400 - 1000; // 400 €
+    const expectedTax = expectedTaxable * ABGELTUNGSSTEUER_GESAMT;
+    expect(berechneVorabpauschalesteuer(vp, TEILFREISTELLUNG_AKTIEN_PRIVAT, ABGELTUNGSSTEUER_GESAMT, sparerpauschbetrag)).toBeCloseTo(expectedTax);
+  });
+
+  it("returns 0 tax when Sparerpauschbetrag covers entire taxable amount", () => {
+    const vp = 1000; // taxable after 30% Teilfreistellung: 700 €
+    const sparerpauschbetrag = 1000;
+    expect(berechneVorabpauschalesteuer(vp, TEILFREISTELLUNG_AKTIEN_PRIVAT, ABGELTUNGSSTEUER_GESAMT, sparerpauschbetrag)).toBe(0);
+  });
 });
 
 describe("berechneEtfVerkaufssteuer", () => {
@@ -171,6 +213,56 @@ describe("berechneEtfVerkaufssteuer", () => {
   it("returns 0 for non-positive realized gain", () => {
     expect(berechneEtfVerkaufssteuer(0)).toBe(0);
     expect(berechneEtfVerkaufssteuer(-100)).toBe(0);
+  });
+
+  it("subtracts Sparerpauschbetrag from taxable realized gain", () => {
+    const gewinn = 2000; // taxable after 30% Teilfreistellung: 1400 €
+    const sparerpauschbetrag = 1000;
+    const expectedTaxable = 1400 - 1000; // 400 €
+    const expectedTax = expectedTaxable * ABGELTUNGSSTEUER_GESAMT;
+    expect(berechneEtfVerkaufssteuer(gewinn, TEILFREISTELLUNG_AKTIEN_PRIVAT, ABGELTUNGSSTEUER_GESAMT, sparerpauschbetrag)).toBeCloseTo(expectedTax);
+  });
+});
+
+describe("berechneSoliBetrieb", () => {
+  it("returns 0 for income tax <= 16,956 € (2024 parameters)", () => {
+    expect(berechneSoliBetrieb(0, 2024)).toBe(0);
+    expect(berechneSoliBetrieb(16956, 2024)).toBe(0);
+  });
+
+  it("calculates Soli using Milderungszone (11.9% of excess over 18130 € in 2024)", () => {
+    const est = 20000;
+    // (20000 - 18130) * 0.119 = 1870 * 0.119 = 222.53 → Math.floor = 222
+    expect(berechneSoliBetrieb(est, 2024)).toBe(222);
+  });
+
+  it("calculates 5.5% for income tax above Milderungszone", () => {
+    const est = 40000;
+    // 40000 * 0.055 = 2200
+    expect(berechneSoliBetrieb(est)).toBe(2200);
+  });
+});
+
+describe("berechneStillerGesellschafterSteuer", () => {
+  it("returns 0 tax when silent partner is inactive or income <= 0", () => {
+    const config = { aktiv: false, typ: 'typisch' as const, einlage: 25000, gewinnbeteiligungProzent: 20, zinssatz: 4 };
+    expect(berechneStillerGesellschafterSteuer(1000, config).steuer).toBe(0);
+    expect(berechneStillerGesellschafterSteuer(0, { ...config, aktiv: true }).steuer).toBe(0);
+  });
+
+  it("taxes typisch stiller Gesellschafter as capital income with Abgeltungsteuer and Sparerpauschbetrag", () => {
+    const config = { aktiv: true, typ: 'typisch' as const, einlage: 25000, gewinnbeteiligungProzent: 20, zinssatz: 4 };
+    // Gross income: 3000 €. Sparerpauschbetrag: 1000 € -> Taxable: 2000 €
+    // Abgeltungsteuer 26.375% -> Tax: 527.50 €
+    const res = berechneStillerGesellschafterSteuer(3000, config, undefined, 26.375, 1000);
+    expect(res.steuer).toBeCloseTo(527.50);
+  });
+
+  it("taxes atypisch stiller Gesellschafter as trade income using marginal tax rate and NO Sparerpauschbetrag", () => {
+    const config = { aktiv: true, typ: 'atypisch' as const, einlage: 25000, gewinnbeteiligungProzent: 20, zinssatz: 4 };
+    // Gross income: 3000 €. Marginal rate: 42% -> ESt: 1260 €, Soli: 1260 * 0.055 = 69.30 € -> Total tax: 1329.30 €
+    const res = berechneStillerGesellschafterSteuer(3000, config, 42, 26.375, 1000);
+    expect(res.steuer).toBeCloseTo(1329.30);
   });
 });
 
@@ -564,41 +656,6 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[1].details.verlustvortrag).toBe(0);
     expect(results[1].details.steuerpflichtigerGewinn).toBe(1000);
     expect(results[1].details.gmbhSteuer).toBeCloseTo(1000 * GMBH_STEUER_GESAMT);
-  });
-
-  describe("berechneGewerbesteuerHinzurechnung", () => {
-    it("returns 0 when financing costs are below or equal to 200,000 €", () => {
-      expect(berechneGewerbesteuerHinzurechnung(150000)).toBe(0);
-      expect(berechneGewerbesteuerHinzurechnung(200000)).toBe(0);
-    });
-
-    it("calculates 25% on financing costs exceeding 200,000 €", () => {
-      // 300,000 € financing costs -> 100,000 € excess -> 25% = 25,000 €
-      expect(berechneGewerbesteuerHinzurechnung(300000)).toBe(25000);
-    });
-  });
-
-  it("applies Gewerbesteuer-Hinzurechnung when annual interest exceeds 200,000 €", () => {
-    // Loan of 10,000,000 € at 3% interest = 300,000 € interest
-    // Hinzurechnung = 25% of (300,000 - 200,000) = 25,000 €
-    const state: BetriebState = {
-      ...defaultState,
-      simulierterGewinn: 500000,
-      darlehen: { betrag: 10000000, zinssatz: 3, monatlicherZuschuss: 0, endfaellig: false },
-      kosten: [],
-      benefits: { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
-      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
-      laufzeitJahre: 1,
-    };
-    const results = berechneBetriebsErgebnisse(state);
-    const r = results[0];
-    // Profit base for KSt = 500,000 - 300,000 = 200,000 €
-    // Profit base for GewSt = 200,000 + 25,000 = 225,000 €
-    // KSt (15.825%) = 31,650 €
-    // GewSt (14%) = 225,000 * 0.14 = 31,500 €
-    expect(r.details.gmbhSteuerKst).toBeCloseTo(31650);
-    expect(r.details.gmbhSteuerGewSt).toBeCloseTo(31500);
-    expect(r.details.gmbhSteuer).toBeCloseTo(31650 + 31500);
   });
 
   it("steuer includes GmbH tax, Vorabpauschale tax and ETF sale tax", () => {
@@ -1025,7 +1082,8 @@ describe("berechneBetriebsErgebnisse", () => {
     const expectedSalaryNet = expectedSalaryTotal - expectedSalaryTax;
     const expectedInterestTax = expectedTotalTax - expectedSalaryTax;
     const expectedInterestNet = 875 - expectedInterestTax;
-    const expectedShareholderNet = expectedSalaryNet + expectedInterestNet;
+    const expectedGkv = berechneGesetzlicheKrankenversicherungBeitrag(expectedTotalIncome);
+    const expectedShareholderNet = expectedSalaryNet + expectedInterestNet - expectedGkv;
 
     expect(result.details.geschaeftsfuehrergehalt).toBe(12000);
     expect(result.details.gehaelterGesamt).toBe(12000);
@@ -1034,9 +1092,27 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(result.details.gesellschafterBruttoEinkommen).toBeCloseTo(expectedTotalIncome);
     expect(result.details.gesellschafterSteuerGesamt).toBeCloseTo(expectedTotalTax);
     expect(result.details.darlehenszinsenNetto).toBeCloseTo(expectedInterestNet);
+    expect(result.details.beitragspflichtigeEinnahmenGkv).toBeCloseTo(expectedTotalIncome);
+    expect(result.details.gesetzlicheKrankenversicherungBeitrag).toBeCloseTo(expectedGkv);
     expect(result.details.gesellschafterNetto).toBeCloseTo(expectedShareholderNet);
     expect(result.details.zielnettoGesellschafter).toBe(36000);
     expect(result.details.zielnettoDifferenz).toBeCloseTo(expectedShareholderNet - 36000);
+  });
+
+  it("deducts GKV contribution from gesellschafterNetto based on total income and selected steuerjahr", () => {
+    const state: BetriebState = {
+      ...defaultState,
+      steuerjahr: 2025,
+      geschaeftsfuehrergehalt: 30000,
+      darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+    };
+
+    const result = berechneBetriebsErgebnisse(state)[0];
+    const expectedGkv = berechneGesetzlicheKrankenversicherungBeitrag(30000, undefined, undefined, 2025);
+
+    expect(result.details.beitragspflichtigeEinnahmenGkv).toBe(30000);
+    expect(result.details.gesetzlicheKrankenversicherungBeitrag).toBeCloseTo(expectedGkv);
+    expect(result.details.gesellschafterNetto).toBeCloseTo(result.details.gehaelterNetto - expectedGkv);
   });
 
   it("increases outstanding loan balance each year for monthly top-ups", () => {
@@ -1049,6 +1125,67 @@ describe("berechneBetriebsErgebnisse", () => {
     expect(results[0].details.offenesDarlehen).toBeCloseTo(26200);
     expect(results[1].details.offenesDarlehen).toBeCloseTo(27400);
     expect(results[0].details.jaehrlicheZinsen).toBeGreaterThan(875);
+  });
+
+  it("applies Gewerbesteuer Freibetrag § 11 GewStG (24,500 €) for atypisch stiller Gesellschafter", () => {
+    const stateTypisch: BetriebState = {
+      ...defaultState,
+      simulierterGewinn: 50000,
+      stillerGesellschafter: { aktiv: true, typ: 'typisch', einlage: 25000, gewinnbeteiligungProzent: 10, zinssatz: 0 },
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+    };
+    const stateAtypisch: BetriebState = {
+      ...stateTypisch,
+      stillerGesellschafter: { aktiv: true, typ: 'atypisch', einlage: 25000, gewinnbeteiligungProzent: 10, zinssatz: 0 },
+    };
+
+    const resTypisch = berechneBetriebsErgebnisse(stateTypisch)[0];
+    const resAtypisch = berechneBetriebsErgebnisse(stateAtypisch)[0];
+
+    // Körperschaftsteuer (KSt) should be identical for both
+    expect(resAtypisch.details.gmbhSteuerKst).toBeCloseTo(resTypisch.details.gmbhSteuerKst);
+
+    // Gewerbesteuer (GewSt) for atypisch should be lower due to 24,500 € Freibetrag
+    expect(resAtypisch.details.gmbhSteuerGewSt).toBeLessThan(resTypisch.details.gmbhSteuerGewSt);
+
+    // Specifically, gewerbeertrag is reduced by 24,500 €
+    const expectedGewStDiff = GEWERBESTEUER_FREIBETRAG * 0.14; // 24500 * 0.14 = 3430 €
+    expect(resTypisch.details.gmbhSteuerGewSt - resAtypisch.details.gmbhSteuerGewSt).toBeCloseTo(expectedGewStDiff, 1);
+  });
+
+  it("applies Gewerbesteuer-Hinzurechnung when annual loan interest exceeds 200,000 €", () => {
+    const state: BetriebState = {
+      startkapital: 0,
+      jaehrlicherCashZuschuss: 0,
+      simulierterGewinn: 500000,
+      geschaeftsfuehrergehalt: 0,
+      darlehen: { betrag: 10000000, zinssatz: 3, monatlicherZuschuss: 0, endfaellig: false },
+      etfRendite: 0,
+      laufzeitJahre: 1,
+      kosten: [],
+      benefits: { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+      firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+    };
+    const res = berechneBetriebsErgebnisse(state)[0];
+    const expectedGewStBase = 200000 + 25000;
+    const expectedGewSt = expectedGewStBase * 0.14;
+    expect(res.details.gmbhSteuerGewSt).toBeCloseTo(expectedGewSt);
+  });
+
+  it("includes silent partner tax and net income in details", () => {
+    const stateAtypisch: BetriebState = {
+      ...defaultState,
+      simulierterGewinn: 20000,
+      persoenlicherGrenzsteuersatz: 42,
+      stillerGesellschafter: { aktiv: true, typ: 'atypisch', einlage: 25000, gewinnbeteiligungProzent: 10, zinssatz: 4 },
+    };
+    const res = berechneBetriebsErgebnisse(stateAtypisch)[0];
+    // Kosten = 25000*0.04 + 20000*0.10 = 1000 + 2000 = 3000 €
+    expect(res.details.stillerGesellschafterKosten).toBe(3000);
+    // Tax at 42% + Soli = 3000 * 0.42 * 1.055 = 1329.30 €
+    expect(res.details.stillerGesellschafterSteuer).toBeCloseTo(1329.30);
+    expect(res.details.stillerGesellschafterNetto).toBeCloseTo(3000 - 1329.30);
   });
 });
 
@@ -1230,6 +1367,7 @@ describe("berechnePrivatVergleichErgebnis", () => {
       darlehen: { ...basisState.darlehen, betrag: 0, zinssatz: 0, monatlicherZuschuss: 0 },
       etfRendite: 7,
       laufzeitJahre: 1,
+      sparerpauschbetrag: 0,
     };
 
     const privat = berechnePrivatVergleichErgebnis(state);
@@ -1283,6 +1421,24 @@ describe("berechnePrivatVergleichErgebnis", () => {
     expect(steuer15.kumulierteSteuern).toBeGreaterThan(0);
     expect(steuer30.kumulierteSteuern).toBeGreaterThan(steuer15.kumulierteSteuern);
   });
+
+  it("reduces private tax burden when Sparerpauschbetrag is applied", () => {
+    const state: BetriebState = {
+      ...basisState,
+      startkapital: 100000,
+      darlehen: { ...basisState.darlehen, betrag: 0 },
+      etfRendite: 7,
+      laufzeitJahre: 1,
+      geschaeftsfuehrergehalt: 10000,
+    };
+
+    const mitFreibetrag = berechnePrivatVergleichErgebnis({ ...state, sparerpauschbetrag: 1000 });
+    const ohneFreibetrag = berechnePrivatVergleichErgebnis({ ...state, sparerpauschbetrag: 0 });
+    const doppeltFreibetrag = berechnePrivatVergleichErgebnis({ ...state, sparerpauschbetrag: 2000 });
+
+    expect(ohneFreibetrag.kumulierteSteuern).toBeGreaterThan(mitFreibetrag.kumulierteSteuern);
+    expect(mitFreibetrag.kumulierteSteuern).toBeGreaterThan(doppeltFreibetrag.kumulierteSteuern);
+  });
 });
 
 describe("berechnePrivatVergleichZeitreihe", () => {
@@ -1335,5 +1491,214 @@ describe("berechnePrivatVergleichZeitreihe", () => {
     expect(letztesJahr.gesamtwertMitKonsum).toBeCloseTo(endwert.gesamtwertMitKonsum);
     const kumulierteSteuernAusZeitreihe = zeitreihe.reduce((sum, jahr) => sum + jahr.gesamtSteuer, 0);
     expect(kumulierteSteuernAusZeitreihe).toBeCloseTo(endwert.kumulierteSteuern);
+  });
+});
+
+describe("Dienstwagen calculations and checks", () => {
+  describe("berechneDienstwagenGeldwerterVorteil", () => {
+    it("returns 0 if config is missing or inactive", () => {
+      expect(berechneDienstwagenGeldwerterVorteil(undefined)).toBe(0);
+      expect(
+        berechneDienstwagenGeldwerterVorteil({
+          aktiv: false,
+          bruttolistenpreis: 50000,
+          methode: "pauschal",
+          antriebsart: "benzin_diesel",
+          jaehrlicheGesamtkosten: 8000,
+          anteilPrivatProzent: 30,
+          entfernungWohnungArbeitsstaetteKm: 0,
+        })
+      ).toBe(0);
+    });
+
+    it("calculates 1%-Regelung for Benzin/Diesel (1.0% per month = 12% p.a.)", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 50.000 € * 1% * 12 = 6.000 €/Jahr
+      expect(vorteil).toBe(6000);
+    });
+
+    it("calculates 0.5%-Regelung for Hybrid (0.5% per month = 6% p.a.)", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "hybrid",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 50.000 € * 0.5% * 12 = 3.000 €/Jahr
+      expect(vorteil).toBe(3000);
+    });
+
+    it("calculates 0.25%-Regelung for Elektro <= 70.000 € BLP", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 60000,
+        methode: "pauschal",
+        antriebsart: "elektro",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 60.000 € * 0.25% * 12 = 1.800 €/Jahr
+      expect(vorteil).toBe(1800);
+    });
+
+    it("calculates 0.5%-Regelung for Elektro > 70.000 € BLP", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 80000,
+        methode: "pauschal",
+        antriebsart: "elektro",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 80.000 € * 0.5% * 12 = 4.800 €/Jahr
+      expect(vorteil).toBe(4800);
+    });
+
+    it("includes commute (Wohnung-Arbeitsstätte km * 0.03% * BLP)", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 15000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 10,
+      });
+      // Privat: 500 € * 12 = 6.000 €
+      // Commute: 50.000 € * 0.0003 * 10 km * 12 = 1.800 €
+      // Total: 7.800 €
+      expect(vorteil).toBe(7800);
+    });
+
+    it("applies Kostendeckelung when geldwerter Vorteil exceeds total costs", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 100000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 5000, // actual costs are lower than 12.000 €
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(vorteil).toBe(5000);
+    });
+
+    it("calculates Fahrtenbuch method as actual costs * private share %", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "fahrtenbuch",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 10.000 € * 30% = 3.000 €
+      expect(vorteil).toBe(3000);
+    });
+  });
+
+  describe("pruefeDienstwagenMoeglichkeit", () => {
+    it("flags critical (vGA risk) when business use is under 10%", () => {
+      const pruefung = pruefeDienstwagenMoeglichkeit({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 6000,
+        anteilPrivatProzent: 95, // 5% business
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(pruefung.moeglich).toBe(false);
+      expect(pruefung.hinweisTyp).toBe("kritisch");
+      expect(pruefung.einprozentRegelungErlaubt).toBe(false);
+      expect(pruefung.nachricht).toContain("vGA");
+    });
+
+    it("warns and disallows 1%-Regelung when business use is 10% - 50%", () => {
+      const pruefung = pruefeDienstwagenMoeglichkeit({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 6000,
+        anteilPrivatProzent: 70, // 30% business
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(pruefung.moeglich).toBe(true);
+      expect(pruefung.hinweisTyp).toBe("warnung");
+      expect(pruefung.einprozentRegelungErlaubt).toBe(false);
+      expect(pruefung.nachricht).toContain("Fahrtenbuch");
+    });
+
+    it("approves when business use is > 50%", () => {
+      const pruefung = pruefeDienstwagenMoeglichkeit({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 6000,
+        anteilPrivatProzent: 30, // 70% business
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(pruefung.moeglich).toBe(true);
+      expect(pruefung.hinweisTyp).toBe("ok");
+      expect(pruefung.einprozentRegelungErlaubt).toBe(true);
+    });
+  });
+
+  describe("Integration in berechneBetriebsErgebnisse", () => {
+    it("includes Dienstwagen expenses in operating costs and details", () => {
+      const state: BetriebState = {
+        startkapital: 10000,
+        jaehrlicherCashZuschuss: 0,
+        simulierterGewinn: 20000,
+        geschaeftsfuehrergehalt: 10000,
+        darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+        etfRendite: 5,
+        laufzeitJahre: 1,
+        kosten: [],
+        benefits: {
+          tankgutschein: 0,
+          strategieessen: 0,
+          essenszuschussProTag: 0,
+          essenszuschussTageProJahr: 0,
+          dienstwagen: {
+            aktiv: true,
+            bruttolistenpreis: 50000,
+            methode: "pauschal",
+            antriebsart: "benzin_diesel",
+            jaehrlicheGesamtkosten: 6000,
+            anteilPrivatProzent: 30,
+            entfernungWohnungArbeitsstaetteKm: 0,
+          },
+        },
+        firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+      };
+
+      const ergebnisse = berechneBetriebsErgebnisse(state);
+      expect(ergebnisse).toHaveLength(1);
+      const jahr1 = ergebnisse[0];
+
+      expect(jahr1.details.dienstwagenGmbhKosten).toBe(6000);
+      expect(jahr1.details.dienstwagenGeldwerterVorteil).toBe(6000); // 50k * 1% * 12
+      expect(jahr1.details.benefitsKosten).toBe(6000);
+      expect(jahr1.betriebskostenPosten).toContainEqual(
+        expect.objectContaining({ label: "Dienstwagen (GmbH-Kosten)", wert: 6000 })
+      );
+    });
   });
 });
