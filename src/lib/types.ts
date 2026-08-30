@@ -20,6 +20,26 @@ export interface DarlehenConfig {
   tilgungsdatum?: string; // ISO date for early repayment
 }
 
+export type DienstwagenMethode = 'pauschal' | 'fahrtenbuch';
+export type DienstwagenAntriebsart = 'benzin_diesel' | 'hybrid' | 'elektro';
+
+export interface DienstwagenConfig {
+  /** Whether the company car programme is active. */
+  aktiv: boolean;
+  /** Gross list price (Bruttolistenpreis) including VAT and optional equipment in €. */
+  bruttolistenpreis: number;
+  /** Method of tax calculation: 'pauschal' (1%-Regelung) or 'fahrtenbuch'. */
+  methode: DienstwagenMethode;
+  /** Engine type: 'benzin_diesel' (1%), 'hybrid' (0.5%), 'elektro' (0.25% up to 70k, else 0.5%). */
+  antriebsart: DienstwagenAntriebsart;
+  /** Total annual costs incurred by GmbH (leasing, electricity/fuel, insurance, maintenance). */
+  jaehrlicheGesamtkosten: number;
+  /** Percentage of private use (used for Fahrtenbuch and feasibility check, e.g. 30 = 30%). */
+  anteilPrivatProzent: number;
+  /** One-way distance between home and office in km (Entfernung Wohnung-Arbeitsstätte). */
+  entfernungWohnungArbeitsstaetteKm: number;
+}
+
 export interface BenefitConfig {
   tankgutschein: number; // monthly fuel voucher (tax-free up to 50€/month)
   /** Whether the fuel-voucher benefit is active. Defaults to true. */
@@ -31,6 +51,8 @@ export interface BenefitConfig {
   essenszuschussTageProJahr: number; // subsidized meal days per year
   /** Whether the meal-subsidy benefit is active. Defaults to true. */
   essenszuschussAktiv?: boolean;
+  /** Configuration for company car (Dienstwagen). */
+  dienstwagen?: DienstwagenConfig;
 }
 
 export interface StillerGesellschafterConfig {
@@ -156,6 +178,8 @@ export interface EndeBenefitAktivConfig {
   strategieessenAktiv?: boolean;
   /** Whether the company-phone programme counts in the Ende phase. */
   firmenhandyAktiv?: boolean;
+  /** Whether the company-car programme counts in the Ende phase. */
+  dienstwagenAktiv?: boolean;
 }
 
 export interface EndeState {

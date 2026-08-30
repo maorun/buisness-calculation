@@ -33,6 +33,9 @@ import {
   berechneEinkommensteuerBetrieb,
   berechneSoliBetrieb,
   berechneGesetzlicheKrankenversicherungBeitrag,
+  berechneDienstwagenGeldwerterVorteil,
+  berechneDienstwagenGmbhKosten,
+  pruefeDienstwagenMoeglichkeit,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
 
@@ -1447,5 +1450,214 @@ describe("berechnePrivatVergleichZeitreihe", () => {
     expect(letztesJahr.gesamtwertMitKonsum).toBeCloseTo(endwert.gesamtwertMitKonsum);
     const kumulierteSteuernAusZeitreihe = zeitreihe.reduce((sum, jahr) => sum + jahr.gesamtSteuer, 0);
     expect(kumulierteSteuernAusZeitreihe).toBeCloseTo(endwert.kumulierteSteuern);
+  });
+});
+
+describe("Dienstwagen calculations and checks", () => {
+  describe("berechneDienstwagenGeldwerterVorteil", () => {
+    it("returns 0 if config is missing or inactive", () => {
+      expect(berechneDienstwagenGeldwerterVorteil(undefined)).toBe(0);
+      expect(
+        berechneDienstwagenGeldwerterVorteil({
+          aktiv: false,
+          bruttolistenpreis: 50000,
+          methode: "pauschal",
+          antriebsart: "benzin_diesel",
+          jaehrlicheGesamtkosten: 8000,
+          anteilPrivatProzent: 30,
+          entfernungWohnungArbeitsstaetteKm: 0,
+        })
+      ).toBe(0);
+    });
+
+    it("calculates 1%-Regelung for Benzin/Diesel (1.0% per month = 12% p.a.)", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 50.000 € * 1% * 12 = 6.000 €/Jahr
+      expect(vorteil).toBe(6000);
+    });
+
+    it("calculates 0.5%-Regelung for Hybrid (0.5% per month = 6% p.a.)", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "hybrid",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 50.000 € * 0.5% * 12 = 3.000 €/Jahr
+      expect(vorteil).toBe(3000);
+    });
+
+    it("calculates 0.25%-Regelung for Elektro <= 70.000 € BLP", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 60000,
+        methode: "pauschal",
+        antriebsart: "elektro",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 60.000 € * 0.25% * 12 = 1.800 €/Jahr
+      expect(vorteil).toBe(1800);
+    });
+
+    it("calculates 0.5%-Regelung for Elektro > 70.000 € BLP", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 80000,
+        methode: "pauschal",
+        antriebsart: "elektro",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 80.000 € * 0.5% * 12 = 4.800 €/Jahr
+      expect(vorteil).toBe(4800);
+    });
+
+    it("includes commute (Wohnung-Arbeitsstätte km * 0.03% * BLP)", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 15000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 10,
+      });
+      // Privat: 500 € * 12 = 6.000 €
+      // Commute: 50.000 € * 0.0003 * 10 km * 12 = 1.800 €
+      // Total: 7.800 €
+      expect(vorteil).toBe(7800);
+    });
+
+    it("applies Kostendeckelung when geldwerter Vorteil exceeds total costs", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 100000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 5000, // actual costs are lower than 12.000 €
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(vorteil).toBe(5000);
+    });
+
+    it("calculates Fahrtenbuch method as actual costs * private share %", () => {
+      const vorteil = berechneDienstwagenGeldwerterVorteil({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "fahrtenbuch",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 10000,
+        anteilPrivatProzent: 30,
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      // 10.000 € * 30% = 3.000 €
+      expect(vorteil).toBe(3000);
+    });
+  });
+
+  describe("pruefeDienstwagenMoeglichkeit", () => {
+    it("flags critical (vGA risk) when business use is under 10%", () => {
+      const pruefung = pruefeDienstwagenMoeglichkeit({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 6000,
+        anteilPrivatProzent: 95, // 5% business
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(pruefung.moeglich).toBe(false);
+      expect(pruefung.hinweisTyp).toBe("kritisch");
+      expect(pruefung.einprozentRegelungErlaubt).toBe(false);
+      expect(pruefung.nachricht).toContain("vGA");
+    });
+
+    it("warns and disallows 1%-Regelung when business use is 10% - 50%", () => {
+      const pruefung = pruefeDienstwagenMoeglichkeit({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 6000,
+        anteilPrivatProzent: 70, // 30% business
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(pruefung.moeglich).toBe(true);
+      expect(pruefung.hinweisTyp).toBe("warnung");
+      expect(pruefung.einprozentRegelungErlaubt).toBe(false);
+      expect(pruefung.nachricht).toContain("Fahrtenbuch");
+    });
+
+    it("approves when business use is > 50%", () => {
+      const pruefung = pruefeDienstwagenMoeglichkeit({
+        aktiv: true,
+        bruttolistenpreis: 50000,
+        methode: "pauschal",
+        antriebsart: "benzin_diesel",
+        jaehrlicheGesamtkosten: 6000,
+        anteilPrivatProzent: 30, // 70% business
+        entfernungWohnungArbeitsstaetteKm: 0,
+      });
+      expect(pruefung.moeglich).toBe(true);
+      expect(pruefung.hinweisTyp).toBe("ok");
+      expect(pruefung.einprozentRegelungErlaubt).toBe(true);
+    });
+  });
+
+  describe("Integration in berechneBetriebsErgebnisse", () => {
+    it("includes Dienstwagen expenses in operating costs and details", () => {
+      const state: BetriebState = {
+        startkapital: 10000,
+        jaehrlicherCashZuschuss: 0,
+        simulierterGewinn: 20000,
+        geschaeftsfuehrergehalt: 10000,
+        darlehen: { betrag: 0, zinssatz: 0, monatlicherZuschuss: 0, endfaellig: false },
+        etfRendite: 5,
+        laufzeitJahre: 1,
+        kosten: [],
+        benefits: {
+          tankgutschein: 0,
+          strategieessen: 0,
+          essenszuschussProTag: 0,
+          essenszuschussTageProJahr: 0,
+          dienstwagen: {
+            aktiv: true,
+            bruttolistenpreis: 50000,
+            methode: "pauschal",
+            antriebsart: "benzin_diesel",
+            jaehrlicheGesamtkosten: 6000,
+            anteilPrivatProzent: 30,
+            entfernungWohnungArbeitsstaetteKm: 0,
+          },
+        },
+        firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG, aktiv: false },
+      };
+
+      const ergebnisse = berechneBetriebsErgebnisse(state);
+      expect(ergebnisse).toHaveLength(1);
+      const jahr1 = ergebnisse[0];
+
+      expect(jahr1.details.dienstwagenGmbhKosten).toBe(6000);
+      expect(jahr1.details.dienstwagenGeldwerterVorteil).toBe(6000); // 50k * 1% * 12
+      expect(jahr1.details.benefitsKosten).toBe(6000);
+      expect(jahr1.betriebskostenPosten).toContainEqual(
+        expect.objectContaining({ label: "Dienstwagen (GmbH-Kosten)", wert: 6000 })
+      );
+    });
   });
 });

@@ -6,6 +6,7 @@ import {
   TEILFREISTELLUNG_AKTIEN_GMBH,
   TEILFREISTELLUNG_AKTIEN_PRIVAT,
   DEFAULT_FIRMENHANDY_CONFIG,
+  DEFAULT_DIENSTWAGEN_CONFIG,
   DEFAULT_ZIELNETTO_GESELLSCHAFTER_BETRIEB,
   DEFAULT_GF_GEHALT_BETRIEB,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
@@ -18,6 +19,9 @@ import {
   berechnePrivatVergleichErgebnis,
   berechnePrivatVergleichZeitreihe,
   berechneAlleInvestitionsErgebnisse,
+  pruefeDienstwagenMoeglichkeit,
+  berechneDienstwagenGeldwerterVorteil,
+  berechneDienstwagenGmbhKosten,
 } from "@/lib/calculations/betrieb";
 import { getSteuerjahrParameter } from "@/lib/parameters";
 import { InvestitionsPosition } from "@/lib/types";
@@ -320,6 +324,39 @@ export function BetriebSection() {
   const toggleBenefitAktiv = (field: keyof typeof betrieb.benefits, checked: boolean) => {
     setBetrieb({
       benefits: { ...betrieb.benefits, [field]: checked },
+    });
+  };
+
+  const dienstwagen = betrieb.benefits.dienstwagen ?? DEFAULT_DIENSTWAGEN_CONFIG;
+  const dienstwagenPruefung = pruefeDienstwagenMoeglichkeit(dienstwagen);
+  const dienstwagenGeldwerterVorteil = dienstwagen.aktiv
+    ? berechneDienstwagenGeldwerterVorteil(dienstwagen)
+    : 0;
+  const dienstwagenGmbhKosten = dienstwagen.aktiv
+    ? berechneDienstwagenGmbhKosten(betrieb.benefits)
+    : 0;
+
+  const updateDienstwagen = (
+    field: keyof NonNullable<typeof betrieb.benefits.dienstwagen>,
+    value: string | boolean | number
+  ) => {
+    const current = betrieb.benefits.dienstwagen ?? DEFAULT_DIENSTWAGEN_CONFIG;
+    let coerced: string | boolean | number;
+    if (typeof value === "boolean" || typeof value === "number") {
+      coerced = value;
+    } else if (field === "methode" || field === "antriebsart") {
+      coerced = value;
+    } else {
+      coerced = parseFloat(value) || 0;
+    }
+    setBetrieb({
+      benefits: {
+        ...betrieb.benefits,
+        dienstwagen: {
+          ...current,
+          [field]: coerced,
+        },
+      },
     });
   };
 
@@ -632,6 +669,140 @@ export function BetriebSection() {
                 hint="Max. 50 €/Monat steuerfrei"
                 max={50}
               />
+            </div>
+          )}
+        </div>
+
+        {/* Dienstwagen */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="dienstwagenAktiv"
+              checked={dienstwagen.aktiv}
+              onChange={(e) => updateDienstwagen("aktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="dienstwagenAktiv" className="text-sm text-gray-700 font-medium">Dienstwagen aktiv</label>
+          </div>
+
+          {dienstwagen.aktiv && (
+            <div className="pl-7 space-y-4">
+              {/* Feasibility Notice */}
+              <div
+                className={`p-3 rounded-lg border text-xs space-y-1 ${
+                  dienstwagenPruefung.hinweisTyp === "kritisch"
+                    ? "bg-red-50 border-red-200 text-red-800"
+                    : dienstwagenPruefung.hinweisTyp === "warnung"
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-green-50 border-green-200 text-green-800"
+                }`}
+              >
+                <p className="font-semibold">
+                  {dienstwagenPruefung.hinweisTyp === "kritisch"
+                    ? "⚠️ Dienstwagen steuerlich kritisch"
+                    : dienstwagenPruefung.hinweisTyp === "warnung"
+                    ? "⚡ Hinweis zur Dienstwagennutzung"
+                    : "✓ Dienstwagen steuerlich anerkannt"}
+                </p>
+                <p>{dienstwagenPruefung.nachricht}</p>
+                <p className="text-[11px] opacity-80">
+                  Betriebliche Nutzung: {dienstwagenPruefung.betrieblicheNutzungProzent} % · Private Nutzung: {dienstwagen.anteilPrivatProzent} %
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputField
+                  label="Bruttolistenpreis (BLP in €)"
+                  value={dienstwagen.bruttolistenpreis}
+                  onChange={(v) => updateDienstwagen("bruttolistenpreis", v)}
+                  suffix="€"
+                  hint="Inkl. USt und Sonderausstattung ab Werk"
+                />
+                <InputField
+                  label="Jährliche Gesamtkosten GmbH (€/Jahr)"
+                  value={dienstwagen.jaehrlicheGesamtkosten}
+                  onChange={(v) => updateDienstwagen("jaehrlicheGesamtkosten", v)}
+                  suffix="€/Jahr"
+                  hint="Leasingrate, Versicherung, Strom/Treibstoff, Wartung"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Versteuerungsmethode</label>
+                  <div className="flex gap-4 items-center mt-1">
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="dienstwagenMethode"
+                        value="pauschal"
+                        checked={dienstwagen.methode === "pauschal"}
+                        onChange={() => updateDienstwagen("methode", "pauschal")}
+                        className="h-4 w-4 text-blue-600 border-gray-300"
+                      />
+                      1 %-Regelung (pauschal)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="dienstwagenMethode"
+                        value="fahrtenbuch"
+                        checked={dienstwagen.methode === "fahrtenbuch"}
+                        onChange={() => updateDienstwagen("methode", "fahrtenbuch")}
+                        className="h-4 w-4 text-blue-600 border-gray-300"
+                      />
+                      Fahrtenbuch
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Antriebsart</label>
+                  <select
+                    value={dienstwagen.antriebsart}
+                    onChange={(e) => updateDienstwagen("antriebsart", e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="benzin_diesel">Benzin / Diesel (1,0 % p.M.)</option>
+                    <option value="hybrid">Hybrid / Plug-in (0,5 % p.M.)</option>
+                    <option value="elektro">Elektro-Auto (0,25 % bis 70k € BLP, darüber 0,5 % p.M.)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputField
+                  label="Anteil private Nutzung (%)"
+                  value={dienstwagen.anteilPrivatProzent}
+                  onChange={(v) => updateDienstwagen("anteilPrivatProzent", Math.max(0, Math.min(100, parseFloat(v) || 0)))}
+                  suffix="%"
+                  hint="Relativ zur Gesamtnutzung (z. B. 30 % = 70 % betrieblich)"
+                  min={0}
+                  max={100}
+                />
+                {dienstwagen.methode === "pauschal" && (
+                  <InputField
+                    label="Entfernung Wohnung – Arbeitsstätte (km)"
+                    value={dienstwagen.entfernungWohnungArbeitsstaetteKm}
+                    onChange={(v) => updateDienstwagen("entfernungWohnungArbeitsstaetteKm", Math.max(0, parseFloat(v) || 0))}
+                    suffix="km"
+                    hint="0,03 % des BLP pro km und Monat"
+                    min={0}
+                  />
+                )}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-600 block">Betriebsausgabe GmbH:</span>
+                  <span className="font-bold text-slate-800">{dienstwagenGmbhKosten.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr</span>
+                </div>
+                <div>
+                  <span className="text-slate-600 block">Geldwerter Vorteil Gesellschafter:</span>
+                  <span className="font-bold text-blue-700">{dienstwagenGeldwerterVorteil.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Jahr</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
