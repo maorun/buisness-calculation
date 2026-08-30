@@ -110,9 +110,33 @@ export const STEUERJAHR_PARAMETER: Record<Steuerjahr, SteuerjahrParameter> = {
 
 export const DEFAULT_STEUERJAHR: Steuerjahr = 2025;
 
-export function getSteuerjahrParameter(jahr?: Steuerjahr): SteuerjahrParameter {
+export function berechnePvBeitragssatz(anzahlKinder: number = 0): number {
+  const kinder = Math.max(0, Math.floor(anzahlKinder));
+  switch (kinder) {
+    case 0:
+      return 0.040;
+    case 1:
+      return 0.034;
+    case 2:
+      return 0.0315;
+    case 3:
+      return 0.029;
+    case 4:
+      return 0.0265;
+    default:
+      return 0.024;
+  }
+}
+
+export function getSteuerjahrParameter(jahr?: Steuerjahr, anzahlKinder?: number): SteuerjahrParameter {
   const selected = jahr && STEUERJAHR_PARAMETER[selectedYear(jahr)] ? STEUERJAHR_PARAMETER[selectedYear(jahr)] : STEUERJAHR_PARAMETER[DEFAULT_STEUERJAHR];
-  return selected;
+  const pvBeitragssatz = berechnePvBeitragssatz(anzahlKinder);
+  const gkvBeitragssatz = 0.146 + selected.gkvZusatzbeitrag + pvBeitragssatz;
+  return {
+    ...selected,
+    pvBeitragssatz,
+    gkvBeitragssatz,
+  };
 }
 
 function selectedYear(jahr: Steuerjahr): Steuerjahr {

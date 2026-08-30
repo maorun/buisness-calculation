@@ -388,15 +388,15 @@ export function BetriebSection() {
         <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und freien Überschüssen sowie separatem Cash-Puffer</p>
       </div>
 
-      {/* Steuerjahr Auswahl */}
+      {/* Steuerjahr Auswahl & Kinderanzahl */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-2">Steuer- & Sozialjahr Parametersatz</h3>
         <p className="text-xs text-slate-500 mb-4">
           Wählen Sie das Referenzjahr für Grundfreibetrag (ESt-Tarif), GKV-Beitragsbemessungsgrenze, GKV-Zusatzbeitrag, Midijob-Untergrenze und Basiszins:
         </p>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 mb-4">
           {([2024, 2025, 2026] as const).map((jahr) => {
-            const p = getSteuerjahrParameter(jahr);
+            const p = getSteuerjahrParameter(jahr, betrieb.anzahlKinder);
             const isSelected = (betrieb.steuerjahr ?? 2025) === jahr;
             return (
               <button
@@ -418,13 +418,22 @@ export function BetriebSection() {
                 <div className="space-y-0.5 text-xs text-slate-600">
                   <p><span className="font-medium">Grundfreibetrag:</span> {p.grundfreibetrag.toLocaleString("de-DE")} €</p>
                   <p><span className="font-medium">GKV-BBG:</span> {p.gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat ({p.gkvBemessungJahrMax.toLocaleString("de-DE")} €/Jahr)</p>
-                  <p><span className="font-medium">GKV & PV (inkl. Zusatz & PV 4,0%):</span> {(p.gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })} %</p>
+                  <p><span className="font-medium">GKV & PV (PV {(p.pvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })}%):</span> {(p.gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} %</p>
                   <p><span className="font-medium">Midijob-Untergrenze:</span> {p.midijobMonatMin.toLocaleString("de-DE")} €/Monat ({p.midijobJahrMin.toLocaleString("de-DE")} €/Jahr)</p>
                   <p><span className="font-medium">Basiszins:</span> {(p.basiszins * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })} %</p>
                 </div>
               </button>
             );
           })}
+        </div>
+        <div className="max-w-xs">
+          <InputField
+            label="Anzahl Kinder (Pflegeversicherung)"
+            value={betrieb.anzahlKinder ?? 0}
+            onChange={(v) => setBetrieb({ anzahlKinder: Math.max(0, parseInt(v) || 0) })}
+            min={0}
+            hint="Staffelung PV: 0 Kinder = 4,00%, 1 Kind = 3,40%, 2 = 3,15%, 3 = 2,90%, 4 = 2,65%, 5+ = 2,40%"
+          />
         </div>
       </div>
 
@@ -1152,7 +1161,7 @@ export function BetriebSection() {
           <div><span className="font-medium">Teilfreistellung ETF-Verkauf:</span> {teilfreistellungGmbh}%</div>
           <div><span className="font-medium">Grundfreibetrag:</span> {getSteuerjahrParameter(betrieb.steuerjahr).grundfreibetrag.toLocaleString("de-DE")} €</div>
           <div><span className="font-medium">GKV-BBG:</span> {getSteuerjahrParameter(betrieb.steuerjahr).gkvBemessungMonatMax.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €/Monat</div>
-          <div><span className="font-medium">GKV & PV gesamt:</span> {(getSteuerjahrParameter(betrieb.steuerjahr).gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 1 })}%</div>
+          <div><span className="font-medium">GKV & PV gesamt:</span> {(getSteuerjahrParameter(betrieb.steuerjahr, betrieb.anzahlKinder).gkvBeitragssatz * 100).toLocaleString("de-DE", { minimumFractionDigits: 2 })}%</div>
           <div><span className="font-medium">Midijob-Untergrenze:</span> {getSteuerjahrParameter(betrieb.steuerjahr).midijobMonatMin.toLocaleString("de-DE")} €/Monat</div>
         </div>
         <p className="text-xs text-gray-400 mt-2">

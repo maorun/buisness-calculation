@@ -1,4 +1,4 @@
-import { getSteuerjahrParameter, STEUERJAHR_PARAMETER, DEFAULT_STEUERJAHR } from "@/lib/parameters";
+import { getSteuerjahrParameter, berechnePvBeitragssatz, STEUERJAHR_PARAMETER, DEFAULT_STEUERJAHR } from "@/lib/parameters";
 import { berechneEinkommensteuerBetrieb, berechneSoliBetrieb, berechneVorabpauschale, berechneBetriebsErgebnisse } from "@/lib/calculations/betrieb";
 import { berechneEinkommensteuer, berechneSoli, berechneGesetzlicheKrankenversicherungBeitrag, berechneEndeErgebnisse } from "@/lib/calculations/ende";
 import { BetriebState, EndeState } from "@/lib/types";
@@ -90,6 +90,28 @@ describe("Soli by Steuerjahr", () => {
   });
 });
 
+describe("PV Rate & Children Scaling", () => {
+  it("calculates pvBeitragssatz correctly based on number of children", () => {
+    expect(berechnePvBeitragssatz(0)).toBe(0.040);
+    expect(berechnePvBeitragssatz(1)).toBe(0.034);
+    expect(berechnePvBeitragssatz(2)).toBe(0.0315);
+    expect(berechnePvBeitragssatz(3)).toBe(0.029);
+    expect(berechnePvBeitragssatz(4)).toBe(0.0265);
+    expect(berechnePvBeitragssatz(5)).toBe(0.024);
+    expect(berechnePvBeitragssatz(6)).toBe(0.024);
+  });
+
+  it("updates gkvBeitragssatz when anzahlKinder is passed to getSteuerjahrParameter", () => {
+    const p0 = getSteuerjahrParameter(2025, 0);
+    expect(p0.pvBeitragssatz).toBe(0.040);
+    expect(p0.gkvBeitragssatz).toBeCloseTo(0.146 + 0.025 + 0.040); // 0.211
+
+    const p2 = getSteuerjahrParameter(2025, 2);
+    expect(p2.pvBeitragssatz).toBe(0.0315);
+    expect(p2.gkvBeitragssatz).toBeCloseTo(0.146 + 0.025 + 0.0315); // 0.2025
+  });
+});
+
 describe("GKV Contribution by Steuerjahr", () => {
   it("calculates GKV contribution using year-specific rates and BBG", () => {
     const income = 100000; // Above all BBG limits
@@ -106,6 +128,19 @@ describe("GKV Contribution by Steuerjahr", () => {
 
     expect(gkv2025).toBeGreaterThan(gkv2024);
     expect(gkv2026).toBeGreaterThan(gkv2025);
+  });
+
+  it("reduces GKV/PV contribution when anzahlKinder > 0", () => {
+    const income = 60000; // 60.000 € income
+    const gkv0 = berechneGesetzlicheKrankenversicherungBeitrag(income, undefined, undefined, 2025, 0);
+    const gkv2 = berechneGesetzlicheKrankenversicherungBeitrag(income, undefined, undefined, 2025, 2);
+
+    // 0 children: 21.1% of 60,000 = 12,660 €
+    // 2 children: (14.6% + 2.5% + 3.15%) = 20.25% of 60,000 = 12,150 €
+    // Difference = 510 €/year
+    expect(gkv0).toBeCloseTo(12660, 1);
+    expect(gkv2).toBeCloseTo(12150, 1);
+    expect(gkv0 - gkv2).toBeCloseTo(510, 1);
   });
 });
 

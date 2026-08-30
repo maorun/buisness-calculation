@@ -111,6 +111,7 @@ import { Steuerjahr } from "./parameters";
 
 export interface BetriebState {
   steuerjahr?: Steuerjahr;
+  anzahlKinder?: number;
   startkapital: number;
   /** Annual cash inflow that stays liquid and is not invested into ETFs. */
   jaehrlicherCashZuschuss: number;
