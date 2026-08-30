@@ -154,9 +154,10 @@ export function berechneGesetzlicheKrankenversicherungBeitrag(
   jahresEinnahmen: number,
   beitragssatz?: number,
   beitragsbemessungJahrMax?: number,
-  steuerjahr?: Steuerjahr
+  steuerjahr?: Steuerjahr,
+  anzahlKinder?: number
 ): number {
-  const params = getSteuerjahrParameter(steuerjahr);
+  const params = getSteuerjahrParameter(steuerjahr, anzahlKinder);
   const bss = beitragssatz ?? params.gkvBeitragssatz;
   const maxBbm = beitragsbemessungJahrMax ?? params.gkvBemessungJahrMax;
   const einnahmen = Math.max(0, jahresEinnahmen);

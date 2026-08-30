@@ -46,6 +46,7 @@ const initialState: CalculatorState = {
   },
   betrieb: {
     steuerjahr: 2025,
+    anzahlKinder: 0,
     startkapital: 12500,
     jaehrlicherCashZuschuss: 2400,
     kapitalertragsteuerSatz: DEFAULT_KAPITALERTRAGSTEUER_SATZ,
@@ -285,7 +286,8 @@ export const useCalculatorStore = create<CalculatorStore>()(
       kstGesamt,
       gewerbesteuer,
       get().betrieb.steuerjahr,
-      verlustvortragBetriebEnde
+      verlustvortragBetriebEnde,
+      get().betrieb.anzahlKinder
     );
   },
     }),
@@ -307,6 +309,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
           },
           betrieb: {
             ...initialState.betrieb,
+            anzahlKinder: state?.betrieb?.anzahlKinder ?? initialState.betrieb.anzahlKinder,
             ...state?.betrieb,
             darlehen: {
               ...initialState.betrieb.darlehen,

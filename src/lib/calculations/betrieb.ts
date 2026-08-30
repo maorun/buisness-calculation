@@ -355,7 +355,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       beitragspflichtigeEinnahmenGkv,
       undefined,
       undefined,
-      state.steuerjahr
+      state.steuerjahr,
+      state.anzahlKinder
     );
     const zielnettoGesellschafter = Math.max(
       0,

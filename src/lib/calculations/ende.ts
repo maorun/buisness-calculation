@@ -230,7 +230,8 @@ export function berechneEndeErgebnisse(
   kstGesamt: number = KST_GESAMT,
   gewerbesteuer: number = GEWERBESTEUER,
   steuerjahr?: Steuerjahr,
-  initialVerlustvortrag: number = 0
+  initialVerlustvortrag: number = 0,
+  anzahlKinder?: number
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
@@ -320,7 +321,8 @@ export function berechneEndeErgebnisse(
       beitragspflichtigeEinnahmenGkv,
       undefined,
       undefined,
-      steuerjahr
+      steuerjahr,
+      anzahlKinder
     );
     const zielnettoBereich1 = state.zielnettoBereich1 ?? DEFAULT_ZIELNETTO_BEREICH1;
     const konsumVorAutomatischerTilgungBereich1 =
@@ -522,7 +524,8 @@ export function berechneEndeErgebnisse(
       beitragspflichtigeEinnahmenGkv,
       undefined,
       undefined,
-      steuerjahr
+      steuerjahr,
+      anzahlKinder
     );
     let konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
     let konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
@@ -587,7 +590,8 @@ export function berechneEndeErgebnisse(
           beitragspflichtigeEinnahmenGkv,
           undefined,
           undefined,
-          steuerjahr
+          steuerjahr,
+          anzahlKinder
         );
         konsumVorTilgungVorGkv = nettoGehalt + nettoAusschuettung + darlehenZinsenNetto + privatDarlehenZinsenNetto + essenszuschussNutzen;
         konsumVorTilgung = konsumVorTilgungVorGkv - gesetzlicheKrankenversicherungBeitrag;
