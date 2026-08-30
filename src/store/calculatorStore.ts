@@ -4,9 +4,11 @@ import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPositio
 import {
   berechneBetriebsErgebnisse,
   berechneGmbhSteuerRaten,
+  DEFAULT_DIENSTWAGEN_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_FIRMENHANDY_CONFIG,
   DEFAULT_KAPITALERTRAGSTEUER_SATZ,
+  DEFAULT_SPARERPAUSCHBETRAG,
   DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
   DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
   DEFAULT_GEWERBESTEUER_SATZ,
@@ -44,9 +46,12 @@ const initialState: CalculatorState = {
     kosten: defaultGruendungskosten,
   },
   betrieb: {
+    steuerjahr: 2025,
+    anzahlKinder: 0,
     startkapital: 12500,
     jaehrlicherCashZuschuss: 2400,
     kapitalertragsteuerSatz: DEFAULT_KAPITALERTRAGSTEUER_SATZ,
+    sparerpauschbetrag: DEFAULT_SPARERPAUSCHBETRAG,
     koerperschaftsteuerSatz: 15,
     solidaritaetszuschlagSatz: 5.5,
     gewerbesteuerSatz: 14,
@@ -70,6 +75,7 @@ const initialState: CalculatorState = {
       essenszuschussProTag: DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
       essenszuschussTageProJahr: 220,
       essenszuschussAktiv: true,
+      dienstwagen: { ...DEFAULT_DIENSTWAGEN_CONFIG },
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
     stillerGesellschafter: { ...DEFAULT_STILLER_GESELLSCHAFTER_CONFIG },
@@ -77,6 +83,7 @@ const initialState: CalculatorState = {
   ende: {
     geschaeftsfuehrergehalt: 0,
     simulierterGewinn: 0,
+    persoenlicherSteuersatz: 42,
     stammkapitalErhoehungEtf: 0,
     gehaltBereich1: 0,
     teiltilgungBereich1: 0,
@@ -93,6 +100,7 @@ const initialState: CalculatorState = {
       essenszuschussAktiv: true,
       strategieessenAktiv: true,
       firmenhandyAktiv: true,
+      dienstwagenAktiv: false,
     },
   },
 };
@@ -254,6 +262,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
       ?? Math.max(0, get().betrieb.darlehen.betrag);
     const aufgelaufeneZinsen = letztesBetriebsergebnis?.details.aufgelaufeneZinsen ?? 0;
     const betriebDarlehenEndfaellig = get().betrieb.darlehen.endfaellig;
+    const verlustvortragBetriebEnde = letztesBetriebsergebnis?.details.verlustvortrag ?? 0;
     const { gmbhSteuerGesamt, kstGesamt, gewerbesteuer } = berechneGmbhSteuerRaten(
       get().betrieb.koerperschaftsteuerSatz ?? DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
       get().betrieb.solidaritaetszuschlagSatz ?? DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
@@ -278,13 +287,16 @@ export const useCalculatorStore = create<CalculatorStore>()(
       },
       gmbhSteuerGesamt,
       kstGesamt,
-      gewerbesteuer
+      gewerbesteuer,
+      get().betrieb.steuerjahr,
+      verlustvortragBetriebEnde,
+      get().betrieb.anzahlKinder
     );
   },
     }),
     {
       name: "gmbh-kalkulator",
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;
@@ -300,6 +312,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
           },
           betrieb: {
             ...initialState.betrieb,
+            anzahlKinder: state?.betrieb?.anzahlKinder ?? initialState.betrieb.anzahlKinder,
             ...state?.betrieb,
             darlehen: {
               ...initialState.betrieb.darlehen,
@@ -308,6 +321,10 @@ export const useCalculatorStore = create<CalculatorStore>()(
             benefits: {
               ...initialState.betrieb.benefits,
               ...state?.betrieb?.benefits,
+              dienstwagen: {
+                ...initialState.betrieb.benefits.dienstwagen,
+                ...state?.betrieb?.benefits?.dienstwagen,
+              },
               ...(shouldMigrateMealDaysDefault
                 ? { essenszuschussTageProJahr: initialState.betrieb.benefits.essenszuschussTageProJahr }
                 : {}),

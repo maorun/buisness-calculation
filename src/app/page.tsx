@@ -236,7 +236,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-slate-600 border-t border-gray-200 mt-8">
         <p>GmbH-Kalkulator · Alle Angaben ohne Gewähr · Keine Steuerberatung</p>
-        <p className="mt-1">Steuerparameter basieren auf deutschen Steuergesetzen Stand 2024</p>
+        <p className="mt-1">Steuerparameter basieren auf deutschen Steuer- und Sozialgesetzen (wählbar 2024, 2025, 2026)</p>
       </footer>
     </div>
   );
