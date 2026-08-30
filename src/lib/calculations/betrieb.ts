@@ -31,6 +31,8 @@ import {
   berechneKonsumNutzenwertProJahr,
   berechneTankgutscheinJaehrlich,
   berechneEssenszuschussJaehrlich,
+  berechneDienstwagenGmbhKosten,
+  berechneDienstwagenGeldwerterVorteil,
 } from "./benefits";
 
 import {
@@ -83,10 +85,12 @@ export function berechneBetriebskostenPosten(
 
   const tankgutscheinJaehrlich = berechneTankgutscheinJaehrlich(benefits);
   const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(benefits);
+  const dienstwagenGmbhKosten = berechneDienstwagenGmbhKosten(benefits);
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Essenszuschuss", wert: essenszuschussJaehrlich },
     { label: "Strategieessen", wert: (benefits.strategieessenAktiv ?? true) ? Math.max(0, benefits.strategieessen) : 0 },
+    ...(dienstwagenGmbhKosten > 0 ? [{ label: "Dienstwagen (GmbH-Kosten)", wert: dienstwagenGmbhKosten }] : []),
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
     { label: "GF-Gehalt", wert: Math.max(0, geschaeftsfuehrergehalt) },
     ...(stillerGesellschafterKosten > 0
@@ -177,6 +181,10 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
+    const dienstwagenGmbhKosten = berechneDienstwagenGmbhKosten(state.benefits);
+    const dienstwagenGeldwerterVorteil = state.benefits.dienstwagen?.aktiv
+      ? berechneDienstwagenGeldwerterVorteil(state.benefits.dienstwagen)
+      : 0;
     // Use the nominal consumption value (what the shareholder actually receives) rather than the
     // GmbH's net cost after tax deduction. The tax saving on benefits is already reflected in a
     // lower gmbhSteuer → higher ETF value, so crediting only the after-tax cost would zero-out
@@ -340,7 +348,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     // Net gain after all taxes
     const nettogewinn =
       gewinnNachBetriebsausgaben - gmbhSteuer - vorabpauschalesteuer - etfVerkaufssteuer;
-    const gesellschafterBruttoEinkommen = gehaelterGesamt + darlehenszinsJaehrlich;
+    const gesellschafterBruttoEinkommen = gehaelterGesamt + darlehenszinsJaehrlich + dienstwagenGeldwerterVorteil;
     const gesellschafterEinkommensteuer = berechneEinkommensteuerBetrieb(gesellschafterBruttoEinkommen, state.steuerjahr);
     const gesellschafterSoli = berechneSoliBetrieb(gesellschafterEinkommensteuer, state.steuerjahr);
     const gesellschafterSteuerGesamt = gesellschafterEinkommensteuer + gesellschafterSoli;
@@ -457,6 +465,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         cashReserveZugang,
         offenesDarlehen,
         nettovermoegen,
+        dienstwagenGmbhKosten,
+        dienstwagenGeldwerterVorteil,
         stillerGesellschafterKosten,
         stillerGesellschafterSteuer: berechneStillerGesellschafterSteuer(
           stillerGesellschafterKosten,

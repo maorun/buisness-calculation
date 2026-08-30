@@ -817,6 +817,23 @@ export function EndeSection() {
             </div>
             <p className="text-xs text-slate-600 pl-7">{handyAnschaffung} € alle {handyZyklus} Jahre · {handyVerkaufsquote}% Verkaufserlös</p>
           </div>
+
+          {/* Dienstwagen */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-1">
+              <input
+                type="checkbox"
+                id="endeDienstwagenAktiv"
+                checked={ende.benefitAktiv?.dienstwagenAktiv ?? (betrieb.benefits.dienstwagen?.aktiv ?? false)}
+                onChange={(e) => toggleBenefitAktiv("dienstwagenAktiv", e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              <label htmlFor="endeDienstwagenAktiv" className="text-sm font-medium text-gray-700">Dienstwagen aktiv</label>
+            </div>
+            <p className="text-xs text-slate-600 pl-7">
+              BLP {(betrieb.benefits.dienstwagen?.bruttolistenpreis ?? 50000).toLocaleString("de-DE")} € · {(betrieb.benefits.dienstwagen?.jaehrlicheGesamtkosten ?? 6000).toLocaleString("de-DE")} €/Jahr Kosten
+            </p>
+          </div>
         </div>
         <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
           <p className="text-xs text-green-700 font-medium">Jährliche Steuerersparnis durch Benefits</p>

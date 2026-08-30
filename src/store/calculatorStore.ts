@@ -4,6 +4,7 @@ import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPositio
 import {
   berechneBetriebsErgebnisse,
   berechneGmbhSteuerRaten,
+  DEFAULT_DIENSTWAGEN_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
   DEFAULT_FIRMENHANDY_CONFIG,
   DEFAULT_KAPITALERTRAGSTEUER_SATZ,
@@ -74,6 +75,7 @@ const initialState: CalculatorState = {
       essenszuschussProTag: DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
       essenszuschussTageProJahr: 220,
       essenszuschussAktiv: true,
+      dienstwagen: { ...DEFAULT_DIENSTWAGEN_CONFIG },
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
     stillerGesellschafter: { ...DEFAULT_STILLER_GESELLSCHAFTER_CONFIG },
@@ -98,6 +100,7 @@ const initialState: CalculatorState = {
       essenszuschussAktiv: true,
       strategieessenAktiv: true,
       firmenhandyAktiv: true,
+      dienstwagenAktiv: false,
     },
   },
 };
@@ -293,7 +296,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }),
     {
       name: "gmbh-kalkulator",
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;
@@ -318,6 +321,10 @@ export const useCalculatorStore = create<CalculatorStore>()(
             benefits: {
               ...initialState.betrieb.benefits,
               ...state?.betrieb?.benefits,
+              dienstwagen: {
+                ...initialState.betrieb.benefits.dienstwagen,
+                ...state?.betrieb?.benefits?.dienstwagen,
+              },
               ...(shouldMigrateMealDaysDefault
                 ? { essenszuschussTageProJahr: initialState.betrieb.benefits.essenszuschussTageProJahr }
                 : {}),
