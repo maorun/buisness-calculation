@@ -148,7 +148,7 @@ function simulierePrivatVergleich(
       : 0;
     const investitionsNettoCashflow = investitionsJahreswert?.nettoCashflow ?? 0;
     const sparplanNetto = isEndeJahr
-      ? -konsumNutzenwert
+      ? investitionsNettoCashflow - konsumNutzenwert
       : jaehrlicherCashZuschuss + simulierterGewinnNetto + darlehensZuschussJaehrlich + investitionsNettoCashflow - konsumNutzenwert;
     if (!isEndeJahr) {
       kumulierterSparplan += sparplanNetto;
@@ -247,10 +247,7 @@ function simulierePrivatVergleich(
     kumulierteEtfVerkaufssteuer += etfVerkaufssteuer;
 
     etfLots = verkauf.lots;
-    // Only re-invest the sparplan surplus in genuine Betrieb-phase years (isEndeJahr = false).
-    // In Ende years sparplanNetto equals -konsumNutzenwert (≤ 0), so the guard also prevents
-    // a negative reinvestment, but the explicit !isEndeJahr check makes the intent clear.
-    if (!isEndeJahr && sparplanNetto > 0) {
+    if (sparplanNetto > 0) {
       etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", sparplanNetto);
     }
 

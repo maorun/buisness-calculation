@@ -1015,4 +1015,129 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[2].details.darlehenZinsen).toBeCloseTo(erwarteteZinsen);
     });
   });
+
+  describe("Investments in Ende phase", () => {
+    const defaultEndeState: EndeState = {
+      geschaeftsfuehrergehalt: 0,
+      stammkapitalErhoehungEtf: 0,
+      gehaltBereich1: 0,
+      teiltilgungBereich1: 0,
+      gewinnausschuettung: 0,
+      tilgungsrate: 0,
+      laufzeitJahre: 3,
+      zielnettoBereich1: 0,
+      zielnettoBereich2: 0,
+    };
+
+    it("tracks capital growth, interest, principal repayment and net cashflow in Ende phase details", () => {
+      const investitionen = [
+        {
+          id: "inv-1",
+          bezeichnung: "Mietobjekt",
+          kapital: 100000,
+          gewinnVerlustProJahr: 6000, // 500 € / Monat net rent
+          wertsteigerung: 3,          // 3% p.a.
+          kredit: 40000,
+          zinssatz: 4,               // 1600 € Zins Y1
+          tilgungsrateJaehrlich: 2000,// 2000 € Tilgung Y1
+        },
+      ];
+
+      const results = berechneEndeErgebnisse(
+        defaultEndeState,
+        0, 0, 0, 0, false, 0, [],
+        { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+        GMBH_STEUER_GESAMT, 0.15, 0.14, undefined, 0, 0,
+        investitionen
+      );
+
+      expect(results).toHaveLength(3);
+      const y1 = results[0].details;
+
+      // Capital appreciation: 100,000 * 1.03 = 103,000
+      expect(y1.investitionsKapitalGesamt).toBeCloseTo(103000);
+      expect(y1.investitionsGewinnVerlustProJahr).toBe(6000);
+      expect(y1.investitionsZinsaufwandProJahr).toBeCloseTo(1600);
+      expect(y1.investitionsTilgungProJahr).toBeCloseTo(2000);
+      // Net cashflow = 6000 - 1600 - 2000 = +2400
+      expect(y1.investitionsNettoCashflowProJahr).toBeCloseTo(2400);
+      // Loan restschuld = 40000 - 2000 = 38000
+      expect(y1.investitionsKreditRestschuld).toBeCloseTo(38000);
+
+      // Total assets in Y1 = private (0) + ETF (2400 net cashflow minus GmbH taxes) + investment capital (103000)
+      expect(results[0].gesamtvermoegen).toBeGreaterThan(103000);
+    });
+
+    it("reinvests positive investment cashflow into ETF and includes operational gain in GmbH taxable income", () => {
+      const investitionen = [
+        {
+          id: "inv-1",
+          bezeichnung: "Gewerbehalle",
+          kapital: 50000,
+          gewinnVerlustProJahr: 10000,
+          wertsteigerung: 0,
+          kredit: 0,
+          zinssatz: 0,
+          tilgungsrateJaehrlich: 0,
+        },
+      ];
+
+      const results = berechneEndeErgebnisse(
+        defaultEndeState,
+        0, 0, 0, 0, false, 0, [],
+        { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+        GMBH_STEUER_GESAMT, 0.15, 0.14, undefined, 0, 0,
+        investitionen
+      );
+
+      const y1 = results[0].details;
+      // Taxable gain = 10000
+      expect(y1.gewinnNachBetriebsausgaben).toBeCloseTo(10000);
+      expect(y1.gmbhSteuer).toBeCloseTo(10000 * GMBH_STEUER_GESAMT);
+      // ETF inflow = 10000 - gmbhSteuer
+      const expectedEtfInflow = 10000 * (1 - GMBH_STEUER_GESAMT);
+      expect(y1.firmenEtfVermoegen).toBeCloseTo(expectedEtfInflow);
+    });
+
+    it("continues seamlessly from carried-over initial capital values and loan balances from Betrieb phase", () => {
+      const investitionen = [
+        {
+          id: "inv-1",
+          bezeichnung: "Wohnung",
+          kapital: 100000,
+          gewinnVerlustProJahr: 4000,
+          wertsteigerung: 2,
+          kredit: 50000,
+          zinssatz: 3,
+          tilgungsrateJaehrlich: 3000,
+        },
+      ];
+
+      // Initial state carried over from end of Betrieb phase (e.g. after 5 years):
+      // Capital grew to 110,408.08 €, loan balance reduced to 35,000 €
+      const initialKapitalWerte = [110408.08];
+      const initialKreditRestschulden = [35000];
+
+      const results = berechneEndeErgebnisse(
+        defaultEndeState,
+        0, 0, 0, 0, false, 0, [],
+        { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+        GMBH_STEUER_GESAMT, 0.15, 0.14, undefined, 0, 0,
+        investitionen,
+        initialKapitalWerte,
+        initialKreditRestschulden
+      );
+
+      const y1 = results[0].details;
+      // Year 1 Ende capital = 110,408.08 * 1.02 = 112,616.24
+      expect(y1.investitionsKapitalGesamt).toBeCloseTo(112616.24);
+      // Interest = 35,000 * 3% = 1050
+      expect(y1.investitionsZinsaufwandProJahr).toBeCloseTo(1050);
+      // Restschuld = 35,000 - 3000 = 32,000
+      expect(y1.investitionsKreditRestschuld).toBeCloseTo(32000);
+    });
+  });
 });

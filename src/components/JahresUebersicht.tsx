@@ -371,6 +371,31 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       ))}
+      {d.investitionsGewinnVerlustProJahr !== 0 && d.investitionsGewinnVerlustProJahr !== undefined && (
+        <BilanzRow
+          label={`${d.investitionsGewinnVerlustProJahr >= 0 ? "+" : "−"} Investitions-Gewinn/Verlust`}
+          value={d.investitionsGewinnVerlustProJahr}
+          prefix={d.investitionsGewinnVerlustProJahr >= 0 ? "+" : "−"}
+          colorClass={d.investitionsGewinnVerlustProJahr >= 0 ? "text-green-700" : "text-red-600"}
+          indent
+        />
+      )}
+      {d.investitionsZinsaufwandProJahr > 0 && (
+        <BilanzRow label="− Zinsen auf Investitionskredite" value={d.investitionsZinsaufwandProJahr} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.investitionsTilgungProJahr > 0 && (
+        <BilanzRow label="− Tilgung Investitionskredite" value={d.investitionsTilgungProJahr} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {(d.investitionsZinsaufwandProJahr > 0 || d.investitionsTilgungProJahr > 0) && d.investitionsNettoCashflowProJahr !== undefined && d.investitionsNettoCashflowProJahr !== 0 && (
+        <BilanzRow
+          label={`= Investitions-Cashflow (netto)`}
+          value={d.investitionsNettoCashflowProJahr}
+          prefix={d.investitionsNettoCashflowProJahr >= 0 ? "+" : "−"}
+          colorClass={d.investitionsNettoCashflowProJahr >= 0 ? "text-teal-700" : "text-red-600"}
+          bold
+          indent
+        />
+      )}
       {d.bruttoGehalt !== undefined && d.bruttoGehalt > 0 && (
         <BilanzRow label="− GF-Gehalt (brutto, Betriebsausgabe)" value={d.bruttoGehalt} prefix="−" colorClass="text-gray-600" indent />
       )}
@@ -413,8 +438,14 @@ function EndeBereich1Bilanz({ e }: { e: JahresErgebnis }) {
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
           <BilanzRow label="ETF-/Liquiditätsbestand vor Bereich 1" value={d.firmenEtfVermoegenVorBereich1} prefix="+" colorClass="text-blue-600" indent />
           <BilanzRow label="ETF-/Liquiditätsbestand nach Bereich 1" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
+          {d.investitionsKapitalGesamt > 0 && (
+            <BilanzRow label="Investitionskapital (GmbH)" value={d.investitionsKapitalGesamt} prefix="+" colorClass="text-blue-700" bold indent />
+          )}
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
           <BilanzRow label="Neues Gesellschafterdarlehen nach Neustart" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
+          {d.investitionsKreditRestschuld > 0 && (
+            <BilanzRow label="Investitionskredite (Restschuld)" value={d.investitionsKreditRestschuld} prefix="−" colorClass="text-gray-600" indent />
+          )}
           <Divider />
           <BilanzRow
             label="= GmbH-Nettovermögen nach Bereich 1"
@@ -514,6 +545,31 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
           indent
         />
       ))}
+      {d.investitionsGewinnVerlustProJahr !== 0 && d.investitionsGewinnVerlustProJahr !== undefined && (
+        <BilanzRow
+          label={`${d.investitionsGewinnVerlustProJahr >= 0 ? "+" : "−"} Investitions-Gewinn/Verlust`}
+          value={d.investitionsGewinnVerlustProJahr}
+          prefix={d.investitionsGewinnVerlustProJahr >= 0 ? "+" : "−"}
+          colorClass={d.investitionsGewinnVerlustProJahr >= 0 ? "text-green-700" : "text-red-600"}
+          indent
+        />
+      )}
+      {d.investitionsZinsaufwandProJahr > 0 && (
+        <BilanzRow label="− Zinsen auf Investitionskredite" value={d.investitionsZinsaufwandProJahr} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {d.investitionsTilgungProJahr > 0 && (
+        <BilanzRow label="− Tilgung Investitionskredite" value={d.investitionsTilgungProJahr} prefix="−" colorClass="text-gray-600" indent />
+      )}
+      {(d.investitionsZinsaufwandProJahr > 0 || d.investitionsTilgungProJahr > 0) && d.investitionsNettoCashflowProJahr !== undefined && d.investitionsNettoCashflowProJahr !== 0 && (
+        <BilanzRow
+          label={`= Investitions-Cashflow (netto)`}
+          value={d.investitionsNettoCashflowProJahr}
+          prefix={d.investitionsNettoCashflowProJahr >= 0 ? "+" : "−"}
+          colorClass={d.investitionsNettoCashflowProJahr >= 0 ? "text-teal-700" : "text-red-600"}
+          bold
+          indent
+        />
+      )}
       {d.bruttoGehalt !== undefined && d.bruttoGehalt > 0 && (
         <BilanzRow label="− GF-Gehalt (brutto, Betriebsausgabe)" value={d.bruttoGehalt} prefix="−" colorClass="text-gray-600" indent />
       )}
@@ -550,10 +606,18 @@ function EndeBereich2Bilanz({ e }: { e: JahresErgebnis }) {
           <SectionHeader label="Bereich 2 – Bilanz der GmbH (Jahresende)" />
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide pl-0 mb-0.5">Aktiva</p>
           <BilanzRow label="ETF-/Liquiditätsbestand Firma" value={d.firmenEtfVermoegen} prefix="+" colorClass="text-blue-700" bold indent />
-          {d.firmenDarlehensverbindlichkeit > 0 && (
+          {d.investitionsKapitalGesamt > 0 && (
+            <BilanzRow label="Investitionskapital (GmbH)" value={d.investitionsKapitalGesamt} prefix="+" colorClass="text-blue-700" bold indent />
+          )}
+          {(d.firmenDarlehensverbindlichkeit > 0 || d.investitionsKreditRestschuld > 0) && (
             <>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mt-2 mb-0.5">Passiva</p>
-              <BilanzRow label="Restdarlehen gegenüber Gesellschafter" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
+              {d.firmenDarlehensverbindlichkeit > 0 && (
+                <BilanzRow label="Restdarlehen gegenüber Gesellschafter" value={d.firmenDarlehensverbindlichkeit} prefix="−" colorClass="text-gray-600" indent />
+              )}
+              {d.investitionsKreditRestschuld > 0 && (
+                <BilanzRow label="Investitionskredite (Restschuld)" value={d.investitionsKreditRestschuld} prefix="−" colorClass="text-gray-600" indent />
+              )}
             </>
           )}
           <Divider />

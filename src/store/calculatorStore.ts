@@ -4,6 +4,7 @@ import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPositio
 import {
   berechneBetriebsErgebnisse,
   berechneGmbhSteuerRaten,
+  berechneAlleInvestitionsErgebnisse,
   fuegeEtfLotHinzu,
   EtfLot,
   DEFAULT_DIENSTWAGEN_CONFIG,
@@ -279,6 +280,20 @@ export const useCalculatorStore = create<CalculatorStore>()(
       get().betrieb.solidaritaetszuschlagSatz ?? DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
       get().betrieb.gewerbesteuerSatz ?? DEFAULT_GEWERBESTEUER_SATZ,
     );
+
+    const investitionen = get().betrieb.investitionen ?? [];
+    let initialInvestitionsKapitalWerte: number[] | undefined;
+    let initialInvestitionsKreditRestschuldWerte: number[] | undefined;
+    if (investitionen.length > 0 && get().betrieb.laufzeitJahre > 0) {
+      const investitionsErgebnisse = berechneAlleInvestitionsErgebnisse(investitionen, get().betrieb.laufzeitJahre);
+      initialInvestitionsKapitalWerte = investitionsErgebnisse.map(
+        (ergebnis) => ergebnis.jahreswerte[get().betrieb.laufzeitJahre - 1]?.kapital ?? 0
+      );
+      initialInvestitionsKreditRestschuldWerte = investitionsErgebnisse.map(
+        (ergebnis) => ergebnis.jahreswerte[get().betrieb.laufzeitJahre - 1]?.restschuld ?? 0
+      );
+    }
+
     return berechneEndeErgebnisse(
       get().ende,
       initialEtfInput,
@@ -301,7 +316,10 @@ export const useCalculatorStore = create<CalculatorStore>()(
       gewerbesteuer,
       get().betrieb.steuerjahr,
       verlustvortragBetriebEnde,
-      get().betrieb.anzahlKinder
+      get().betrieb.anzahlKinder,
+      investitionen,
+      initialInvestitionsKapitalWerte,
+      initialInvestitionsKreditRestschuldWerte
     );
   },
     }),
