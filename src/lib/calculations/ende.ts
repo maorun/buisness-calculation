@@ -1,4 +1,4 @@
-import { EndeState, JahresErgebnis, KostenPosition, BenefitConfig, FirmenhandyConfig } from "../types";
+import { EndeState, JahresErgebnis, KostenPosition, BenefitConfig, FirmenhandyConfig, InvestitionsPosition } from "../types";
 import { Steuerjahr, getSteuerjahrParameter, DEFAULT_STEUERJAHR } from "../parameters";
 import {
   berechneVorabpauschale,
@@ -241,7 +241,10 @@ export function berechneEndeErgebnisse(
   gewerbesteuer: number = GEWERBESTEUER,
   steuerjahr?: Steuerjahr,
   initialVerlustvortrag: number = 0,
-  anzahlKinder?: number
+  anzahlKinder?: number,
+  investitionen: InvestitionsPosition[] = [],
+  initialInvestitionsKapitalWerte?: number[],
+  initialInvestitionsKreditRestschuldWerte?: number[]
 ): JahresErgebnis[] {
   const ergebnisse: JahresErgebnis[] = [];
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
@@ -267,6 +270,16 @@ export function berechneEndeErgebnisse(
   // so that the Gesamtvergleich chart does not develop a downward slope kink at the
   // Betrieb→Ende boundary due to the consumption value suddenly stopping to accumulate.
   let kumulierterKonsumwert = 0;
+
+  // Track investment capital values and loan restschulden during Ende phase
+  let investitionsKapitalWerte: number[] = initialInvestitionsKapitalWerte
+    ? initialInvestitionsKapitalWerte.map((k) => Math.max(0, k))
+    : investitionen.map((inv) => Math.max(0, inv.kapital));
+  let investitionsKumulierterGewinnVerlust = 0;
+  let investitionsKreditRestschuldWerte: number[] = initialInvestitionsKreditRestschuldWerte
+    ? initialInvestitionsKreditRestschuldWerte.map((r) => Math.max(0, r))
+    : investitionen.map((inv) => Math.max(0, inv.kredit ?? 0));
+  let investitionsKumulierterNettoCashflow = 0;
 
   // --- Bereich 1: settlement year for endfällig deferred interest ---
   // Skip Bereich 1 entirely when there is no actual loan to settle (betrag = 0 means no principal
@@ -335,9 +348,36 @@ export function berechneEndeErgebnisse(
     );
     reinvestiertesDarlehen = Math.max(0, darlehensrueckzahlung - teiltilgungBereich1);
 
+    // Investments for Bereich 1
+    investitionsKapitalWerte = investitionsKapitalWerte.map((kap, idx) =>
+      kap * (1 + (investitionen[idx]?.wertsteigerung ?? 0) / 100)
+    );
+    const investitionsKapitalGesamtB1 = investitionsKapitalWerte.reduce((sum, k) => sum + k, 0);
+    const investitionsGewinnVerlustProJahrB1 = investitionen.reduce((sum, inv) => sum + inv.gewinnVerlustProJahr, 0);
+    investitionsKumulierterGewinnVerlust += investitionsGewinnVerlustProJahrB1;
+
+    let investitionsZinsaufwandProJahrB1 = 0;
+    let investitionsTilgungProJahrB1 = 0;
+    investitionsKreditRestschuldWerte = investitionsKreditRestschuldWerte.map((restschuld, idx) => {
+      const inv = investitionen[idx];
+      if (!inv || restschuld <= 0) return 0;
+      const zinssatz = Math.max(0, inv.zinssatz ?? 0);
+      const tilgung = Math.max(0, inv.tilgungsrateJaehrlich ?? 0);
+      const zinsaufwand = restschuld * (zinssatz / 100);
+      const tatsaechlicheTilgung = Math.min(tilgung, restschuld);
+      investitionsZinsaufwandProJahrB1 += zinsaufwand;
+      investitionsTilgungProJahrB1 += tatsaechlicheTilgung;
+      return Math.max(0, restschuld - tatsaechlicheTilgung);
+    });
+    const investitionsKreditRestschuldB1 = investitionsKreditRestschuldWerte.reduce((sum, r) => sum + r, 0);
+    const investitionsNettoCashflowProJahrB1 = investitionsGewinnVerlustProJahrB1 - investitionsZinsaufwandProJahrB1 - investitionsTilgungProJahrB1;
+    investitionsKumulierterNettoCashflow += investitionsNettoCashflowProJahrB1;
+    const investitionsCashZuflussB1 = Math.max(0, investitionsNettoCashflowProJahrB1);
+    const investitionsCashAbflussB1 = Math.max(0, -investitionsNettoCashflowProJahrB1);
+
     // Solve ETF sales in Bereich 1 iteratively because sales tax and Vorabpauschale credit depend on realized gain
-    const auszahlungenOhneVerkaufssteuernB1 = teiltilgungBereich1 + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1;
-    const nettoAbflussOhneVerkaufssteuerB1 = Math.max(0, auszahlungenOhneVerkaufssteuernB1 - simulierterGewinn);
+    const auszahlungenOhneVerkaufssteuernB1 = teiltilgungBereich1 + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1 + investitionsCashAbflussB1;
+    const nettoAbflussOhneVerkaufssteuerB1 = Math.max(0, auszahlungenOhneVerkaufssteuernB1 - simulierterGewinn - investitionsCashZuflussB1);
     const sortierteLotIndizesB1 = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstumB1);
 
     let etfVerkaufB1 = Math.min(etfNachWachstumB1, nettoAbflussOhneVerkaufssteuerB1);
@@ -348,7 +388,7 @@ export function berechneEndeErgebnisse(
       const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
 
-      const gewinnNachBetriebsausgabenIter = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
+      const gewinnNachBetriebsausgabenIter = simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahrB1 - investitionsZinsaufwandProJahrB1 - betriebsausgabenGesamtB1 - bruttoGehalt;
       const { versteuerterGewinn: versteuerterGewinnIter } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
       const gmbhSteuerIter = versteuerterGewinnIter > 0 ? versteuerterGewinnIter * gmbhSteuerGesamt : 0;
 
@@ -370,7 +410,7 @@ export function berechneEndeErgebnisse(
     const vorabpauschalesteuerB1 = berechneVorabpauschalesteuer(vorabpauschaleB1, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
     const etfVerkaufssteuerB1 = berechneEtfVerkaufssteuer(realisierterEtfErtragB1, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
 
-    const gewinnNachBetriebsausgabenB1 = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
+    const gewinnNachBetriebsausgabenB1 = simulierterGewinn + realisierterEtfErtragB1 + investitionsGewinnVerlustProJahrB1 - investitionsZinsaufwandProJahrB1 - betriebsausgabenGesamtB1 - bruttoGehalt;
     const {
       versteuerterGewinn: versteuerterGewinnB1,
       verlustVortragGenutzt: verlustVortragGenutztB1,
@@ -383,7 +423,7 @@ export function berechneEndeErgebnisse(
     const gmbhSteuerGewStB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gewerbesteuer : 0;
 
     etfLots = verkaufB1.lots;
-    const gewinnNachSteuernEtfZuflussB1 = Math.max(0, simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt - gmbhSteuerB1 - vorabpauschalesteuerB1);
+    const gewinnNachSteuernEtfZuflussB1 = Math.max(0, simulierterGewinn + investitionsGewinnVerlustProJahrB1 - investitionsZinsaufwandProJahrB1 - betriebsausgabenGesamtB1 - bruttoGehalt - gmbhSteuerB1 - vorabpauschalesteuerB1 - investitionsTilgungProJahrB1);
     if (gewinnNachSteuernEtfZuflussB1 > 0) {
       etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", gewinnNachSteuernEtfZuflussB1);
     }
@@ -413,16 +453,24 @@ export function berechneEndeErgebnisse(
     // gesamtvermoegen = private consumed + gross firm ETF (the shareholder loan is internal
     // and nets out: ETF contains it as asset, restdarlehen tracks it as liability).
     privatvermoegen += konsumierbaresNettoBereich1;
-    const firmenNettovermoegenBereich1 = firmenEtfVermoegen - reinvestiertesDarlehen;
+    const firmenNettovermoegenBereich1 = firmenEtfVermoegen + investitionsKapitalGesamtB1 - reinvestiertesDarlehen - investitionsKreditRestschuldB1;
 
     ergebnisse.push({
       jahr: 1,
-      gesamtvermoegen: privatvermoegen + firmenEtfVermoegen,
+      gesamtvermoegen: privatvermoegen + firmenEtfVermoegen + investitionsKapitalGesamtB1,
       gewinn: gesamtBrutto,
       steuer: gesamtSteuer,
       nettogewinn: konsumierbaresNettoBereich1,
       details: {
         bereich: 1,
+        investitionsKapitalGesamt: investitionsKapitalGesamtB1,
+        investitionsGewinnVerlustProJahr: investitionsGewinnVerlustProJahrB1,
+        investitionsKumulierterGewinnVerlust,
+        investitionsZinsaufwandProJahr: investitionsZinsaufwandProJahrB1,
+        investitionsTilgungProJahr: investitionsTilgungProJahrB1,
+        investitionsNettoCashflowProJahr: investitionsNettoCashflowProJahrB1,
+        investitionsKumulierterNettoCashflow,
+        investitionsKreditRestschuld: investitionsKreditRestschuldB1,
         zielnetto: zielnettoBereich1,
         bruttoGehalt,
         nettoGehalt,
@@ -528,6 +576,33 @@ export function berechneEndeErgebnisse(
     // Accumulate total benefit consumption value for the chart (mirrors betrieb.ts treatment).
     const konsumNutzenwert = berechneKonsumNutzenwertProJahr(endePhaseJahr, benefits, firmenhandy);
     kumulierterKonsumwert += konsumNutzenwert;
+    // Investments for Bereich 2
+    investitionsKapitalWerte = investitionsKapitalWerte.map((kap, idx) =>
+      kap * (1 + (investitionen[idx]?.wertsteigerung ?? 0) / 100)
+    );
+    const investitionsKapitalGesamt = investitionsKapitalWerte.reduce((sum, k) => sum + k, 0);
+    const investitionsGewinnVerlustProJahr = investitionen.reduce((sum, inv) => sum + inv.gewinnVerlustProJahr, 0);
+    investitionsKumulierterGewinnVerlust += investitionsGewinnVerlustProJahr;
+
+    let investitionsZinsaufwandProJahr = 0;
+    let investitionsTilgungProJahr = 0;
+    investitionsKreditRestschuldWerte = investitionsKreditRestschuldWerte.map((restschuld, idx) => {
+      const inv = investitionen[idx];
+      if (!inv || restschuld <= 0) return 0;
+      const zinssatz = Math.max(0, inv.zinssatz ?? 0);
+      const tilgung = Math.max(0, inv.tilgungsrateJaehrlich ?? 0);
+      const zinsaufwand = restschuld * (zinssatz / 100);
+      const tatsaechlicheTilgung = Math.min(tilgung, restschuld);
+      investitionsZinsaufwandProJahr += zinsaufwand;
+      investitionsTilgungProJahr += tatsaechlicheTilgung;
+      return Math.max(0, restschuld - tatsaechlicheTilgung);
+    });
+    const investitionsKreditRestschuld = investitionsKreditRestschuldWerte.reduce((sum, r) => sum + r, 0);
+    const investitionsNettoCashflowProJahr = investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - investitionsTilgungProJahr;
+    investitionsKumulierterNettoCashflow += investitionsNettoCashflowProJahr;
+    const investitionsCashZufluss = Math.max(0, investitionsNettoCashflowProJahr);
+    const investitionsCashAbfluss = Math.max(0, -investitionsNettoCashflowProJahr);
+
     const angefordertesBruttoGehalt = Math.max(0, state.geschaeftsfuehrergehalt);
     let bruttoGehalt = angefordertesBruttoGehalt;
     // Pass 0 for Gehalt so the bullet list only covers non-salary Betriebsausgaben;
@@ -610,18 +685,19 @@ export function berechneEndeErgebnisse(
     let darlehenGesamtauszahlungBrutto = darlehenZinsen + darlehenTilgung;
     let darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
-    if (simulierterGewinn > 0) {
+    if (simulierterGewinn > 0 || investitionsCashZufluss > 0) {
       const vorabpauschaleApprox = berechneVorabpauschalesteuer(vorabpauschaleBrutto, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
-      const verfuegbaresFirmenkapital = etfNachWachstum + simulierterGewinn;
+      const verfuegbaresFirmenkapital = etfNachWachstum + simulierterGewinn + investitionsCashZufluss;
       const fixeAuszahlungenOhneGehalt =
         state.gewinnausschuettung +
         darlehenGesamtauszahlungBrutto +
         privatDarlehenZinsen +
         kstSteuer +
         betriebsausgabenGesamt +
-        vorabpauschaleApprox;
+        vorabpauschaleApprox +
+        investitionsCashAbfluss;
       const steuerpflichtigerGewinnVorGehalt =
-        simulierterGewinn - betriebsausgabenGesamt - darlehenZinsen - privatDarlehenZinsen;
+        simulierterGewinn + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - darlehenZinsen - privatDarlehenZinsen;
       const maxBezahlbaresBruttoGehalt = berechneMaxBezahlbaresBruttoGehalt(
         angefordertesBruttoGehalt,
         verfuegbaresFirmenkapital,
@@ -673,8 +749,8 @@ export function berechneEndeErgebnisse(
 
     // Solve ETF sales in Bereich 2 iteratively because sales tax and Vorabpauschale credit depend on realized gain
     const sortierteLotIndizes = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstum);
-    const auszahlungenOhneVerkaufssteuern = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt;
-    const nettoAbflussOhneVerkaufssteuer = Math.max(0, auszahlungenOhneVerkaufssteuern - simulierterGewinn);
+    const auszahlungenOhneVerkaufssteuern = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt + investitionsCashAbfluss;
+    const nettoAbflussOhneVerkaufssteuer = Math.max(0, auszahlungenOhneVerkaufssteuern - simulierterGewinn - investitionsCashZufluss);
 
     let etfVerkauf = Math.min(etfNachWachstum, nettoAbflussOhneVerkaufssteuer);
     for (let iter = 0; iter < MAX_SALE_CONVERGENCE_ITERATIONS; iter++) {
@@ -684,7 +760,7 @@ export function berechneEndeErgebnisse(
       const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
       const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
 
-      const gewinnNachBetriebsausgabenIter = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
+      const gewinnNachBetriebsausgabenIter = simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
       const { versteuerterGewinn: versteuerterGewinnIter } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
       const gmbhSteuerIter = versteuerterGewinnIter > 0 ? versteuerterGewinnIter * gmbhSteuerGesamt : 0;
 
@@ -706,7 +782,7 @@ export function berechneEndeErgebnisse(
     const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
     const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
 
-    const gewinnNachBetriebsausgaben = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
+    const gewinnNachBetriebsausgaben = simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
     const {
       versteuerterGewinn,
       verlustVortragGenutzt,
@@ -719,7 +795,7 @@ export function berechneEndeErgebnisse(
     const gmbhSteuerGewSt = versteuerterGewinn > 0 ? versteuerterGewinn * gewerbesteuer : 0;
 
     etfLots = verkauf.lots;
-    const gewinnNachSteuernEtfZufluss = Math.max(0, simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen - gmbhSteuer - vorabpauschalesteuer);
+    const gewinnNachSteuernEtfZufluss = Math.max(0, simulierterGewinn + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen - gmbhSteuer - vorabpauschalesteuer - investitionsTilgungProJahr);
     if (gewinnNachSteuernEtfZufluss > 0) {
       etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", gewinnNachSteuernEtfZufluss);
     }
@@ -735,16 +811,24 @@ export function berechneEndeErgebnisse(
 
     privatvermoegen += gesamtNetto;
     restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
-    const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen - privatDarlehenRestschuld;
+    const firmenNettovermoegen = firmenEtfVermoegen + investitionsKapitalGesamt - restdarlehen - privatDarlehenRestschuld - investitionsKreditRestschuld;
 
     ergebnisse.push({
       jahr,
-      gesamtvermoegen: privatvermoegen + firmenEtfVermoegen,
+      gesamtvermoegen: privatvermoegen + firmenEtfVermoegen + investitionsKapitalGesamt,
       gewinn: gesamtBrutto,
       steuer: gesamtSteuer,
       nettogewinn: gesamtNetto,
       details: {
         bereich: 2,
+        investitionsKapitalGesamt,
+        investitionsGewinnVerlustProJahr,
+        investitionsKumulierterGewinnVerlust,
+        investitionsZinsaufwandProJahr,
+        investitionsTilgungProJahr,
+        investitionsNettoCashflowProJahr,
+        investitionsKumulierterNettoCashflow,
+        investitionsKreditRestschuld,
         zielnetto,
         bruttoGehalt,
         nettoGehalt,

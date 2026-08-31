@@ -275,4 +275,37 @@ describe("berechneGesamtvergleichZeitreihe", () => {
 
     expect(zeitreihe).toEqual([]);
   });
+
+  it("accurately reflects dynamic investment net worth in Ende phase without double counting", () => {
+    const betriebsErgebnisseWithInv: JahresErgebnis[] = [{
+      jahr: 1,
+      gesamtvermoegen: 100000,
+      gewinn: 0,
+      steuer: 0,
+      nettogewinn: 0,
+      details: {
+        nettovermoegen: 100000, // Includes investment capital (100k)
+        kumulierterKonsumwert: 0,
+      },
+    }];
+    const endeErgebnisseWithInv: JahresErgebnis[] = [{
+      jahr: 1,
+      gesamtvermoegen: 103000, // Capital grew to 103k
+      gewinn: 0,
+      steuer: 0,
+      nettogewinn: 0,
+      details: {
+        firmenDarlehensverbindlichkeit: 0,
+        investitionsKreditRestschuld: 0,
+        kumulierterKonsumwert: 0,
+      },
+    }];
+
+    const kpi = berechneGesamtvergleichKpi(basisBetrieb, 1, endeErgebnisseWithInv, betriebsErgebnisseWithInv);
+    const zeitreihe = berechneGesamtvergleichZeitreihe(basisBetrieb, 1, endeErgebnisseWithInv, betriebsErgebnisseWithInv);
+
+    // In year 2 (Ende Y1), gmbhGesamtwert should equal 103000, NOT 103000 + 100000 (no double counting)
+    expect(kpi.gmbhGesamtwert).toBe(103000);
+    expect(zeitreihe[1].gmbh).toBe(103000);
+  });
 });
