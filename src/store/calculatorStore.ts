@@ -64,7 +64,9 @@ const initialState: CalculatorState = {
       monatlicherZuschuss: 0,
       endfaellig: true,
     },
-    etfRendite: 5,
+    etfRendite: 7,
+    inflationsrate: 2,
+    realwerteAnzeigen: false,
     laufzeitJahre: 10,
     kosten: defaultBetriebskosten,
     benefits: {
@@ -313,6 +315,8 @@ export const useCalculatorStore = create<CalculatorStore>()(
           betrieb: {
             ...initialState.betrieb,
             anzahlKinder: state?.betrieb?.anzahlKinder ?? initialState.betrieb.anzahlKinder,
+            inflationsrate: state?.betrieb?.inflationsrate ?? initialState.betrieb.inflationsrate,
+            realwerteAnzeigen: state?.betrieb?.realwerteAnzeigen ?? initialState.betrieb.realwerteAnzeigen,
             ...state?.betrieb,
             darlehen: {
               ...initialState.betrieb.darlehen,

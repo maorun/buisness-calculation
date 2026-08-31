@@ -22,6 +22,7 @@ import {
   pruefeDienstwagenMoeglichkeit,
   berechneDienstwagenGeldwerterVorteil,
   berechneDienstwagenGmbhKosten,
+  berechneRealwert,
 } from "@/lib/calculations/betrieb";
 import { getSteuerjahrParameter } from "@/lib/parameters";
 import { InvestitionsPosition } from "@/lib/types";
@@ -219,16 +220,24 @@ export function BetriebSection() {
     });
     return index >= 0 ? gmbhZeitreihe[index].jahr : null;
   })();
+  const inflationsrate = betrieb.inflationsrate ?? 2;
+  const realwerteAnzeigen = betrieb.realwerteAnzeigen ?? false;
+
   const diagrammPunkte = React.useMemo(
     () =>
       breakEvenBerechenbar
-        ? privatZeitreihe.map((privatJahr, index) => ({
-            jahr: privatJahr.jahr,
-            gmbh: gmbhZeitreihe[index].gesamtwertMitKonsum,
-            privat: privatJahr.gesamtwertMitKonsum,
-          }))
+        ? privatZeitreihe.map((privatJahr, index) => {
+            const nominalGmbh = gmbhZeitreihe[index].gesamtwertMitKonsum;
+            const nominalPrivat = privatJahr.gesamtwertMitKonsum;
+            const jahre = privatJahr.jahr;
+            return {
+              jahr: privatJahr.jahr,
+              gmbh: realwerteAnzeigen ? berechneRealwert(nominalGmbh, inflationsrate, jahre) : nominalGmbh,
+              privat: realwerteAnzeigen ? berechneRealwert(nominalPrivat, inflationsrate, jahre) : nominalPrivat,
+            };
+          })
         : [],
-    [breakEvenBerechenbar, privatZeitreihe, gmbhZeitreihe]
+    [breakEvenBerechenbar, privatZeitreihe, gmbhZeitreihe, realwerteAnzeigen, inflationsrate]
   );
   const lohntSichGmbH = differenzVergleich > 0;
   const kennzahlProzent = privatVergleich.gesamtwertMitKonsum !== 0
@@ -501,7 +510,14 @@ export function BetriebSection() {
             value={betrieb.etfRendite}
             onChange={(v) => setBetrieb({ etfRendite: parseFloat(v) || 0 })}
             suffix="% p.a."
-            hint="Durchschnittliche jährliche ETF-Rendite (Default: 5 %)"
+            hint="Durchschnittliche jährliche ETF-Rendite (Default: 7 % nominal)"
+          />
+          <InputField
+            label="Inflationsrate (% p.a.)"
+            value={betrieb.inflationsrate ?? 2}
+            onChange={(v) => setBetrieb({ inflationsrate: parseFloat(v) || 0 })}
+            suffix="% p.a."
+            hint="Optionale jährliche Inflationsrate zur Kaufkraftberechnung (Default: 2 % p.a.)"
           />
           <InputField
             label="Jährlicher Cash-Zuschuss (€)"
@@ -586,6 +602,29 @@ export function BetriebSection() {
             suffix="%"
             hint="Effektiver Gewerbesteuer-Satz der GmbH (bundesweiter Durchschnitt ca. 14 %)."
           />
+        </div>
+
+        {/* Inflation Notice & Realwert Toggle */}
+        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-50/60 p-3 rounded-lg border border-amber-200/80">
+          <div className="text-xs text-amber-900 space-y-0.5">
+            <p className="font-semibold">💡 Inflationshinweis & Kaufkraft:</p>
+            <p>
+              2% Inflation → 60.000 € nominal in 20 Jahren = ~40.000 € reale Kaufkraft.
+              Die reale ETF-Rendite beträgt bei {(betrieb.etfRendite ?? 7)} % nominal und {(betrieb.inflationsrate ?? 2)} % Inflation ca. {((betrieb.etfRendite ?? 7) - (betrieb.inflationsrate ?? 2)).toLocaleString("de-DE")} % real.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 whitespace-nowrap self-start sm:self-auto">
+            <input
+              type="checkbox"
+              id="realwerteAnzeigen"
+              checked={betrieb.realwerteAnzeigen ?? false}
+              onChange={(e) => setBetrieb({ realwerteAnzeigen: e.target.checked })}
+              className="h-4 w-4 rounded border-amber-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="realwerteAnzeigen" className="text-xs font-medium text-amber-950 cursor-pointer">
+              Realwerte (Kaufkraft) im Diagramm anzeigen
+            </label>
+          </div>
         </div>
       </div>
 
@@ -1449,7 +1488,11 @@ export function BetriebSection() {
           </div>
         </div>
         <div className="mt-4 rounded-lg border border-slate-300 bg-white p-3">
-          <VergleichsDiagramm punkte={diagrammPunkte} breakEvenJahr={breakEvenJahr} />
+          <VergleichsDiagramm
+            punkte={diagrammPunkte}
+            breakEvenJahr={breakEvenJahr}
+            inflationNote={realwerteAnzeigen ? `Realwerte (Kaufkraft, Inflation ${inflationsrate.toLocaleString("de-DE")} %)` : `Nominalwerte (Inflation: ${inflationsrate.toLocaleString("de-DE")} % p.a.)`}
+          />
           {breakEvenJahr != null && diagrammPunkte.length > 0 && (
             <p className="mt-2 text-[11px] text-amber-700">
               Gestrichelte Linie: Break-even ab Jahr {breakEvenJahr} – ab hier liegt die GmbH gleichauf oder vorne.

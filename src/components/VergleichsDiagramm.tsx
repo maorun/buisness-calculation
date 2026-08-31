@@ -16,6 +16,8 @@ interface VergleichsDiagrammProps {
   /** Optional year in which the GmbH catches up with the private scenario. */
   breakEvenJahr?: number | null;
   title?: string;
+  /** Optional note regarding real/nominal valuation or inflation rate. */
+  inflationNote?: string;
 }
 
 const WIDTH = 640;
@@ -63,6 +65,7 @@ export function VergleichsDiagramm({
   punkte,
   breakEvenJahr,
   title = "Entwicklung im Vergleich: GmbH vs. Privat",
+  inflationNote,
 }: VergleichsDiagrammProps) {
   if (punkte.length === 0) {
     return (
@@ -93,7 +96,14 @@ export function VergleichsDiagramm({
 
   return (
     <div>
-      <h4 className="text-sm font-semibold text-slate-800 mb-2">{title}</h4>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+        {inflationNote && (
+          <span className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-medium">
+            {inflationNote}
+          </span>
+        )}
+      </div>
       <div className="flex flex-wrap gap-4 mb-2 text-xs" aria-hidden="true">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-3 rounded-sm" style={{ backgroundColor: GMBH_COLOR }} />
