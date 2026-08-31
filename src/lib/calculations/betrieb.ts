@@ -514,6 +514,7 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
         investitionsKreditRestschuld,
       },
       betriebskostenPosten,
+      etfLots: etfLots.map((lot) => ({ ...lot })),
     });
   }
 
