@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
 import {
   berechneBetriebsErgebnisse,
+  berechneAlleInvestitionsErgebnisse,
   berechneGmbhSteuerRaten,
   DEFAULT_DIENSTWAGEN_CONFIG,
   DEFAULT_ESSENSZUSCHUSS_PRO_TAG,
@@ -265,6 +266,18 @@ export const useCalculatorStore = create<CalculatorStore>()(
     const aufgelaufeneZinsen = letztesBetriebsergebnis?.details.aufgelaufeneZinsen ?? 0;
     const betriebDarlehenEndfaellig = get().betrieb.darlehen.endfaellig;
     const verlustvortragBetriebEnde = letztesBetriebsergebnis?.details.verlustvortrag ?? 0;
+    const investitionen = get().betrieb.investitionen ?? [];
+    const betriebLaufzeit = Math.max(0, get().betrieb.laufzeitJahre);
+    const invErgebnisse = berechneAlleInvestitionsErgebnisse(investitionen, betriebLaufzeit);
+    const initialInvestitionsKapitalWerte = invErgebnisse.map(
+      (e, idx) => e.jahreswerte[e.jahreswerte.length - 1]?.kapital ?? Math.max(0, investitionen[idx]?.kapital ?? 0)
+    );
+    const initialInvestitionsKreditRestschuldWerte = invErgebnisse.map(
+      (e, idx) => e.jahreswerte[e.jahreswerte.length - 1]?.restschuld ?? Math.max(0, investitionen[idx]?.kredit ?? 0)
+    );
+    const initialInvestitionsKumulierterGewinnVerlust = letztesBetriebsergebnis?.details.investitionsKumulierterGewinnVerlust ?? 0;
+    const initialInvestitionsKumulierterNettoCashflow = letztesBetriebsergebnis?.details.investitionsKumulierterNettoCashflow ?? 0;
+
     const { gmbhSteuerGesamt, kstGesamt, gewerbesteuer } = berechneGmbhSteuerRaten(
       get().betrieb.koerperschaftsteuerSatz ?? DEFAULT_KOERPERSCHAFTSTEUER_SATZ,
       get().betrieb.solidaritaetszuschlagSatz ?? DEFAULT_SOLIDARITAETSZUSCHLAG_SATZ,
@@ -292,7 +305,12 @@ export const useCalculatorStore = create<CalculatorStore>()(
       gewerbesteuer,
       get().betrieb.steuerjahr,
       verlustvortragBetriebEnde,
-      get().betrieb.anzahlKinder
+      get().betrieb.anzahlKinder,
+      investitionen,
+      initialInvestitionsKapitalWerte,
+      initialInvestitionsKreditRestschuldWerte,
+      initialInvestitionsKumulierterGewinnVerlust,
+      initialInvestitionsKumulierterNettoCashflow
     );
   },
     }),

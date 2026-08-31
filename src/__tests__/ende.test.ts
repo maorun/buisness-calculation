@@ -941,6 +941,63 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.verlustvortrag).toBe(5000);
     });
 
+    it("tracks investment cashflow and appreciation during Ende phase", () => {
+      const state: EndeState = {
+        ...baseState,
+        geschaeftsfuehrergehalt: 0,
+        gewinnausschuettung: 0,
+        laufzeitJahre: 2,
+      };
+      const investitionen = [
+        {
+          id: "inv-1",
+          bezeichnung: "Immobilie",
+          kapital: 100000,
+          gewinnVerlustProJahr: 6000, // 500 € / month net rent
+          wertsteigerung: 3, // 3% p.a.
+          kredit: 50000,
+          zinssatz: 4, // 2000 € interest in Y1
+          tilgungsrateJaehrlich: 2000, // 2000 € principal repayment
+        },
+      ];
+
+      const results = berechneEndeErgebnisse(
+        state,
+        50000, // etfWertAnfang
+        0,
+        0,
+        0,
+        false,
+        0,
+        [],
+        { tankgutschein: 0, strategieessen: 0, essenszuschussProTag: 0, essenszuschussTageProJahr: 0 },
+        { aktiv: false, anschaffungskosten: 0, restwertQuote: 0, ersatzzyklusJahre: 3, erstanschaffungJahr: 1 },
+        GMBH_STEUER_GESAMT,
+        0.15,
+        0.14,
+        undefined,
+        0,
+        0,
+        investitionen
+      );
+
+      // Y1 calculations:
+      // Capital: 100,000 * 1.03 = 103,000
+      // Interest: 50,000 * 0.04 = 2,000
+      // Tilgung: 2,000
+      // Net cashflow: 6,000 - 2,000 - 2,000 = +2,000
+      // Remaining credit: 48,000
+      expect(results[0].details.investitionsKapitalGesamt).toBeCloseTo(103000);
+      expect(results[0].details.investitionsZinsaufwandProJahr).toBeCloseTo(2000);
+      expect(results[0].details.investitionsTilgungProJahr).toBeCloseTo(2000);
+      expect(results[0].details.investitionsKreditRestschuld).toBeCloseTo(48000);
+      expect(results[0].details.investitionsNettoCashflowProJahr).toBeCloseTo(2000);
+
+      // Positive net cashflow increases GmbH liquid funds and total wealth
+      expect(results[0].details.firmenEtfVermoegen).toBeGreaterThan(50000);
+      expect(results[0].gesamtvermoegen).toBeCloseTo(results[0].details.firmenEtfVermoegen + 103000);
+    });
+
     it("defers Ende-darlehen payout to the final year when ende.darlehenEndfaellig is active", () => {
       const state: EndeState = {
         ...baseState,

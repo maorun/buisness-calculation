@@ -106,7 +106,6 @@ export function berechneGesamtvergleichKpi(
     offeneDarlehenOverride,
     gehaltsEntnahmeOverride
   );
-  const investitionsZusammenfassung = berechneInvestitionsZusammenfassung(betrieb.investitionen, zeitraumJahre);
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
     ? betriebsErgebnisse[betriebsErgebnisse.length - 1]
     : undefined;
@@ -119,14 +118,20 @@ export function berechneGesamtvergleichKpi(
     0,
     letzterEndeStand?.details.firmenDarlehensverbindlichkeit ?? 0
   );
+  // Note: e.gesamtvermoegen in Ende phase already includes investitionsKapitalGesamt, and
+  // e.details.firmenDarlehensverbindlichkeit includes restdarlehen + privatDarlehenRestschuld.
+  // Deducting investitionsKreditRestschuld gives net firm wealth including investment net worth.
+  const endeInvestitionsKreditRestschuld = Math.max(
+    0,
+    letzterEndeStand?.details.investitionsKreditRestschuld ?? 0
+  );
   const gmbhEndeNettovermoegen = letzterEndeStand
-    ? letzterEndeStand.gesamtvermoegen - endeFirmenDarlehensverbindlichkeit
+    ? letzterEndeStand.gesamtvermoegen - endeFirmenDarlehensverbindlichkeit - endeInvestitionsKreditRestschuld
     : gmbhBetriebNettovermoegen;
   const gmbhGesamtwert =
     gmbhEndeNettovermoegen +
     gmbhBetriebKonsumwert +
-    (letzterEndeStand?.details.kumulierterKonsumwert ?? 0) +
-    (letzterEndeStand ? investitionsZusammenfassung.nettovermoegen : 0);
+    (letzterEndeStand?.details.kumulierterKonsumwert ?? 0);
   const privatGesamtwert = privatVergleich.gesamtwertMitKonsum;
   const vorteil = gmbhGesamtwert - privatGesamtwert;
   const vorteilProzent = Math.abs(privatGesamtwert) >= PERCENT_REFERENCE_EPSILON
@@ -178,10 +183,6 @@ export function berechneGesamtvergleichZeitreihe(
     offeneDarlehenOverride,
     gehaltsEntnahmeOverride
   );
-  const investitionsNettovermoegen = berechneInvestitionsZusammenfassung(
-    betrieb.investitionen,
-    zeitraumJahre
-  ).nettovermoegen;
   const gmbhBetriebKonsumwert =
     betriebsErgebnisse.length > 0
       ? betriebsErgebnisse[betriebsErgebnisse.length - 1].details.kumulierterKonsumwert ?? 0
@@ -196,8 +197,12 @@ export function berechneGesamtvergleichZeitreihe(
         0,
         e.details.firmenDarlehensverbindlichkeit ?? 0
       );
-      const gmbhEndeNettovermoegen = e.gesamtvermoegen - firmenDarlehensverbindlichkeit;
-      return gmbhEndeNettovermoegen + gmbhBetriebKonsumwert + (e.details.kumulierterKonsumwert ?? 0) + investitionsNettovermoegen;
+      const investitionsKreditRestschuld = Math.max(
+        0,
+        e.details.investitionsKreditRestschuld ?? 0
+      );
+      const gmbhEndeNettovermoegen = e.gesamtvermoegen - firmenDarlehensverbindlichkeit - investitionsKreditRestschuld;
+      return gmbhEndeNettovermoegen + gmbhBetriebKonsumwert + (e.details.kumulierterKonsumwert ?? 0);
     }),
   ];
 
