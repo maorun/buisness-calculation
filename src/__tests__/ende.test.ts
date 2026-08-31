@@ -642,10 +642,10 @@ describe("berechneEndeErgebnisse", () => {
       const bereich1 = results[0];
       const bruttoGehalt = endfaelligState.gehaltBereich1;
       const reinvestiertesDarlehen = principal - bereich1.details.teiltilgungBereich1;
-      // Net ETF after Bereich 1: grow (rendite=0 here), pay out full principal + interest + salary +
-      // Betriebskosten + taxes, receive new loan back
+      // Net ETF after Bereich 1: grow (rendite=0 here), pay out teiltilgung + interest + salary +
+      // Betriebskosten + taxes (including etfVerkaufssteuer), receive new loan back
       const expectedEtf = etfStart
-        - (principal + aufgelaufeneZinsen + bruttoGehalt + bereich1.details.betriebsausgabenGesamt + bereich1.details.vorabpauschalesteuer + bereich1.details.gmbhSteuer)
+        - (bereich1.details.teiltilgungBereich1 + aufgelaufeneZinsen + bruttoGehalt + bereich1.details.betriebsausgabenGesamt + bereich1.details.vorabpauschalesteuer + bereich1.details.gmbhSteuer + bereich1.details.etfVerkaufssteuer)
         + reinvestiertesDarlehen;
       expect(bereich1.details.firmenEtfVermoegen).toBeCloseTo(expectedEtf);
       // nettovermoegen = ETF - new loan
@@ -708,6 +708,59 @@ describe("berechneEndeErgebnisse", () => {
     it("endfaellig=false with 0 aufgelaufeneZinsen returns same count as laufzeitJahre", () => {
       const results = berechneEndeErgebnisse(endfaelligState, 0, 10000, 3.5, 0, false);
       expect(results).toHaveLength(3);
+    });
+  });
+
+  describe("ETF Lot tracking and ETF sales tax in Ende phase", () => {
+    it("preserves EtfLot[] input and cost basis from Betrieb phase to Ende phase", () => {
+      const initialLots = [
+        { typ: "startkapital" as const, wert: 50000, einstandswert: 25000 },
+        { typ: "zuzahlung" as const, wert: 50000, einstandswert: 25000 },
+      ];
+      const state: EndeState = {
+        geschaeftsfuehrergehalt: 10000,
+        stammkapitalErhoehungEtf: 0,
+        gehaltBereich1: 0,
+        teiltilgungBereich1: 0,
+        gewinnausschuettung: 0,
+        tilgungsrate: 0,
+        laufzeitJahre: 1,
+        zielnettoBereich1: 0,
+        zielnettoBereich2: 0,
+      };
+
+      const results = berechneEndeErgebnisse(state, initialLots, 0, 0, 0, false, 0);
+
+      expect(results[0].etfLots).toBeDefined();
+      expect(results[0].details.etfVerkaufssteuer).toBeGreaterThan(0);
+      expect(results[0].details.etfGewinn).toBeGreaterThan(0);
+      expect(results[0].details.etfEinstandswertVerkauft).toBeLessThan(results[0].details.etfVerkauf);
+    });
+
+    it("calculates correct etfVerkaufssteuer (~5.97% on realized gain with 80% Teilfreistellung and 29.83% GmbH tax)", () => {
+      // 100,000 ETF value with 50,000 cost basis (50% gain)
+      const initialLots = [
+        { typ: "startkapital" as const, wert: 100000, einstandswert: 50000 },
+      ];
+      const state: EndeState = {
+        geschaeftsfuehrergehalt: 20000, // triggers ~20,000 ETF sale
+        stammkapitalErhoehungEtf: 0,
+        gehaltBereich1: 0,
+        teiltilgungBereich1: 0,
+        gewinnausschuettung: 0,
+        tilgungsrate: 0,
+        laufzeitJahre: 1,
+        zielnettoBereich1: 0,
+        zielnettoBereich2: 0,
+      };
+
+      const results = berechneEndeErgebnisse(state, initialLots, 0, 0, 0, false, 0);
+      const detail = results[0].details;
+
+      expect(detail.etfVerkauf).toBeGreaterThan(20000);
+      expect(detail.etfGewinn).toBeCloseTo(detail.etfVerkauf * 0.5);
+      const expectedTax = detail.etfGewinn * 0.2 * GMBH_STEUER_GESAMT;
+      expect(detail.etfVerkaufssteuer).toBeCloseTo(expectedTax);
     });
   });
 
@@ -852,7 +905,7 @@ describe("berechneEndeErgebnisse", () => {
       expect(results[0].details.gmbhSteuer).toBeGreaterThanOrEqual(0);
     });
 
-    it("Bereich 2: steuer includes vorabpauschalesteuer and gmbhSteuer", () => {
+    it("Bereich 2: steuer includes vorabpauschalesteuer, gmbhSteuer and etfVerkaufssteuer", () => {
       const etfStart = 100000;
       const rendite = 5;
       const results = berechneEndeErgebnisse(baseState, etfStart, 0, 0, 0, false, rendite);
@@ -864,7 +917,8 @@ describe("berechneEndeErgebnisse", () => {
           r.details.ausschuettungsteuer +
           r.details.darlehenZinsenSteuer +
           r.details.vorabpauschalesteuer +
-          r.details.gmbhSteuer;
+          r.details.gmbhSteuer +
+          r.details.etfVerkaufssteuer;
         expect(r.steuer).toBeCloseTo(expectedTax);
       }
     });

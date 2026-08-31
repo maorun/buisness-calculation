@@ -2,6 +2,7 @@ import { EndeState, JahresErgebnis, KostenPosition, BenefitConfig, FirmenhandyCo
 import { Steuerjahr, getSteuerjahrParameter, DEFAULT_STEUERJAHR } from "../parameters";
 import {
   berechneVorabpauschale,
+  berechneVorabpauschaleNachEtfVerkauf,
   berechneVorabpauschalesteuer,
   berechneBetriebskosten,
   berechneBetriebskostenPosten,
@@ -20,6 +21,15 @@ import {
   GMBH_STEUER_GESAMT,
   KST_GESAMT,
   GEWERBESTEUER,
+  EtfLot,
+  wachseEtfLots,
+  verkaufeEtfLotsSteueroptimal,
+  sortiereEtfLotIndizesNachSteueroptimierung,
+  fuegeEtfLotHinzu,
+  sumEtfWert,
+  berechneEtfVerkaufssteuer,
+  MAX_SALE_CONVERGENCE_ITERATIONS,
+  SALE_CONVERGENCE_THRESHOLD,
 } from "./betrieb";
 
 export {
@@ -212,7 +222,7 @@ export function berechneDarlehensAuszahlung(
  */
 export function berechneEndeErgebnisse(
   state: EndeState,
-  etfWertAnfang: number = 0,
+  etfWertAnfang: number | EtfLot[] = 0,
   darlehenRestschuldAnfang: number = 0,
   darlehenZinssatzPercent: number = 0,
   aufgelaufeneZinsen: number = 0,
@@ -237,7 +247,17 @@ export function berechneEndeErgebnisse(
   const stammkapitalErhoehungEtf = Math.max(0, state.stammkapitalErhoehungEtf ?? 0);
   const simulierterGewinn = Math.max(0, state.simulierterGewinn ?? 0);
   let privatvermoegen = 0;
-  let firmenEtfVermoegen = Math.max(0, etfWertAnfang) + stammkapitalErhoehungEtf;
+
+  let etfLots: EtfLot[] = [];
+  if (Array.isArray(etfWertAnfang)) {
+    etfLots = etfWertAnfang.map((lot) => ({ ...lot }));
+  } else if (etfWertAnfang > 0) {
+    etfLots = [{ typ: "zuzahlung", wert: etfWertAnfang, einstandswert: etfWertAnfang }];
+  }
+  if (stammkapitalErhoehungEtf > 0) {
+    etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", stammkapitalErhoehungEtf);
+  }
+  let firmenEtfVermoegen = sumEtfWert(etfLots);
   let reinvestiertesDarlehen = 0;
   let verlustvortrag = Math.max(0, initialVerlustvortrag);
   // Tracks the sequential year within the Ende phase for the 3-year phone replacement cycle.
@@ -261,11 +281,11 @@ export function berechneEndeErgebnisse(
     const bruttoGehalt = Math.max(0, state.gehaltBereich1);
 
     // ETF growth for Bereich 1
-    const etfVorWachstumB1 = firmenEtfVermoegen;
-    const etfNachWachstumB1 = etfVorWachstumB1 * (1 + etfRenditePercent / 100);
+    const etfVorWachstumB1 = sumEtfWert(etfLots);
+    const etfLotsNachWachstumB1 = wachseEtfLots(etfLots, etfRenditePercent);
+    const etfNachWachstumB1 = sumEtfWert(etfLotsNachWachstumB1);
     const theoretischerEtfErtragB1 = Math.max(0, etfNachWachstumB1 - etfVorWachstumB1);
-    const vorabpauschaleB1 = berechneVorabpauschale(etfVorWachstumB1, etfNachWachstumB1);
-    const vorabpauschalesteuerB1 = berechneVorabpauschalesteuer(vorabpauschaleB1, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+    const vorabpauschaleBruttoB1 = berechneVorabpauschale(etfVorWachstumB1, etfNachWachstumB1, undefined, steuerjahr);
 
     // Betriebskosten for Bereich 1 (running GmbH costs continue in Ende phase)
     const jaehrlicheKostenB1 = berechneBetriebskosten(kosten);
@@ -281,25 +301,6 @@ export function berechneEndeErgebnisse(
     // the salary is displayed as its own separate line in the GmbH GuV.
     const betriebskostenPostenB1 = berechneBetriebskostenPosten(kosten, benefits, handyNettoKostenB1, firmenhandy, 0);
     const betriebsausgabenGesamtB1 = jaehrlicheKostenB1 + handyNettoKostenB1 + benefitsKostenB1;
-    // bruttoGehalt is a deductible Betriebsausgabe for the GmbH (§ 4 EStG) and must be deducted
-    // from the taxable profit, just as in the Betrieb phase. It is tracked separately here to
-    // keep betriebsausgabenGesamtB1 consistent with its non-salary Betriebskosten meaning.
-    // theoretischerEtfErtragB1 is excluded from the tax base because ETF gains are only taxed
-    // when realised (sold). Unrealised growth is not a taxable event under German corporate tax
-    // law; the Vorabpauschale already captures the minimum annual taxation on unrealised gains.
-    // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
-    // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
-    const gewinnNachBetriebsausgabenB1 = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
-    const {
-      versteuerterGewinn: versteuerterGewinnB1,
-      verlustVortragGenutzt: verlustVortragGenutztB1,
-      neuerVerlustvortrag: neuerVerlustvortragB1,
-    } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenB1, verlustvortrag);
-    verlustvortrag = neuerVerlustvortragB1;
-
-    const gmbhSteuerB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gmbhSteuerGesamt : 0;
-    const gmbhSteuerKstB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * kstGesamt : 0;
-    const gmbhSteuerGewStB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gewerbesteuer : 0;
     endePhaseJahr++;
 
     const einkommensteuer = berechneEinkommensteuer(bruttoGehalt, steuerjahr);
@@ -333,6 +334,64 @@ export function berechneEndeErgebnisse(
       darlehensrueckzahlung
     );
     reinvestiertesDarlehen = Math.max(0, darlehensrueckzahlung - teiltilgungBereich1);
+
+    // Solve ETF sales in Bereich 1 iteratively because sales tax and Vorabpauschale credit depend on realized gain
+    const auszahlungenOhneVerkaufssteuernB1 = teiltilgungBereich1 + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1;
+    const nettoAbflussOhneVerkaufssteuerB1 = Math.max(0, auszahlungenOhneVerkaufssteuernB1 - simulierterGewinn);
+    const sortierteLotIndizesB1 = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstumB1);
+
+    let etfVerkaufB1 = Math.min(etfNachWachstumB1, nettoAbflussOhneVerkaufssteuerB1);
+    for (let iter = 0; iter < MAX_SALE_CONVERGENCE_ITERATIONS; iter++) {
+      const verkaufIter = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstumB1, etfVerkaufB1, sortierteLotIndizesB1);
+      const realisierterEtfErtragIter = verkaufIter.etfGewinn;
+      const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBruttoB1, realisierterEtfErtragIter);
+      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+
+      const gewinnNachBetriebsausgabenIter = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
+      const { versteuerterGewinn: versteuerterGewinnIter } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
+      const gmbhSteuerIter = versteuerterGewinnIter > 0 ? versteuerterGewinnIter * gmbhSteuerGesamt : 0;
+
+      const benoetigterVerkauf = Math.min(
+        etfNachWachstumB1,
+        Math.max(0, nettoAbflussOhneVerkaufssteuerB1 + vorabpauschalesteuerIter + gmbhSteuerIter + etfVerkaufssteuerIter)
+      );
+      if (Math.abs(benoetigterVerkauf - etfVerkaufB1) < SALE_CONVERGENCE_THRESHOLD) {
+        etfVerkaufB1 = benoetigterVerkauf;
+        break;
+      }
+      etfVerkaufB1 = benoetigterVerkauf;
+    }
+
+    const verkaufB1 = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstumB1, etfVerkaufB1, sortierteLotIndizesB1);
+    const einstandswertVerkauftB1 = verkaufB1.etfEinstandswertVerkauft;
+    const realisierterEtfErtragB1 = verkaufB1.etfGewinn;
+    const vorabpauschaleB1 = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBruttoB1, realisierterEtfErtragB1);
+    const vorabpauschalesteuerB1 = berechneVorabpauschalesteuer(vorabpauschaleB1, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+    const etfVerkaufssteuerB1 = berechneEtfVerkaufssteuer(realisierterEtfErtragB1, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+
+    const gewinnNachBetriebsausgabenB1 = simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt;
+    const {
+      versteuerterGewinn: versteuerterGewinnB1,
+      verlustVortragGenutzt: verlustVortragGenutztB1,
+      neuerVerlustvortrag: neuerVerlustvortragB1,
+    } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenB1, verlustvortrag);
+    verlustvortrag = neuerVerlustvortragB1;
+
+    const gmbhSteuerB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gmbhSteuerGesamt : 0;
+    const gmbhSteuerKstB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * kstGesamt : 0;
+    const gmbhSteuerGewStB1 = versteuerterGewinnB1 > 0 ? versteuerterGewinnB1 * gewerbesteuer : 0;
+
+    etfLots = verkaufB1.lots;
+    const gewinnNachSteuernEtfZuflussB1 = Math.max(0, simulierterGewinn - betriebsausgabenGesamtB1 - bruttoGehalt - gmbhSteuerB1 - vorabpauschalesteuerB1);
+    if (gewinnNachSteuernEtfZuflussB1 > 0) {
+      etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", gewinnNachSteuernEtfZuflussB1);
+    }
+    if (reinvestiertesDarlehen > 0) {
+      etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", reinvestiertesDarlehen);
+    }
+    firmenEtfVermoegen = sumEtfWert(etfLots);
+
     // essenszuschussNutzen is excluded from the displayed net payout – it is a non-cash benefit
     // used only internally (zielnetto gap check, GmbH cost accounting). Adding it to the
     // displayed "Gesamt Netto" would make cash-free years appear to have positive income.
@@ -340,14 +399,9 @@ export function berechneEndeErgebnisse(
       nettoGehalt + zinsenNetto + teiltilgungBereich1;
     const konsumierbaresNettoBereich1 = konsumierbaresNettoBereich1VorGkv - gesetzlicheKrankenversicherungBeitrag;
     const gesamtBrutto = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt;
-    const gesamtSteuer = zinsSteuer + einkommensteuer + soli + vorabpauschalesteuerB1 + gmbhSteuerB1;
+    const gesamtSteuer = zinsSteuer + einkommensteuer + soli + vorabpauschalesteuerB1 + gmbhSteuerB1 + etfVerkaufssteuerB1;
 
-    // The GmbH ETF grows first, then funds the full gross repayment + salary + running costs.
-    // The shareholder immediately relends the reinvestiertesDarlehen portion back to the GmbH.
-    // The re-lending is a separate cash inflow and must be added AFTER the floor clamp so that
-    // it is never zeroed out when the ETF cannot cover all other outflows on its own.
-    const firmenGesamtabfluss = darlehensrueckzahlung + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1 + vorabpauschalesteuerB1 + gmbhSteuerB1 - simulierterGewinn;
-    firmenEtfVermoegen = Math.max(0, etfNachWachstumB1 - firmenGesamtabfluss) + reinvestiertesDarlehen;
+    const firmenGesamtabfluss = teiltilgungBereich1 + aufgelaufeneZinsenNorm + bruttoGehalt + betriebsausgabenGesamtB1 + vorabpauschalesteuerB1 + gmbhSteuerB1 + etfVerkaufssteuerB1 - simulierterGewinn;
     const firmenGuVGehaltAufwand = bruttoGehalt;
     const firmenGuVZinsaufwand = aufgelaufeneZinsenNorm;
     const firmenGuVSummeAufwand = firmenGuVGehaltAufwand + firmenGuVZinsaufwand + betriebsausgabenGesamtB1;
@@ -415,6 +469,10 @@ export function berechneEndeErgebnisse(
         theoretischerEtfErtrag: theoretischerEtfErtragB1,
         vorabpauschale: vorabpauschaleB1,
         vorabpauschalesteuer: vorabpauschalesteuerB1,
+        etfVerkaufssteuer: etfVerkaufssteuerB1,
+        etfGewinn: realisierterEtfErtragB1,
+        etfEinstandswertVerkauft: einstandswertVerkauftB1,
+        etfVerkauf: etfVerkaufB1,
         jaehrlicheKosten: jaehrlicheKostenB1,
         betriebsausgabenGesamt: betriebsausgabenGesamtB1,
         gmbhSteuer: gmbhSteuerB1,
@@ -428,6 +486,7 @@ export function berechneEndeErgebnisse(
         kumulierterKonsumwert,
       },
       betriebskostenPosten: betriebskostenPostenB1,
+      etfLots: etfLots.map((lot) => ({ ...lot })),
     });
   }
 
@@ -445,18 +504,19 @@ export function berechneEndeErgebnisse(
   // (interest-only / endfällig treatment) until the end of the Ende phase.
   const privatDarlehenRestschuld = privatDarlehenBetrag;
   if (privatDarlehenBetrag > 0) {
-    firmenEtfVermoegen += privatDarlehenBetrag;
+    etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", privatDarlehenBetrag);
+    firmenEtfVermoegen = sumEtfWert(etfLots);
   }
 
   for (let i = 1; i <= state.laufzeitJahre; i++) {
     const jahr = bereich2StartJahr + i - 1;
 
     // ETF growth for this year
-    const etfVorWachstum = firmenEtfVermoegen;
-    const etfNachWachstum = etfVorWachstum * (1 + etfRenditePercent / 100);
+    const etfVorWachstum = sumEtfWert(etfLots);
+    const etfLotsNachWachstum = wachseEtfLots(etfLots, etfRenditePercent);
+    const etfNachWachstum = sumEtfWert(etfLotsNachWachstum);
     const theoretischerEtfErtrag = Math.max(0, etfNachWachstum - etfVorWachstum);
-    const vorabpauschale = berechneVorabpauschale(etfVorWachstum, etfNachWachstum);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+    const vorabpauschaleBrutto = berechneVorabpauschale(etfVorWachstum, etfNachWachstum, undefined, steuerjahr);
 
     // Betriebskosten for this year (running GmbH costs continue in Ende phase)
     const jaehrlicheKosten = berechneBetriebskosten(kosten);
@@ -551,6 +611,7 @@ export function berechneEndeErgebnisse(
     let darlehenGesamtauszahlungNetto = darlehenZinsenNetto + darlehenTilgung;
 
     if (simulierterGewinn > 0) {
+      const vorabpauschaleApprox = berechneVorabpauschalesteuer(vorabpauschaleBrutto, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
       const verfuegbaresFirmenkapital = etfNachWachstum + simulierterGewinn;
       const fixeAuszahlungenOhneGehalt =
         state.gewinnausschuettung +
@@ -558,7 +619,7 @@ export function berechneEndeErgebnisse(
         privatDarlehenZinsen +
         kstSteuer +
         betriebsausgabenGesamt +
-        vorabpauschalesteuer;
+        vorabpauschaleApprox;
       const steuerpflichtigerGewinnVorGehalt =
         simulierterGewinn - betriebsausgabenGesamt - darlehenZinsen - privatDarlehenZinsen;
       const maxBezahlbaresBruttoGehalt = berechneMaxBezahlbaresBruttoGehalt(
@@ -610,14 +671,41 @@ export function berechneEndeErgebnisse(
       }
     }
 
-    // GmbH tax on operating profit after Betriebskosten, salary and deductible interest (both loans).
-    // theoretischerEtfErtrag is excluded from the tax base: ETF gains are only taxed when realised
-    // (sold). Unrealised growth is not a taxable event under German corporate tax law; the
-    // Vorabpauschale already captures the minimum annual taxation on unrealised gains.
-    // Including it would create a downward kink at the Betrieb→Ende boundary, since the Betrieb
-    // phase only taxes realisierterEtfErtrag (i.e. gains from actual ETF sales).
-    // bruttoGehalt is a deductible Betriebsausgabe (§ 4 EStG) – must be subtracted from taxable
-    // profit, consistent with the Betrieb phase treatment in betrieb.ts.
+    // Solve ETF sales in Bereich 2 iteratively because sales tax and Vorabpauschale credit depend on realized gain
+    const sortierteLotIndizes = sortiereEtfLotIndizesNachSteueroptimierung(etfLotsNachWachstum);
+    const auszahlungenOhneVerkaufssteuern = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt;
+    const nettoAbflussOhneVerkaufssteuer = Math.max(0, auszahlungenOhneVerkaufssteuern - simulierterGewinn);
+
+    let etfVerkauf = Math.min(etfNachWachstum, nettoAbflussOhneVerkaufssteuer);
+    for (let iter = 0; iter < MAX_SALE_CONVERGENCE_ITERATIONS; iter++) {
+      const verkaufIter = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
+      const realisierterEtfErtragIter = verkaufIter.etfGewinn;
+      const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtragIter);
+      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+
+      const gewinnNachBetriebsausgabenIter = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
+      const { versteuerterGewinn: versteuerterGewinnIter } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
+      const gmbhSteuerIter = versteuerterGewinnIter > 0 ? versteuerterGewinnIter * gmbhSteuerGesamt : 0;
+
+      const benoetigterVerkauf = Math.min(
+        etfNachWachstum,
+        Math.max(0, nettoAbflussOhneVerkaufssteuer + vorabpauschalesteuerIter + gmbhSteuerIter + etfVerkaufssteuerIter)
+      );
+      if (Math.abs(benoetigterVerkauf - etfVerkauf) < SALE_CONVERGENCE_THRESHOLD) {
+        etfVerkauf = benoetigterVerkauf;
+        break;
+      }
+      etfVerkauf = benoetigterVerkauf;
+    }
+
+    const verkauf = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
+    const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
+    const realisierterEtfErtrag = verkauf.etfGewinn;
+    const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtrag);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+
     const gewinnNachBetriebsausgaben = simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
     const {
       versteuerterGewinn,
@@ -630,16 +718,22 @@ export function berechneEndeErgebnisse(
     const gmbhSteuerKst = versteuerterGewinn > 0 ? versteuerterGewinn * kstGesamt : 0;
     const gmbhSteuerGewSt = versteuerterGewinn > 0 ? versteuerterGewinn * gewerbesteuer : 0;
 
+    etfLots = verkauf.lots;
+    const gewinnNachSteuernEtfZufluss = Math.max(0, simulierterGewinn - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen - gmbhSteuer - vorabpauschalesteuer);
+    if (gewinnNachSteuernEtfZufluss > 0) {
+      etfLots = fuegeEtfLotHinzu(etfLots, "zuzahlung", gewinnNachSteuernEtfZufluss);
+    }
+    firmenEtfVermoegen = sumEtfWert(etfLots);
+
     const gesamtBrutto = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen;
-    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + privatDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer;
+    const gesamtSteuer = einkommensteuer + soli + kstSteuer + ausschuettungsteuer + darlehenZinsenSteuer + privatDarlehenZinsenSteuer + vorabpauschalesteuer + gmbhSteuer + etfVerkaufssteuer;
     // essenszuschussNutzen is excluded from the displayed net payout – it is a non-cash benefit
     // used only internally (zielnetto gap check, GmbH cost accounting).
     const gesamtNetto =
       nettoGehalt + nettoAusschuettung + darlehenGesamtauszahlungNetto + privatDarlehenZinsenNetto - gesetzlicheKrankenversicherungBeitrag;
-    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer - simulierterGewinn;
+    const firmenGesamtabfluss = bruttoGehalt + state.gewinnausschuettung + darlehenGesamtauszahlungBrutto + privatDarlehenZinsen + kstSteuer + betriebsausgabenGesamt + vorabpauschalesteuer + gmbhSteuer + etfVerkaufssteuer - simulierterGewinn;
 
     privatvermoegen += gesamtNetto;
-    firmenEtfVermoegen = Math.max(0, etfNachWachstum - firmenGesamtabfluss);
     restdarlehen = Math.max(0, restdarlehen - darlehenTilgung);
     const firmenNettovermoegen = firmenEtfVermoegen - restdarlehen - privatDarlehenRestschuld;
 
@@ -689,6 +783,10 @@ export function berechneEndeErgebnisse(
         theoretischerEtfErtrag,
         vorabpauschale,
         vorabpauschalesteuer,
+        etfVerkaufssteuer,
+        etfGewinn: realisierterEtfErtrag,
+        etfEinstandswertVerkauft: einstandswertVerkauft,
+        etfVerkauf,
         jaehrlicheKosten,
         betriebsausgabenGesamt,
         simulierterGewinn,
@@ -703,6 +801,7 @@ export function berechneEndeErgebnisse(
         kumulierterKonsumwert,
       },
       betriebskostenPosten,
+      etfLots: etfLots.map((lot) => ({ ...lot })),
     });
   }
 
