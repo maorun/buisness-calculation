@@ -130,6 +130,7 @@ export interface InvestitionsErgebnis {
 }
 
 import { Steuerjahr } from "./parameters";
+import type { EtfLot } from "./calculations/etf";
 
 export interface BetriebState {
   steuerjahr?: Steuerjahr;
@@ -237,4 +238,5 @@ export interface JahresErgebnis {
     label: string;
     wert: number;
   }[];
+  etfLots?: EtfLot[];
 }
