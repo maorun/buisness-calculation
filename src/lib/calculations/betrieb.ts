@@ -60,6 +60,21 @@ import {
  * Sum all operating cost positions (monthly × 12 + annual).
  * Supports KostenPositions with periode: 'monatlich' (multiplied by 12) or 'jaehrlich' (as-is).
  */
+/**
+ * Discounts a nominal monetary amount to real purchasing power based on an annual inflation rate.
+ * Realwert = Nominalwert / (1 + inflationsratePercent / 100) ^ jahre
+ */
+export function berechneRealwert(
+  nominalwert: number,
+  inflationsratePercent: number = 2,
+  jahre: number = 0
+): number {
+  if (jahre <= 0 || inflationsratePercent === 0) {
+    return nominalwert;
+  }
+  return nominalwert / Math.pow(1 + inflationsratePercent / 100, jahre);
+}
+
 export function berechneBetriebskosten(kosten: KostenPosition[]): number {
   return kosten.reduce((sum, k) => {
     return sum + berechneKostenPositionJahresBetrag(k);

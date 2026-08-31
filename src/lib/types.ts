@@ -157,6 +157,10 @@ export interface BetriebState {
   geschaeftsfuehrergehalt?: number;
   darlehen: DarlehenConfig;
   etfRendite: number; // in percent, e.g. 7 means 7% p.a.
+  /** Optional annual inflation rate (in %, e.g. 2 means 2% p.a.). Default: 2. */
+  inflationsrate?: number;
+  /** Whether to display real values (purchasing power / Kaufkraft) discounted for inflation. Default: false. */
+  realwerteAnzeigen?: boolean;
   laufzeitJahre: number;
   kosten: KostenPosition[];
   benefits: BenefitConfig;

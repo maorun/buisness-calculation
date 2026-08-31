@@ -4,6 +4,7 @@ import {
   berechneVorabpauschalesteuer,
   berechneEtfVerkaufssteuer,
   berechneEtfWachstum,
+  berechneRealwert,
   berechneDarlehenszinsen,
   berechneDarlehensjahr,
   berechneBetriebskosten,
@@ -38,6 +39,19 @@ import {
   pruefeDienstwagenMoeglichkeit,
 } from "@/lib/calculations/betrieb";
 import { BetriebState, DarlehenConfig, BenefitConfig, KostenPosition } from "@/lib/types";
+
+describe("berechneRealwert", () => {
+  it("returns nominal value when jahre <= 0 or inflationsrate === 0", () => {
+    expect(berechneRealwert(60000, 2, 0)).toBe(60000);
+    expect(berechneRealwert(60000, 0, 20)).toBe(60000);
+  });
+
+  it("converts 60.000 € nominal at 2% inflation over 20 years to ~40.378 € real purchasing power", () => {
+    // 60000 / (1.02^20) ≈ 40378.28
+    const realwert = berechneRealwert(60000, 2, 20);
+    expect(realwert).toBeCloseTo(40378.28, 1);
+  });
+});
 
 describe("berechneVerlustvortragAnrechnung", () => {
   it("accumulates loss when profit is negative", () => {
