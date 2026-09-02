@@ -30,6 +30,9 @@ import {
   berechneBenefitsKosten,
   berechneKonsumNutzenwertProJahr,
   berechneTankgutscheinJaehrlich,
+  berechneBavJaehrlich,
+  berechneInternetPauschaleJaehrlich,
+  berechneVermoegenswirksameLeistungenJaehrlich,
   berechneEssenszuschussJaehrlich,
   berechneDienstwagenGmbhKosten,
   berechneDienstwagenGeldwerterVorteil,
@@ -91,7 +94,8 @@ export function berechneBetriebskostenPosten(
   handyNettoKosten: number,
   handyConfig = DEFAULT_FIRMENHANDY_CONFIG,
   geschaeftsfuehrergehalt: number = 0,
-  stillerGesellschafterKosten: number = 0
+  stillerGesellschafterKosten: number = 0,
+  steuerjahr: number = 2025
 ): { label: string; wert: number }[] {
   const kostenPosten = kosten.map((kostenPosition) => ({
     label: kostenPosition.bezeichnung,
@@ -101,9 +105,15 @@ export function berechneBetriebskostenPosten(
   const tankgutscheinJaehrlich = berechneTankgutscheinJaehrlich(benefits);
   const essenszuschussJaehrlich = berechneEssenszuschussJaehrlich(benefits);
   const dienstwagenGmbhKosten = berechneDienstwagenGmbhKosten(benefits);
+  const bAVJaehrlich = berechneBavJaehrlich(benefits, steuerjahr);
+  const internetJaehrlich = berechneInternetPauschaleJaehrlich(benefits);
+  const vlJaehrlich = berechneVermoegenswirksameLeistungenJaehrlich(benefits);
   const benefitsPosten = [
     { label: "Tankgutschein", wert: tankgutscheinJaehrlich },
     { label: "Essenszuschuss", wert: essenszuschussJaehrlich },
+    { label: "bAV-Beitrag", wert: bAVJaehrlich },
+    { label: "Internetpauschale", wert: internetJaehrlich },
+    { label: "Vermögenswirksame Leistungen", wert: vlJaehrlich },
     { label: "Strategieessen", wert: (benefits.strategieessenAktiv ?? true) ? Math.max(0, benefits.strategieessen) : 0 },
     ...(dienstwagenGmbhKosten > 0 ? [{ label: "Dienstwagen (GmbH-Kosten)", wert: dienstwagenGmbhKosten }] : []),
     { label: `Firmenhandy (alle ${handyConfig.ersatzzyklusJahre} Jahre)`, wert: handyNettoKosten },
@@ -196,6 +206,8 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
     const handyConfig = state.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG;
     const handyNettoKosten = berechneHandyNettoKostenProJahr(jahr, handyConfig);
     const benefitsKosten = berechneBenefitsKosten(state.benefits);
+    const iabJahr = Math.max(0, state.investitionsabzugsbetragJahr ?? 0);
+    const iabJaehrlich = jahr === iabJahr ? Math.max(0, state.investitionsabzugsbetrag ?? 0) : 0;
     const dienstwagenGmbhKosten = berechneDienstwagenGmbhKosten(state.benefits);
     const dienstwagenGeldwerterVorteil = state.benefits.dienstwagen?.aktiv
       ? berechneDienstwagenGeldwerterVorteil(state.benefits.dienstwagen)
@@ -213,15 +225,19 @@ export function berechneBetriebsErgebnisse(state: BetriebState): JahresErgebnis[
       state.stillerGesellschafter,
       simulierterGewinn
     );
-    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt + stillerGesellschafterKosten;
+    const betriebsausgabenGesamt = jaehrlicheKosten + handyNettoKosten + benefitsKosten + gehaelterGesamt + stillerGesellschafterKosten + iabJaehrlich;
     const betriebskostenPosten = berechneBetriebskostenPosten(
       state.kosten,
       state.benefits,
       handyNettoKosten,
       handyConfig,
       geschaeftsfuehrergehalt,
-      stillerGesellschafterKosten
+      stillerGesellschafterKosten,
+      state.steuerjahr ?? 2025
     );
+    if (iabJaehrlich > 0) {
+      betriebskostenPosten.push({ label: "Investitionsabzugsbetrag (IAB)", wert: iabJaehrlich });
+    }
 
     const { zinsenJaehrlich: darlehenszinsJaehrlich, darlehenBetragEnde } = berechneDarlehensjahr(
       offenesDarlehen,

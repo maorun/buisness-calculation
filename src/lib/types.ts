@@ -44,6 +44,18 @@ export interface BenefitConfig {
   tankgutschein: number; // monthly fuel voucher (tax-free up to 50€/month)
   /** Whether the fuel-voucher benefit is active. Defaults to true. */
   tankgutscheinAktiv?: boolean;
+  /** Employer contribution to company pension plan (bAV), annual amount in €. */
+  bavBeitragJaehrlich?: number;
+  /** Whether the bAV contribution is active. */
+  bavAktiv?: boolean;
+  /** Internet flat-rate benefit, monthly amount in €. Max. 50 €/month tax-free. */
+  internetPauschaleMonatlich?: number;
+  /** Whether the Internet flat-rate benefit is active. */
+  internetPauschaleAktiv?: boolean;
+  /** Employer-funded VL (vermögenswirksame Leistungen), monthly amount in €. */
+  vermoegenswirksameLeistungenMonatlich?: number;
+  /** Whether VL is active. */
+  vermoegenswirksameLeistungenAktiv?: boolean;
   strategieessen: number; // annual strategy dinner (deductible)
   /** Whether the strategy-dinner benefit is active. Defaults to true. */
   strategieessenAktiv?: boolean;
@@ -148,6 +160,10 @@ export interface BetriebState {
   solidaritaetszuschlagSatz?: number;
   /** Gewerbesteuer rate for the GmbH (in %, e.g. 14). Default: 14. */
   gewerbesteuerSatz?: number;
+  /** One-off investment deduction amount (IAB) in the selected Betriebs year. */
+  investitionsabzugsbetrag?: number;
+  /** Betriebs year in which the IAB is claimed (1-based). */
+  investitionsabzugsbetragJahr?: number;
   /** Annual simulated operating profit during Betrieb phase. */
   simulierterGewinn?: number;
   /** Personal marginal tax rate of the shareholder (in %, e.g. 42). Used only for private comparison of operating profit. */
