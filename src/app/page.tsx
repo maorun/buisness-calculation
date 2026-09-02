@@ -5,6 +5,7 @@ import { GruendungSection } from "@/components/GruendungSection";
 import { BetriebSection } from "@/components/BetriebSection";
 import { EndeSection } from "@/components/EndeSection";
 import { useCalculatorStore } from "@/store/calculatorStore";
+import { berechneGesamtvergleichKpi, formatSignedEuro } from "@/lib/calculations/gesamtvergleich";
 
 type Tab = "gruendung" | "betrieb" | "ende";
 const COPY_STATUS_RESET_DELAY_MS = 2500;
@@ -15,6 +16,24 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "betrieb", label: "Betrieb" },
   { id: "ende", label: "Ende" },
 ];
+
+function DashboardCard({ label, value, tone }: { label: string; value: string; tone: "blue" | "green" | "amber" | "violet" | "rose" | "slate" }) {
+  const toneClasses: Record<typeof tone, string> = {
+    blue: "border-blue-200 bg-blue-50 text-blue-900",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    amber: "border-amber-200 bg-amber-50 text-amber-900",
+    violet: "border-violet-200 bg-violet-50 text-violet-900",
+    rose: "border-rose-200 bg-rose-50 text-rose-900",
+    slate: "border-slate-200 bg-slate-50 text-slate-900",
+  };
+
+  return (
+    <div className={`rounded-xl border p-3 ${toneClasses[tone]}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">{label}</p>
+      <p className="mt-2 text-lg font-bold leading-none">{value}</p>
+    </div>
+  );
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("gruendung");
@@ -28,6 +47,37 @@ export default function Home() {
   const betrieb = useCalculatorStore((state) => state.betrieb);
   const ende = useCalculatorStore((state) => state.ende);
   const loadState = useCalculatorStore((state) => state.loadState);
+
+  const { betriebsErgebnisse, endeErgebnisse, gesamtvergleich } = React.useMemo(() => {
+    const currentStore = useCalculatorStore.getState();
+    const betriebsErgebnisse = currentStore.getBetriebsErgebnisse();
+    const endeErgebnisse = currentStore.getEndeErgebnisse();
+    const gesamtvergleich = berechneGesamtvergleichKpi(
+      currentStore.betrieb,
+      currentStore.ende.laufzeitJahre,
+      endeErgebnisse,
+      betriebsErgebnisse
+    );
+
+    return { betriebsErgebnisse, endeErgebnisse, gesamtvergleich };
+  }, [betrieb, ende.laufzeitJahre]);
+
+  const letzesBetriebsErgebnis = betriebsErgebnisse[betriebsErgebnisse.length - 1];
+  const letzesEndeErgebnis = endeErgebnisse[endeErgebnisse.length - 1];
+  const letztesErgebnis = letzesEndeErgebnis ?? letzesBetriebsErgebnis;
+  const annualizedCashflow = betriebsErgebnisse.length > 0
+    ? betriebsErgebnisse.reduce((sum, ergebnis) => sum + (ergebnis.nettogewinn ?? 0), 0) / betriebsErgebnisse.length
+    : 0;
+  const liquiditaet = letztesErgebnis?.details.cashReserve ?? letztesErgebnis?.details.nettovermoegen ?? 0;
+  const darlehensentwicklung = (betrieb.darlehen.betrag ?? 0) - (letzesEndeErgebnis?.details.restdarlehen ?? letzesBetriebsErgebnis?.details.offenesDarlehen ?? 0);
+  const dashboardCards = [
+    { label: "Endvermögen", value: formatSignedEuro(gesamtvergleich.gmbhGesamtwert), tone: "blue" as const },
+    { label: "Nettogewinn", value: formatSignedEuro(letztesErgebnis?.nettogewinn ?? 0), tone: "green" as const },
+    { label: "Steuerlast", value: formatSignedEuro(letztesErgebnis?.steuer ?? 0), tone: "amber" as const },
+    { label: "Liquidität", value: formatSignedEuro(liquiditaet), tone: "violet" as const },
+    { label: "Darlehensentwicklung", value: formatSignedEuro(darlehensentwicklung), tone: "rose" as const },
+    { label: "Annualized Cashflow", value: formatSignedEuro(annualizedCashflow), tone: "slate" as const },
+  ];
 
   useEffect(() => {
     return () => {
@@ -187,6 +237,25 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <section aria-label="Dashboard" className="max-w-4xl mx-auto px-4 pt-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Dashboard</p>
+              <h2 className="text-lg font-bold text-slate-900">Kritische Kennzahlen</h2>
+            </div>
+            <div className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">
+              {gesamtvergleich.gewinnerText}
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {dashboardCards.map((card) => (
+              <DashboardCard key={card.label} label={card.label} value={card.value} tone={card.tone} />
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Tab navigation */}
       <div className="bg-white border-b border-gray-200 sticky top-[57px] z-10">
