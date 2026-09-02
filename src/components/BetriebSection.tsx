@@ -602,6 +602,28 @@ export function BetriebSection() {
             suffix="%"
             hint="Effektiver Gewerbesteuer-Satz der GmbH (bundesweiter Durchschnitt ca. 14 %)."
           />
+          <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+            <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={betrieb.holding?.aktiv ?? false}
+                onChange={(e) => setBetrieb({ holding: { ...betrieb.holding, aktiv: e.target.checked } })}
+                className="h-4 w-4 rounded border-gray-300 text-purple-600"
+              />
+              Holding-Struktur aktiv (95 %-Steuerfreiheit)
+            </label>
+            <div className="mt-3">
+              <InputField
+                label="Steuerfreibetrag Holding"
+                value={betrieb.holding?.steuerfreibetragProzent ?? 95}
+                onChange={(v) => setBetrieb({ holding: { ...betrieb.holding, steuerfreibetragProzent: Math.max(0, Math.min(100, parseFloat(v) || 0)) } })}
+                suffix="%"
+                hint="Steuerfreier Anteil für ETF-Erträge in der Betrieb-Phase; maximal 95 %."
+                min={0}
+                max={100}
+              />
+            </div>
+          </div>
           <InputField
             label="Investitionsabzugsbetrag (IAB) (€)"
             value={betrieb.investitionsabzugsbetrag ?? 0}
