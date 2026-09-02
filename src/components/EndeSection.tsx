@@ -337,6 +337,37 @@ export function EndeSection() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="font-semibold text-gray-700 mb-3">Holding-Struktur</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Bei einer Holding-GmbH kann ein großer Teil von Dividenden und Veräußerungsgewinnen steuerfrei weiterlaufen.
+          Das wirkt vor allem bei Exit- und Ausschüttungsszenarien.
+        </p>
+        <div className="max-w-sm space-y-4">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="holdingAktiv"
+              checked={ende.holding?.aktiv ?? false}
+              onChange={(e) => setEnde({ holding: { ...ende.holding, aktiv: e.target.checked } })}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="holdingAktiv" className="text-sm text-gray-700">
+              Holding-Struktur aktiv (95 %-Steuerfreiheit)
+            </label>
+          </div>
+          <InputField
+            label="Steuerfreibetrag Holding"
+            value={ende.holding?.steuerfreibetragProzent ?? 95}
+            onChange={(v) => setEnde({ holding: { ...ende.holding, steuerfreibetragProzent: Math.max(0, Math.min(100, parseFloat(v) || 0)) } })}
+            suffix="%"
+            hint="Steuerfreier Anteil für Ausschüttungen / Verkaufsgewinne. Default: 95 % entsprechend § 8b KStG."
+            min={0}
+            max={100}
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-700 mb-3">Privatdarlehen von Privatseite</h3>
         <p className="text-xs text-gray-500 mb-4">
           Sie können der GmbH ein zusätzliches Darlehen aus Ihrem Privatvermögen gewähren.

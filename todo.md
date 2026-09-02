@@ -11,36 +11,22 @@ Eine Übersicht steuerlicher und wirtschaftlicher Optimierungspotenziale für ei
 - [x] **Strategieessen** – Voll abzugsfähige Bewirtungskosten als Betriebsausgabe
 - [x] **GF-Gehalt** – Optimales Geschäftsführergehalt als Betriebsausgabe
 - [x] **Gesellschafter-Darlehen** – Zinserträge beim Gesellschafter, Betriebsausgabe in der GmbH
+- [x] **Dienstwagen** – 1 %-Regelung / Fahrtenbuch mit betrieblicher Nutzung und mehr
+- [x] **Verlustvorträge** – Nutzung und Verrechnung kumulierter Verlustvorträge über die Betriebsjahre
+- [x] **Gewerbesteuer-Konfiguration** – Konfigurierbarer Hebesatz für die GmbH-Variante
+- [x] **Persönlicher Grenzsteuersatz** – Für den Privatvergleich mit realistischer Grenzsteuersatz-Annahme
+- [x] **Betriebliche Altersvorsorge (bAV)** – Jährlicher Arbeitgeberbeitrag als Betriebsausgabe, mit gesetzlichen Obergrenzen
+- [x] **Internetpauschale** – Bis zu 50 €/Monat steuerfrei als Sachbezug
+- [x] **Vermögenswirksame Leistungen (VL)** – Optionaler Benefit-Posten mit jährlicher Obergrenze
+- [x] **Investitionsabzugsbetrag (IAB)** – Einmaliger Abzug in wählbarem Betriebsjahr
+- [x] **Arbeitszimmer / Homeoffice-Abzug** – Durch generische Betriebskosten-/Kostenpositionen bereits abbildbar
+- [x] **Leistungsverrechnung (GF-Dienstleistungen)** – Durch freie Zusatzkostenpositionen in den Betriebskosten bereits abbildbar
 
 ---
 
 ## 📋 Offene Optimierungspunkte
 
-### 1. Betriebliche Altersvorsorge (bAV) ✅ umgesetzt
-Arbeitgeber-Beiträge zur betrieblichen Altersvorsorge sind Betriebsausgaben und damit steuerwirksam. Bis zu **8 % der Beitragsbemessungsgrenze (BBG)** (2024: 90.600 €, = 7.248 €/Jahr) sind für den GF nach § 3 Nr. 63 EStG steuer- und sozialabgabenfrei.
-
-- **Relevanz:** Hoher Steuerhebel – der GmbH-Steuerersparnis steht kein sofortiger Privatsteueraufwand gegenüber.
-- **Umsetzung im Rechner:** Konfigurierbarer jährlicher bAV-Beitrag als Betriebsausgabe.
-
----
-
-### 2. Internetpauschale als Sachbezug
-Neben dem Tankgutschein kann die GmbH dem GF eine steuerfreie **Internetkostenpauschale von bis zu 50 €/Monat** als Sachbezug gewähren (§ 8 Abs. 2 EStG – identisches Limit wie Tankgutschein, aber separater Sachverhalt). Alternativ: Übernahme nachgewiesener Internetkosten im Homeoffice.
-
-- **Relevanz:** Bis zu 600 €/Jahr zusätzliche steuerfreie Benefits.
-- **Umsetzung im Rechner:** Weiterer konfigurierbarer Sachbezugs-Slot in den Benefits.
-
----
-
-### 3. Arbeitszimmer / Homeoffice-Abzug
-Nutzt der GF ein häusliches Arbeitszimmer ausschließlich für die GmbH, kann die GmbH eine **Miete für das Arbeitszimmer** als Betriebsausgabe geltend machen (Mietvertrag GmbH ↔ Gesellschafter, Fremdvergleich erforderlich). Alternativ: pauschale Betriebsausgabe über Nutzungsüberlassung.
-
-- **Relevanz:** Reduziert steuerpflichtigen GmbH-Gewinn; beim GF als Mieteinnahme mit Werbungskosten-Abzug.
-- **Umsetzung im Rechner:** Neue KostenPosition "Arbeitszimmer-Miete" in den Betriebskosten.
-
----
-
-### 4. Holdingstruktur (95 %-Steuerfreiheit)
+### 1. Holdingstruktur (95 %-Steuerfreiheit)
 Wird die GmbH unter einer Holding-GmbH gehalten, können Dividenden von Tochter zu Mutter zu **95 % steuerfrei** weitergeleitet werden (§ 8b KStG). Der Verkauf von Beteiligungen ist ebenfalls zu 95 % körperschaftsteuerbefreit. Besonders relevant für den Exit.
 
 - **Relevanz:** Optimierung bei Liquidation oder strategischem Verkauf – statt ~29,8 % GmbH-Steuer nur ~1,5 % effektiver Steuersatz auf Veräußerungsgewinne.
@@ -48,51 +34,31 @@ Wird die GmbH unter einer Holding-GmbH gehalten, können Dividenden von Tochter 
 
 ---
 
-### 5. Dienstwagen (1 %-Regelung oder Fahrtenbuch)
-Die GmbH kann dem GF einen Dienstwagen als Betriebsausgabe bereitstellen. Die private Nutzung wird entweder pauschal per **1 %-Regelung** oder genau per **Fahrtenbuch** versteuert. Elektrische oder hybrid-elektrische Fahrzeuge sind mit 0,25 % bzw. 0,5 % privilegiert.
+### 2. Arbeitszimmer / Homeoffice-Abzug
+Nutzt der GF ein häusliches Arbeitszimmer ausschließlich für die GmbH, kann die GmbH eine **Miete für das Arbeitszimmer** als Betriebsausgabe geltend machen (Mietvertrag GmbH ↔ Gesellschafter, Fremdvergleich erforderlich). Alternativ: pauschale Betriebsausgabe über Nutzungsüberlassung.
 
-- **Relevanz:** Effektive Senkung der Steuerlast durch Betriebsausgabenabzug; der geldwerte Vorteil ist günstiger als Privatkauf bei entsprechenden Fahrleistungen.
-- **Umsetzung im Rechner:** Neue Benefit-Konfiguration "Dienstwagen" (Bruttolistenpreis, Anteil private Nutzung, E-Auto-Privileg).
-
----
-
-### 6. Investitionsabzugsbetrag (IAB) nach § 7g EStG
-Für geplante Investitionen können bis zu **50 % der voraussichtlichen Anschaffungskosten** (max. 200.000 €) im Wirtschaftsjahr vor der Anschaffung gewinnmindernd abgezogen werden. Im Anschaffungsjahr erfolgt eine Hinzurechnung, aber Sofortabschreibung via Sonderabschreibung (20 %) ist möglich.
-
-- **Relevanz:** Steuerliche Vorziehwirkung – Steuerstundung durch vorgezogenen Abzug.
-- **Umsetzung im Rechner:** Einmalige Sonderposition "IAB" in einem wählbaren Jahr der Betriebsphase.
+- **Relevanz:** Reduziert steuerpflichtigen GmbH-Gewinn; beim GF als Mieteinnahme mit Werbungskosten-Abzug.
+- **Status:** Im Rechner durch generische Betriebskosten-/Kostenpositionen abgedeckt; keine eigene, separate Spezialfunktion erforderlich.
 
 ---
 
-### 7. Verlustvorträge gezielt nutzen
-Entstehen in einzelnen Jahren Verluste (z. B. durch hohe Anfangsinvestitionen), können diese als **Verlustvortrag** in die Folgejahre übertragen werden. Dabei gilt die Mindestbesteuerungsregel: Ab 1 Mio. € Gewinn können nur 60 % des übersteigenden Betrags mit Vorträgen verrechnet werden.
-
-- **Relevanz:** Zeitliche Glättung der Steuerlast über die Betriebsphase hinweg.
-- **Umsetzung im Rechner:** Erfassung und Verrechnung von kumulierten Verlustvorträgen in den Jahresergebnissen.
-
----
-
-### 8. Optimierung der Gewerbesteuer durch Standortwahl
-Der Gewerbesteuer-Hebesatz variiert stark nach Gemeinde (von ~200 % in kleinen Gemeinden bis >500 % in Großstädten). Eine GmbH mit Sitz in einem gewerbesteuergünstigen Ort spart erheblich.
-
-- **Relevanz:** Ein Hebesatz von 200 % bedeutet ~7 % Gewerbesteuer statt ~14 % bei 400 % – Ersparnis von ~7 % auf den GmbH-Gewinn.
-- **Umsetzung im Rechner:** Konfigurierbarer Gewerbesteuer-Hebesatz statt des fest codierten Durchschnittswerts von 14 %.
-
----
-
-### 9. Vermögenswirksame Leistungen (VL)
-Die GmbH kann dem GF **vermögenswirksame Leistungen** (max. 40 €/Monat = 480 €/Jahr) gewähren. Diese sind Lohnbestandteil, aber bei entsprechendem Einkommen nicht förderungsfähig. Attraktiv in Verbindung mit Fondssparplan.
-
-- **Relevanz:** Gering, da Einkommensgrenzen für Arbeitnehmer-Sparzulage bei GF meist überschritten. Trotzdem als Betriebsausgabe abzugsfähig.
-- **Umsetzung im Rechner:** Optionaler Benefit-Posten in den Benefits.
-
----
-
-### 10. Ausgliederung nicht-investiver Kosten (Leistungsverrechnung)
+### 3. Ausgliederung nicht-investiver Kosten (Leistungsverrechnung)
 Erbringt der Gesellschafter persönlich Dienstleistungen für die GmbH (z. B. IT, Beratung), können diese per **Dienstleistungsvertrag** als Betriebsausgabe verrechnet werden – solange ein Fremdvergleich gewahrt ist.
 
 - **Relevanz:** Weitere steueroptimierte Mittelentnahme ohne Abgeltungsteuer auf Ausschüttungen.
-- **Umsetzung im Rechner:** Zusätzliche Kostenposition "Beratungshonorar/Dienstleistung GF" in den Betriebskosten.
+- **Status:** Im Rechner über freie Zusatzkostenpositionen in den Betriebskosten bereits abbildbar; keine eigene Speziallogik notwendig.
+
+---
+
+### 4. Bereits umgesetzt und aus der offenen Liste entfernt
+- bAV (betriebliche Altersvorsorge)
+- Internetpauschale als Sachbezug
+- Persönlicher Grenzsteuersatz (Privatvergleich)
+- Investitionsabzugsbetrag (IAB)
+- Vermögenswirksame Leistungen (VL)
+- Dienstwagen, Tankgutschein, Strategieessen und andere bestehende Benefit-/Betriebsausgaben
+
+Diese Punkte sind bereits im aktuellen Rechner modelliert und damit nicht mehr als offene Optimierungsaufgaben aktiv.
 
 ---
 

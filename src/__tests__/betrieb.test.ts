@@ -11,6 +11,9 @@ import {
   berechneBenefitsKosten,
   berechneBenefitsSteuerersparnis,
   berechneEssenszuschussJaehrlich,
+  berechneBavJaehrlich,
+  berechneInternetPauschaleJaehrlich,
+  berechneVermoegenswirksameLeistungenJaehrlich,
   berechneHandyNettoKostenProJahr,
   berechneGmbhKonsumwertProJahr,
   berechneKonsumNutzenwertProJahr,
@@ -50,6 +53,44 @@ describe("berechneRealwert", () => {
     // 60000 / (1.02^20) ≈ 40378.28
     const realwert = berechneRealwert(60000, 2, 20);
     expect(realwert).toBeCloseTo(40378.28, 1);
+  });
+});
+
+describe("zusätzliche Benefit-Optionen", () => {
+  it("counts bAV, Internetpauschale and VL as annual operative benefits", () => {
+    const benefits: BenefitConfig = {
+      tankgutschein: 0,
+      strategieessen: 0,
+      essenszuschussProTag: 0,
+      essenszuschussTageProJahr: 0,
+      bavBeitragJaehrlich: 6000,
+      bavAktiv: true,
+      internetPauschaleMonatlich: 30,
+      internetPauschaleAktiv: true,
+      vermoegenswirksameLeistungenMonatlich: 20,
+      vermoegenswirksameLeistungenAktiv: true,
+    };
+
+    expect(berechneBavJaehrlich(benefits)).toBe(6000);
+    expect(berechneInternetPauschaleJaehrlich(benefits)).toBe(360);
+    expect(berechneVermoegenswirksameLeistungenJaehrlich(benefits)).toBe(240);
+    expect(berechneBenefitsKosten(benefits)).toBe(6000 + 360 + 240);
+  });
+
+  it("caps bAV and VL values to the statutory maximum", () => {
+    const benefits: BenefitConfig = {
+      tankgutschein: 0,
+      strategieessen: 0,
+      essenszuschussProTag: 0,
+      essenszuschussTageProJahr: 0,
+      bavBeitragJaehrlich: 100000,
+      bavAktiv: true,
+      vermoegenswirksameLeistungenMonatlich: 999,
+      vermoegenswirksameLeistungenAktiv: true,
+    };
+
+    expect(berechneBavJaehrlich(benefits)).toBe(7248);
+    expect(berechneVermoegenswirksameLeistungenJaehrlich(benefits)).toBe(480);
   });
 });
 

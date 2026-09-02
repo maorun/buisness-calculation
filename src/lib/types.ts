@@ -44,6 +44,18 @@ export interface BenefitConfig {
   tankgutschein: number; // monthly fuel voucher (tax-free up to 50€/month)
   /** Whether the fuel-voucher benefit is active. Defaults to true. */
   tankgutscheinAktiv?: boolean;
+  /** Employer contribution to company pension plan (bAV), annual amount in €. */
+  bavBeitragJaehrlich?: number;
+  /** Whether the bAV contribution is active. */
+  bavAktiv?: boolean;
+  /** Internet flat-rate benefit, monthly amount in €. Max. 50 €/month tax-free. */
+  internetPauschaleMonatlich?: number;
+  /** Whether the Internet flat-rate benefit is active. */
+  internetPauschaleAktiv?: boolean;
+  /** Employer-funded VL (vermögenswirksame Leistungen), monthly amount in €. */
+  vermoegenswirksameLeistungenMonatlich?: number;
+  /** Whether VL is active. */
+  vermoegenswirksameLeistungenAktiv?: boolean;
   strategieessen: number; // annual strategy dinner (deductible)
   /** Whether the strategy-dinner benefit is active. Defaults to true. */
   strategieessenAktiv?: boolean;
@@ -70,6 +82,13 @@ export interface StillerGesellschafterConfig {
   gewinnbeteiligungProzent: number;
   /** Minimum annual interest on the Einlage (% p.a.), paid regardless of profit. */
   zinssatz: number;
+}
+
+export interface HoldingConfig {
+  /** Whether the GmbH is structured as a holding company with preferential treatment for dividends / sales. */
+  aktiv: boolean;
+  /** Tax-free share of profit distribution / sale proceeds in %, e.g. 95 means 95% tax-free. */
+  steuerfreibetragProzent?: number;
 }
 
 export interface FirmenhandyConfig {
@@ -148,6 +167,10 @@ export interface BetriebState {
   solidaritaetszuschlagSatz?: number;
   /** Gewerbesteuer rate for the GmbH (in %, e.g. 14). Default: 14. */
   gewerbesteuerSatz?: number;
+  /** One-off investment deduction amount (IAB) in the selected Betriebs year. */
+  investitionsabzugsbetrag?: number;
+  /** Betriebs year in which the IAB is claimed (1-based). */
+  investitionsabzugsbetragJahr?: number;
   /** Annual simulated operating profit during Betrieb phase. */
   simulierterGewinn?: number;
   /** Personal marginal tax rate of the shareholder (in %, e.g. 42). Used only for private comparison of operating profit. */
@@ -169,6 +192,8 @@ export interface BetriebState {
   firmenhandy?: FirmenhandyConfig;
   /** Configuration for the silent partner (stiller Gesellschafter). */
   stillerGesellschafter?: StillerGesellschafterConfig;
+  /** Holding-structure configuration for 95 %-tax-free dividend / exit treatment. */
+  holding?: HoldingConfig;
   /** List of additional investments in the GmbH. */
   investitionen?: InvestitionsPosition[];
 }
@@ -197,6 +222,8 @@ export interface EndeState {
   benefitAktiv?: EndeBenefitAktivConfig;
   /** One-time equity increase invested into ETF at the start of the Ende phase. */
   stammkapitalErhoehungEtf: number;
+  /** Optional holding-structure configuration for the exit phase. */
+  holding?: HoldingConfig;
   /** Annual gross salary for Bereich 1 settlement year (frei konfigurierbar, nur >= 0). */
   gehaltBereich1: number;
   /** Tax-free principal payout consumed in Bereich 1 before the remaining principal becomes the new shareholder loan. */

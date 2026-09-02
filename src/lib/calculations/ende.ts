@@ -83,9 +83,12 @@ export function berechneNettoAusschuettung(
   gewinnVorKSt: number,
   kstRate: number = 0.15825,
   steuerjahr?: Steuerjahr,
-  persönlicherSteuersatz: number = 0.42
+  persönlicherSteuersatz: number = 0.42,
+  holdingSteuerfreibetrag: number = 0
 ): { nettoAusschuettung: number; kstSteuer: number; ausschuettungsteuer: number } {
-  const kstSteuer = gewinnVorKSt * kstRate;
+  const effektiveHoldingSteuerfreibetrag = Math.max(0, Math.min(1, holdingSteuerfreibetrag));
+  const effektiveKstRate = kstRate * (1 - effektiveHoldingSteuerfreibetrag);
+  const kstSteuer = gewinnVorKSt * effektiveKstRate;
   const ausschuettung = gewinnVorKSt - kstSteuer;
   const { steuer: ausschuettungsteuer } = berechneGewinnausschuettungsteuer(ausschuettung, persönlicherSteuersatz, steuerjahr);
   const nettoAusschuettung = ausschuettung - ausschuettungsteuer;
@@ -651,8 +654,11 @@ export function berechneEndeErgebnisse(
     let privatDarlehenZinsenNetto = privatDarlehenZinsen - privatDarlehenZinsenSteuer;
 
     const persönlicherSteuersatz = (state.persoenlicherSteuersatz ?? 42) / 100;
+    const holdingSteuerfreibetrag = state.holding?.aktiv
+      ? Math.min(0.95, Math.max(0, (state.holding.steuerfreibetragProzent ?? 95) / 100))
+      : 0;
     const { nettoAusschuettung, kstSteuer, ausschuettungsteuer } =
-      berechneNettoAusschuettung(state.gewinnausschuettung, 0.15825, steuerjahr, persönlicherSteuersatz);
+      berechneNettoAusschuettung(state.gewinnausschuettung, 0.15825, steuerjahr, persönlicherSteuersatz, holdingSteuerfreibetrag);
     const zielnetto = endeDarlehenEndfaelligAktiv ? 0 : (state.zielnettoBereich2 ?? DEFAULT_ZIELNETTO_BEREICH2);
     let beitragspflichtigeEinnahmenGkv = bruttoGehalt + darlehenZinsen + privatDarlehenZinsen + state.gewinnausschuettung;
     let gesetzlicheKrankenversicherungBeitrag = berechneGesetzlicheKrankenversicherungBeitrag(
@@ -757,8 +763,20 @@ export function berechneEndeErgebnisse(
       const verkaufIter = verkaufeEtfLotsSteueroptimal(etfLotsNachWachstum, etfVerkauf, sortierteLotIndizes);
       const realisierterEtfErtragIter = verkaufIter.etfGewinn;
       const vorabpauschaleIter = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtragIter);
-      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(vorabpauschaleIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
-      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(realisierterEtfErtragIter, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+      const vorabpauschalesteuerIter = berechneVorabpauschalesteuer(
+        vorabpauschaleIter,
+        TEILFREISTELLUNG_AKTIEN_GMBH,
+        gmbhSteuerGesamt,
+        0,
+        holdingSteuerfreibetrag
+      );
+      const etfVerkaufssteuerIter = berechneEtfVerkaufssteuer(
+        realisierterEtfErtragIter,
+        TEILFREISTELLUNG_AKTIEN_GMBH,
+        gmbhSteuerGesamt,
+        0,
+        holdingSteuerfreibetrag
+      );
 
       const gewinnNachBetriebsausgabenIter = simulierterGewinn + realisierterEtfErtragIter + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
       const { versteuerterGewinn: versteuerterGewinnIter } = berechneVerlustvortragAnrechnung(gewinnNachBetriebsausgabenIter, verlustvortrag);
@@ -779,8 +797,20 @@ export function berechneEndeErgebnisse(
     const einstandswertVerkauft = verkauf.etfEinstandswertVerkauft;
     const realisierterEtfErtrag = verkauf.etfGewinn;
     const vorabpauschale = berechneVorabpauschaleNachEtfVerkauf(vorabpauschaleBrutto, realisierterEtfErtrag);
-    const vorabpauschalesteuer = berechneVorabpauschalesteuer(vorabpauschale, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
-    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(realisierterEtfErtrag, TEILFREISTELLUNG_AKTIEN_GMBH, gmbhSteuerGesamt);
+    const vorabpauschalesteuer = berechneVorabpauschalesteuer(
+      vorabpauschale,
+      TEILFREISTELLUNG_AKTIEN_GMBH,
+      gmbhSteuerGesamt,
+      0,
+      holdingSteuerfreibetrag
+    );
+    const etfVerkaufssteuer = berechneEtfVerkaufssteuer(
+      realisierterEtfErtrag,
+      TEILFREISTELLUNG_AKTIEN_GMBH,
+      gmbhSteuerGesamt,
+      0,
+      holdingSteuerfreibetrag
+    );
 
     const gewinnNachBetriebsausgaben = simulierterGewinn + realisierterEtfErtrag + investitionsGewinnVerlustProJahr - investitionsZinsaufwandProJahr - betriebsausgabenGesamt - bruttoGehalt - darlehenZinsen - privatDarlehenZinsen;
     const {

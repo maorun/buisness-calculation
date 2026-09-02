@@ -602,6 +602,20 @@ export function BetriebSection() {
             suffix="%"
             hint="Effektiver Gewerbesteuer-Satz der GmbH (bundesweiter Durchschnitt ca. 14 %)."
           />
+          <InputField
+            label="Investitionsabzugsbetrag (IAB) (€)"
+            value={betrieb.investitionsabzugsbetrag ?? 0}
+            onChange={(v) => setBetrieb({ investitionsabzugsbetrag: Math.max(0, parseFloat(v) || 0) })}
+            suffix="€"
+            hint="Einmaliger Sonderabzug im gewählten Betriebsjahr – dient als vorgezogene Gewinnminderung."
+          />
+          <InputField
+            label="IAB-Betriebsjahr"
+            value={betrieb.investitionsabzugsbetragJahr ?? 0}
+            onChange={(v) => setBetrieb({ investitionsabzugsbetragJahr: Math.max(0, Math.floor(parseFloat(v) || 0)) })}
+            suffix="Jahr"
+            hint="In welchem Betriebsjahr der IAB gelten soll. 0 = deaktiviert."
+          />
         </div>
 
         {/* Inflation Notice & Realwert Toggle */}
@@ -707,6 +721,83 @@ export function BetriebSection() {
                 suffix="€/Monat"
                 hint="Max. 50 €/Monat steuerfrei"
                 max={50}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Betriebliche Altersvorsorge */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="bavAktiv"
+              checked={betrieb.benefits.bavAktiv ?? false}
+              onChange={(e) => toggleBenefitAktiv("bavAktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="bavAktiv" className="text-sm text-gray-700">bAV aktiv</label>
+          </div>
+          {(betrieb.benefits.bavAktiv ?? false) && (
+            <div className="pl-7">
+              <InputField
+                label="bAV-Beitrag (€/Jahr)"
+                value={betrieb.benefits.bavBeitragJaehrlich ?? 0}
+                onChange={(v) => updateBenefits("bavBeitragJaehrlich", v)}
+                suffix="€/Jahr"
+                hint="Arbeitgeberbeitrag, steuerlich als Betriebsausgabe wirksam; bis zu 8 % der BBG als steuerfrei anzusehen."
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Internetpauschale */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="internetPauschaleAktiv"
+              checked={betrieb.benefits.internetPauschaleAktiv ?? false}
+              onChange={(e) => toggleBenefitAktiv("internetPauschaleAktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="internetPauschaleAktiv" className="text-sm text-gray-700">Internetpauschale aktiv</label>
+          </div>
+          {(betrieb.benefits.internetPauschaleAktiv ?? false) && (
+            <div className="pl-7">
+              <InputField
+                label="Internetpauschale (€/Monat)"
+                value={betrieb.benefits.internetPauschaleMonatlich ?? 0}
+                onChange={(v) => updateBenefits("internetPauschaleMonatlich", v)}
+                suffix="€/Monat"
+                hint="Max. 50 €/Monat steuerfrei (§ 8 Abs. 2 EStG)"
+                max={50}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Vermögenswirksame Leistungen */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <input
+              type="checkbox"
+              id="vermoegenswirksameLeistungenAktiv"
+              checked={betrieb.benefits.vermoegenswirksameLeistungenAktiv ?? false}
+              onChange={(e) => toggleBenefitAktiv("vermoegenswirksameLeistungenAktiv", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <label htmlFor="vermoegenswirksameLeistungenAktiv" className="text-sm text-gray-700">Vermögenswirksame Leistungen aktiv</label>
+          </div>
+          {(betrieb.benefits.vermoegenswirksameLeistungenAktiv ?? false) && (
+            <div className="pl-7">
+              <InputField
+                label="VL (€/Monat)"
+                value={betrieb.benefits.vermoegenswirksameLeistungenMonatlich ?? 0}
+                onChange={(v) => updateBenefits("vermoegenswirksameLeistungenMonatlich", v)}
+                suffix="€/Monat"
+                hint="Max. 40 €/Monat, als Betriebsausgabe bzw. Lohnbestandteil absetzbar."
+                max={40}
               />
             </div>
           )}

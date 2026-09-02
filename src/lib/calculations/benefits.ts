@@ -8,6 +8,10 @@ export const HANDY_ANSCHAFFUNGSKOSTEN = 1000;
 export const HANDY_VERKAUFSQUOTE = 0.1;
 export const HANDY_ERSATZZYKLUS_JAHRE = 3;
 export const MAX_TANKGUTSCHEIN_MONATLICH = 50;
+export const MAX_INTERNET_PAU_SCHALEN_MONATLICH = 50;
+export const MAX_VL_MONATLICH = 40;
+export const MAX_BAV_BEITRAG_PROZENT = 0.08;
+export const DEFAULT_BAV_BBG_JAHR = 90600;
 
 // Current tax-free reference value for the meal subsidy under German tax guidance.
 // The UI uses it as the default starting value, but it is intentionally not
@@ -174,13 +178,46 @@ export function berechneBenefitsKosten(benefits: BenefitConfig): number {
   const essenszuschussJahr = berechneEssenszuschussJaehrlich(benefits);
   const strategieessen = (benefits.strategieessenAktiv ?? true) ? Math.max(0, benefits.strategieessen) : 0;
   const dienstwagenKosten = berechneDienstwagenGmbhKosten(benefits);
-  return tankJahr + essenszuschussJahr + strategieessen + dienstwagenKosten;
+  const bavJahr = berechneBavJaehrlich(benefits);
+  const internetJahr = berechneInternetPauschaleJaehrlich(benefits);
+  const vlJahr = berechneVermoegenswirksameLeistungenJaehrlich(benefits);
+  return tankJahr + essenszuschussJahr + strategieessen + dienstwagenKosten + bavJahr + internetJahr + vlJahr;
 }
 
 export function berechneTankgutscheinJaehrlich(benefits: BenefitConfig): number {
   if (!(benefits.tankgutscheinAktiv ?? true)) return 0;
   const clampedTankMonthly = Math.min(Math.max(benefits.tankgutschein, 0), MAX_TANKGUTSCHEIN_MONATLICH);
   return clampedTankMonthly * MONATE_PRO_JAHR;
+}
+
+export function berechneBavJaehrlich(benefits: BenefitConfig, steuerjahr: number = 2025): number {
+  if (!(benefits.bavAktiv ?? false)) return 0;
+  const annualAmount = Math.max(0, benefits.bavBeitragJaehrlich ?? 0);
+  const bbg = {
+    2024: 90600,
+    2025: 90600,
+    2026: 90600,
+  }[steuerjahr] ?? DEFAULT_BAV_BBG_JAHR;
+  const maxAllowed = bbg * MAX_BAV_BEITRAG_PROZENT;
+  return Math.min(annualAmount, maxAllowed);
+}
+
+export function berechneInternetPauschaleJaehrlich(benefits: BenefitConfig): number {
+  if (!(benefits.internetPauschaleAktiv ?? false)) return 0;
+  const monthly = Math.min(
+    Math.max(benefits.internetPauschaleMonatlich ?? 0, 0),
+    MAX_INTERNET_PAU_SCHALEN_MONATLICH
+  );
+  return monthly * MONATE_PRO_JAHR;
+}
+
+export function berechneVermoegenswirksameLeistungenJaehrlich(benefits: BenefitConfig): number {
+  if (!(benefits.vermoegenswirksameLeistungenAktiv ?? false)) return 0;
+  const monthly = Math.min(
+    Math.max(benefits.vermoegenswirksameLeistungenMonatlich ?? 0, 0),
+    MAX_VL_MONATLICH
+  );
+  return monthly * MONATE_PRO_JAHR;
 }
 
 export function berechneEssenszuschussJaehrlich(benefits: BenefitConfig): number {
@@ -206,6 +243,9 @@ export function berechneKonsumNutzenwertProJahr(
 
   return berechneTankgutscheinJaehrlich(benefits)
     + berechneEssenszuschussJaehrlich(benefits)
+    + berechneBavJaehrlich(benefits)
+    + berechneInternetPauschaleJaehrlich(benefits)
+    + berechneVermoegenswirksameLeistungenJaehrlich(benefits)
     + berechneHandyNettoKostenProJahr(jahr, handyConfig)
     + dienstwagenPrivatNutzen;
 }
@@ -219,10 +259,13 @@ export function berechneGmbhKonsumwertProJahr(
 ): number {
   const tankgutscheinEffektiv = berechneTankgutscheinJaehrlich(benefits) * (1 - steuerRate);
   const essenszuschussEffektiv = berechneEssenszuschussJaehrlich(benefits) * (1 - steuerRate);
+  const bavEffektiv = berechneBavJaehrlich(benefits) * (1 - steuerRate);
+  const internetEffektiv = berechneInternetPauschaleJaehrlich(benefits) * (1 - steuerRate);
+  const vlEffektiv = berechneVermoegenswirksameLeistungenJaehrlich(benefits) * (1 - steuerRate);
   const handyKostenNominal = berechneHandyNettoKostenProJahr(jahr, handyConfig);
   const handyKostenNachVorsteuer = handyKostenNominal / (1 + umsatzsteuerSatz);
   const handyEffektiv = handyKostenNachVorsteuer * (1 - steuerRate);
-  return tankgutscheinEffektiv + essenszuschussEffektiv + handyEffektiv;
+  return tankgutscheinEffektiv + essenszuschussEffektiv + bavEffektiv + internetEffektiv + vlEffektiv + handyEffektiv;
 }
 
 /**
