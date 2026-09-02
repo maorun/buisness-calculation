@@ -254,6 +254,13 @@ export interface CalculatorState {
   ende: EndeState;
 }
 
+export interface CalculatorScenario {
+  id: string;
+  name: string;
+  beschreibung?: string;
+  state: CalculatorState;
+}
+
 export interface JahresErgebnis {
   jahr: number;
   gesamtvermoegen: number;
