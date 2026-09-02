@@ -29,7 +29,7 @@ export function ermittleEingabeWarnungen(
   }
   if (Number.isFinite(darlehensbetrag) && darlehensbetrag > 0) {
     if (!Number.isFinite(startkapital) || startkapital <= 0) {
-      warnungen.push("Ein Darlehen ohne eigenes Startkapital sollte wirtschaftlich besonders begründet werden.");
+      warnungen.push("Ein Darlehen ohne eigenes Startkapital sollte wirtschaftlich besonders begründet werden. Bitte prüfen Sie die Geschäftslogik und Finanzierung.");
     } else if (darlehensbetrag > startkapital * 5) {
       warnungen.push("Der Darlehensbetrag ist mehr als fünfmal so hoch wie das Startkapital. Bitte prüfen Sie die Geschäftslogik und Finanzierung.");
     }
