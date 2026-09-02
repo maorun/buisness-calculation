@@ -34,6 +34,7 @@ import {
 import { KostenListe } from "./KostenListe";
 import { JahresUebersicht } from "./JahresUebersicht";
 import { VergleichsDiagramm } from "./VergleichsDiagramm";
+import { EingabeWarnungen } from "./EingabeWarnungen";
 
 const BENEFIT_MAX_VALUES = {
   tankgutschein: 50,
@@ -434,6 +435,7 @@ export function BetriebSection() {
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
+      <EingabeWarnungen betrieb={betrieb} ende={ende} />
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Betrieb</h2>
         <p className="text-sm text-slate-600">Operative Phase der GmbH mit ETF-Investment aus Einlage, Gesellschafterdarlehen und freien Überschüssen sowie separatem Cash-Puffer</p>

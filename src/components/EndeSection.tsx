@@ -27,6 +27,7 @@ import {
   formatSignedPercent,
 } from "@/lib/calculations/gesamtvergleich";
 import { VergleichsDiagramm } from "./VergleichsDiagramm";
+import { EingabeWarnungen } from "./EingabeWarnungen";
 
 function InputField({
   label,
@@ -189,6 +190,7 @@ export function EndeSection() {
 
   return (
     <div className="space-y-6 pb-28 md:pb-32">
+      <EingabeWarnungen betrieb={betrieb} ende={ende} />
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Ende / Auszahlungsphase</h2>
         <p className="text-sm text-slate-600">Freies GF-Gehalt, Darlehensauszahlung, Ausschüttungen, GKV- & PV-Beitrag und Gesamtergebnis</p>
