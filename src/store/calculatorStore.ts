@@ -172,6 +172,8 @@ interface CalculatorStore extends CalculatorState {
   getHoldingSzenarioVergleich: () => HoldingSzenarioVergleich;
 }
 
+type PersistedCalculatorState = Partial<CalculatorState> & { scenarios?: CalculatorScenario[] };
+
 export const useCalculatorStore = create<CalculatorStore>()(
   persist(
     (set, get) => ({
@@ -402,7 +404,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
       version: 8,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
-        const state = persistedState as Partial<CalculatorState>;
+        const state = persistedState as PersistedCalculatorState;
         const shouldMigrateMealDaysDefault =
           (persistedVersion ?? 0) < 2
           && (state?.betrieb?.benefits?.essenszuschussTageProJahr ?? 0) === 0;
