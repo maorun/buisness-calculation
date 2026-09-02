@@ -11,12 +11,16 @@ Eine Übersicht steuerlicher und wirtschaftlicher Optimierungspotenziale für ei
 - [x] **Strategieessen** – Voll abzugsfähige Bewirtungskosten als Betriebsausgabe
 - [x] **GF-Gehalt** – Optimales Geschäftsführergehalt als Betriebsausgabe
 - [x] **Gesellschafter-Darlehen** – Zinserträge beim Gesellschafter, Betriebsausgabe in der GmbH
+- [x] **Dienstwagen** – 1 %-Regelung / Fahrtenbuch mit betrieblicher Nutzung und mehr
+- [x] **Verlustvorträge** – Nutzung und Verrechnung kumulierter Verlustvorträge über die Betriebsjahre
+- [x] **Gewerbesteuer-Konfiguration** – Konfigurierbarer Hebesatz für die GmbH-Variante
+- [x] **Persönlicher Grenzsteuersatz** – Für den Privatvergleich mit realistischer Grenzsteuersatz-Annahme
 
 ---
 
 ## 📋 Offene Optimierungspunkte
 
-### 1. Betriebliche Altersvorsorge (bAV) ✅ umgesetzt
+### 1. Betriebliche Altersvorsorge (bAV)
 Arbeitgeber-Beiträge zur betrieblichen Altersvorsorge sind Betriebsausgaben und damit steuerwirksam. Bis zu **8 % der Beitragsbemessungsgrenze (BBG)** (2024: 90.600 €, = 7.248 €/Jahr) sind für den GF nach § 3 Nr. 63 EStG steuer- und sozialabgabenfrei.
 
 - **Relevanz:** Hoher Steuerhebel – der GmbH-Steuerersparnis steht kein sofortiger Privatsteueraufwand gegenüber.
@@ -48,15 +52,7 @@ Wird die GmbH unter einer Holding-GmbH gehalten, können Dividenden von Tochter 
 
 ---
 
-### 5. Dienstwagen (1 %-Regelung oder Fahrtenbuch)
-Die GmbH kann dem GF einen Dienstwagen als Betriebsausgabe bereitstellen. Die private Nutzung wird entweder pauschal per **1 %-Regelung** oder genau per **Fahrtenbuch** versteuert. Elektrische oder hybrid-elektrische Fahrzeuge sind mit 0,25 % bzw. 0,5 % privilegiert.
-
-- **Relevanz:** Effektive Senkung der Steuerlast durch Betriebsausgabenabzug; der geldwerte Vorteil ist günstiger als Privatkauf bei entsprechenden Fahrleistungen.
-- **Umsetzung im Rechner:** Neue Benefit-Konfiguration "Dienstwagen" (Bruttolistenpreis, Anteil private Nutzung, E-Auto-Privileg).
-
----
-
-### 6. Investitionsabzugsbetrag (IAB) nach § 7g EStG
+### 5. Investitionsabzugsbetrag (IAB) nach § 7g EStG
 Für geplante Investitionen können bis zu **50 % der voraussichtlichen Anschaffungskosten** (max. 200.000 €) im Wirtschaftsjahr vor der Anschaffung gewinnmindernd abgezogen werden. Im Anschaffungsjahr erfolgt eine Hinzurechnung, aber Sofortabschreibung via Sonderabschreibung (20 %) ist möglich.
 
 - **Relevanz:** Steuerliche Vorziehwirkung – Steuerstundung durch vorgezogenen Abzug.
@@ -64,23 +60,7 @@ Für geplante Investitionen können bis zu **50 % der voraussichtlichen Anschaff
 
 ---
 
-### 7. Verlustvorträge gezielt nutzen
-Entstehen in einzelnen Jahren Verluste (z. B. durch hohe Anfangsinvestitionen), können diese als **Verlustvortrag** in die Folgejahre übertragen werden. Dabei gilt die Mindestbesteuerungsregel: Ab 1 Mio. € Gewinn können nur 60 % des übersteigenden Betrags mit Vorträgen verrechnet werden.
-
-- **Relevanz:** Zeitliche Glättung der Steuerlast über die Betriebsphase hinweg.
-- **Umsetzung im Rechner:** Erfassung und Verrechnung von kumulierten Verlustvorträgen in den Jahresergebnissen.
-
----
-
-### 8. Optimierung der Gewerbesteuer durch Standortwahl
-Der Gewerbesteuer-Hebesatz variiert stark nach Gemeinde (von ~200 % in kleinen Gemeinden bis >500 % in Großstädten). Eine GmbH mit Sitz in einem gewerbesteuergünstigen Ort spart erheblich.
-
-- **Relevanz:** Ein Hebesatz von 200 % bedeutet ~7 % Gewerbesteuer statt ~14 % bei 400 % – Ersparnis von ~7 % auf den GmbH-Gewinn.
-- **Umsetzung im Rechner:** Konfigurierbarer Gewerbesteuer-Hebesatz statt des fest codierten Durchschnittswerts von 14 %.
-
----
-
-### 9. Vermögenswirksame Leistungen (VL)
+### 6. Vermögenswirksame Leistungen (VL)
 Die GmbH kann dem GF **vermögenswirksame Leistungen** (max. 40 €/Monat = 480 €/Jahr) gewähren. Diese sind Lohnbestandteil, aber bei entsprechendem Einkommen nicht förderungsfähig. Attraktiv in Verbindung mit Fondssparplan.
 
 - **Relevanz:** Gering, da Einkommensgrenzen für Arbeitnehmer-Sparzulage bei GF meist überschritten. Trotzdem als Betriebsausgabe abzugsfähig.
@@ -88,7 +68,7 @@ Die GmbH kann dem GF **vermögenswirksame Leistungen** (max. 40 €/Monat = 480 
 
 ---
 
-### 10. Ausgliederung nicht-investiver Kosten (Leistungsverrechnung)
+### 7. Ausgliederung nicht-investiver Kosten (Leistungsverrechnung)
 Erbringt der Gesellschafter persönlich Dienstleistungen für die GmbH (z. B. IT, Beratung), können diese per **Dienstleistungsvertrag** als Betriebsausgabe verrechnet werden – solange ein Fremdvergleich gewahrt ist.
 
 - **Relevanz:** Weitere steueroptimierte Mittelentnahme ohne Abgeltungsteuer auf Ausschüttungen.
