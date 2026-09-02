@@ -84,6 +84,13 @@ export interface StillerGesellschafterConfig {
   zinssatz: number;
 }
 
+export interface HoldingConfig {
+  /** Whether the GmbH is structured as a holding company with preferential treatment for dividends / sales. */
+  aktiv: boolean;
+  /** Tax-free share of profit distribution / sale proceeds in %, e.g. 95 means 95% tax-free. */
+  steuerfreibetragProzent?: number;
+}
+
 export interface FirmenhandyConfig {
   /** Whether the company-phone programme is active at all. */
   aktiv: boolean;
@@ -185,6 +192,8 @@ export interface BetriebState {
   firmenhandy?: FirmenhandyConfig;
   /** Configuration for the silent partner (stiller Gesellschafter). */
   stillerGesellschafter?: StillerGesellschafterConfig;
+  /** Holding-structure configuration for 95 %-tax-free dividend / exit treatment. */
+  holding?: HoldingConfig;
   /** List of additional investments in the GmbH. */
   investitionen?: InvestitionsPosition[];
 }
@@ -213,6 +222,8 @@ export interface EndeState {
   benefitAktiv?: EndeBenefitAktivConfig;
   /** One-time equity increase invested into ETF at the start of the Ende phase. */
   stammkapitalErhoehungEtf: number;
+  /** Optional holding-structure configuration for the exit phase. */
+  holding?: HoldingConfig;
   /** Annual gross salary for Bereich 1 settlement year (frei konfigurierbar, nur >= 0). */
   gehaltBereich1: number;
   /** Tax-free principal payout consumed in Bereich 1 before the remaining principal becomes the new shareholder loan. */

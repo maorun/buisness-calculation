@@ -62,9 +62,14 @@ export function berechneVorabpauschalesteuer(
   vorabpauschale: number,
   teilfreistellung: number = TEILFREISTELLUNG_AKTIEN,
   steuersatz: number = ABGELTUNGSSTEUER_GESAMT,
-  sparerpauschbetrag: number = 0
+  sparerpauschbetrag: number = 0,
+  holdingSteuerfreibetrag: number = 0
 ): number {
-  const steuerpflichtig = Math.max(0, vorabpauschale * (1 - teilfreistellung) - Math.max(0, sparerpauschbetrag));
+  const effektiveTeilfreistellung = Math.max(
+    teilfreistellung,
+    Math.max(0, Math.min(1, holdingSteuerfreibetrag))
+  );
+  const steuerpflichtig = Math.max(0, vorabpauschale * (1 - effektiveTeilfreistellung) - Math.max(0, sparerpauschbetrag));
   return steuerpflichtig * steuersatz;
 }
 
@@ -76,12 +81,17 @@ export function berechneEtfVerkaufssteuer(
   realisierterEtfErtrag: number,
   teilfreistellung: number = TEILFREISTELLUNG_AKTIEN_GMBH,
   steuersatz: number = GMBH_STEUER_GESAMT,
-  sparerpauschbetrag: number = 0
+  sparerpauschbetrag: number = 0,
+  holdingSteuerfreibetrag: number = 0
 ): number {
   if (realisierterEtfErtrag <= 0) {
     return 0;
   }
-  const steuerpflichtig = Math.max(0, realisierterEtfErtrag * (1 - teilfreistellung) - Math.max(0, sparerpauschbetrag));
+  const effektiveTeilfreistellung = Math.max(
+    teilfreistellung,
+    Math.max(0, Math.min(1, holdingSteuerfreibetrag))
+  );
+  const steuerpflichtig = Math.max(0, realisierterEtfErtrag * (1 - effektiveTeilfreistellung) - Math.max(0, sparerpauschbetrag));
   return steuerpflichtig * steuersatz;
 }
 

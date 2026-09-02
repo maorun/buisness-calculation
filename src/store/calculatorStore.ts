@@ -92,12 +92,14 @@ const initialState: CalculatorState = {
     },
     firmenhandy: { ...DEFAULT_FIRMENHANDY_CONFIG },
     stillerGesellschafter: { ...DEFAULT_STILLER_GESELLSCHAFTER_CONFIG },
+    holding: { aktiv: false, steuerfreibetragProzent: 95 },
   },
   ende: {
     geschaeftsfuehrergehalt: 0,
     simulierterGewinn: 0,
     persoenlicherSteuersatz: 42,
     stammkapitalErhoehungEtf: 0,
+    holding: { aktiv: false, steuerfreibetragProzent: 95 },
     gehaltBereich1: 0,
     teiltilgungBereich1: 0,
     gewinnausschuettung: 0,
@@ -171,10 +173,11 @@ export const useCalculatorStore = create<CalculatorStore>()(
             benefits: { ...state.betrieb.benefits, ...(partial.betrieb.benefits ?? {}) },
             firmenhandy: { ...initialState.betrieb.firmenhandy, ...(partial.betrieb.firmenhandy ?? {}) },
             stillerGesellschafter: { ...initialState.betrieb.stillerGesellschafter, ...(partial.betrieb.stillerGesellschafter ?? {}) },
+            holding: { ...initialState.betrieb.holding, ...(partial.betrieb.holding ?? {}) },
           } as BetriebState)
         : state.betrieb,
       ende: partial.ende
-        ? { ...state.ende, ...partial.ende }
+        ? { ...state.ende, ...partial.ende, holding: { ...initialState.ende.holding, ...(partial.ende.holding ?? {}) } }
         : state.ende,
     })),
 

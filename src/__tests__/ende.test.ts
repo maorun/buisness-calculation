@@ -145,6 +145,11 @@ describe("berechneNettoAusschuettung", () => {
     const { nettoAusschuettung } = berechneNettoAusschuettung(0);
     expect(nettoAusschuettung).toBe(0);
   });
+
+  it("reduces corporation tax for a 95% holding exemption", () => {
+    const { kstSteuer } = berechneNettoAusschuettung(100000, 0.15825, undefined, 0.42, 0.95);
+    expect(kstSteuer).toBeCloseTo(791.25, 0);
+  });
 });
 
 describe("berechneDarlehensAuszahlung", () => {
