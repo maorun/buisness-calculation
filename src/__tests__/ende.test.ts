@@ -10,6 +10,7 @@ import {
   berechneFlexibleTilgung,
   berechneGesetzlicheKrankenversicherungBeitrag,
   berechneEndeErgebnisse,
+  berechneHoldingSzenarioVergleich,
   MIDIJOB_JAHR_MAX,
   REINVESTIERTES_DARLEHEN_ZINSSATZ,
 } from "@/lib/calculations/ende";
@@ -149,6 +150,32 @@ describe("berechneNettoAusschuettung", () => {
   it("reduces corporation tax for a 95% holding exemption", () => {
     const { kstSteuer } = berechneNettoAusschuettung(100000, 0.15825, undefined, 0.42, 0.95);
     expect(kstSteuer).toBeCloseTo(791.25, 0);
+  });
+});
+
+describe("berechneHoldingSzenarioVergleich", () => {
+  it("aggregates taxes, distributions, and final wealth for both scenarios", () => {
+    const ergebnis = (steuer: number, ausschüttung: number, vermoegen: number) => ({
+      jahr: 1,
+      gesamtvermoegen: vermoegen,
+      gewinn: 0,
+      steuer,
+      nettogewinn: 0,
+      details: { nettoAusschuettung: ausschüttung },
+    });
+
+    const vergleich = berechneHoldingSzenarioVergleich(
+      [ergebnis(100, 900, 12000), ergebnis(200, 1800, 15000)],
+      [ergebnis(300, 700, 11000), ergebnis(400, 1400, 13500)],
+    );
+
+    expect(vergleich.mitHolding.kumulierteSteuer).toBe(300);
+    expect(vergleich.ohneHolding.kumulierteSteuer).toBe(700);
+    expect(vergleich.mitHolding.nettoAusschuettungGesamt).toBe(2700);
+    expect(vergleich.ohneHolding.nettoAusschuettungGesamt).toBe(2100);
+    expect(vergleich.mitHolding.gesamtwertFinal).toBe(15000);
+    expect(vergleich.steuervorteil).toBe(400);
+    expect(vergleich.steuervorteilProzent).toBeCloseTo(400 / 7);
   });
 });
 
