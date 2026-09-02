@@ -243,6 +243,7 @@ export function BetriebSection() {
   const kennzahlProzent = privatVergleich.gesamtwertMitKonsum !== 0
     ? (differenzVergleich / privatVergleich.gesamtwertMitKonsum) * 100
     : null;
+  const treiberBasiswert = Math.abs(differenzVergleich);
   const topTreiber = [
     {
       id: "steuer",
@@ -269,6 +270,10 @@ export function BetriebSection() {
       description: konsumDifferenz >= 0 ? "GmbH liefert höheren Konsumwert" : "Privat liefert höheren Konsumwert",
     },
   ]
+    .map((treiber) => ({
+      ...treiber,
+      impactPercent: treiberBasiswert > 0 ? (Math.abs(treiber.impact) / treiberBasiswert) * 100 : 0,
+    }))
     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
     .slice(0, 4);
   const gmbhVorschlaege = [
@@ -1536,7 +1541,14 @@ export function BetriebSection() {
               <div key={treiber.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                 <p className="text-xs font-semibold text-slate-800">{treiber.label}</p>
                 <p className={`text-xs mt-0.5 ${treiber.impact >= 0 ? "text-green-700" : "text-red-700"}`}>
-                  {treiber.impact >= 0 ? "+" : "-"} {Math.abs(treiber.impact).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  {treiber.impact >= 0 ? "+" : "-"}
+                  {Math.abs(treiber.impact).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  <span className="text-slate-500">
+                    {" · "}{Math.abs(treiber.impactPercent).toLocaleString("de-DE", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}% des Gesamtvorteils
+                  </span>
                 </p>
                 <p className="text-[11px] text-slate-600 mt-0.5">{treiber.description}</p>
               </div>

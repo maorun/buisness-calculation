@@ -122,6 +122,16 @@ describe("BetriebSection", () => {
     ).toBeTruthy();
   });
 
+  it("lists the most important drivers with euro and percentage impact", () => {
+    render(<BetriebSection />);
+
+    const treiberBlock = screen.getByText("Wichtigste Treiber").closest("div");
+    expect(treiberBlock).not.toBeNull();
+    expect(treiberBlock?.textContent).toMatch(/Steuerlast/);
+    expect(treiberBlock?.textContent).toMatch(/\d+,\d{2} €/);
+    expect(treiberBlock?.textContent).toMatch(/\d+,\d{2}% des Gesamtvorteils/);
+  });
+
   it("merges the overall Betrieb-und-Ende KPI into the existing decision area", () => {
     const state = useCalculatorStore.getState();
     const gesamtvergleich = berechneGesamtvergleichKpi(
