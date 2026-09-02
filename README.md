@@ -40,6 +40,8 @@ Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft 
 
 ## Steuerparameter (Stand 2024)
 
+Die vollständige, im Rechner verwendete Dokumentation ist direkt über **Steuerannahmen** im Header abrufbar. Dort sind auch die jahresabhängigen Werte für 2025 und 2026 sowie Modellregeln und die Änderungspflege aufgeführt.
+
 | Parameter | Wert |
 |---|---|
 | Körperschaftsteuer (KSt) | 15,00 % |
@@ -51,3 +53,5 @@ Ein interaktiver Rechner für den **Vermögensaufbau via GmbH**. Das Tool hilft 
 | Basiszins 2024 | 2,29 % |
 | Teilfreistellung ETF-Verkauf (GmbH) | 80 % |
 | Teilfreistellung ETF (Privatperson) | 30 % |
+
+Die Simulation setzt für die Gewerbesteuer einen kommunalen Durchschnitt von 14 % an und berücksichtigt keine Kirchensteuer. Die Vorabpauschale wird mit 70 % des Basiszinses berechnet. Freibeträge (insbesondere Grundfreibetrag und Sparer-Pauschbetrag) sowie Basiszins und Soli-Freigrenze werden je Steuerjahr in `src/lib/parameters.ts` gepflegt; die übrigen Steuersätze und Modellkonstanten stehen in `src/lib/calculations/steuer.ts`.

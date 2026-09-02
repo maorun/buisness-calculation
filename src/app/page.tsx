@@ -6,6 +6,7 @@ import { BetriebSection } from "@/components/BetriebSection";
 import { EndeSection } from "@/components/EndeSection";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import { berechneGesamtvergleichKpi, formatSignedEuro } from "@/lib/calculations/gesamtvergleich";
+import { Steuerannahmen } from "@/components/Steuerannahmen";
 
 type Tab = "gruendung" | "betrieb" | "ende";
 const COPY_STATUS_RESET_DELAY_MS = 2500;
@@ -173,6 +174,7 @@ export default function Home() {
               >
                 Parameter laden
               </button>
+              <Steuerannahmen />
             </div>
             <div className="text-right text-[11px]" role="status" aria-live="polite">
               {copyStatus === "success" && (

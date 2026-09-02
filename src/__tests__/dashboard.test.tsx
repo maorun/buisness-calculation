@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import Home from "@/app/page";
 import { useCalculatorStore } from "@/store/calculatorStore";
 
@@ -99,5 +99,16 @@ describe("Dashboard", () => {
     const nextValue = updatedCard?.textContent ?? "";
 
     expect(nextValue).not.toBe(previousValue);
+  });
+
+  it("provides direct access to documented tax assumptions", () => {
+    render(<Home />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Steuerannahmen" }));
+
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByText("Steuersätze und Freibeträge")).toBeTruthy();
+    expect(screen.getByText("Steuerjahr", { exact: true })).toBeTruthy();
+    expect(screen.getByText("Die Vorabpauschale verwendet 70 % des jeweiligen Basiszinses; negative Werte werden nicht angesetzt.")).toBeTruthy();
   });
 });
