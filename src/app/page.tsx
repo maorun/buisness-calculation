@@ -7,8 +7,9 @@ import { EndeSection } from "@/components/EndeSection";
 import { useCalculatorStore } from "@/store/calculatorStore";
 import { berechneGesamtvergleichKpi, formatSignedEuro } from "@/lib/calculations/gesamtvergleich";
 import { Steuerannahmen } from "@/components/Steuerannahmen";
+import { SzenarioVergleich } from "@/components/SzenarioVergleich";
 
-type Tab = "gruendung" | "betrieb" | "ende";
+type Tab = "gruendung" | "betrieb" | "ende" | "szenarien";
 const COPY_STATUS_RESET_DELAY_MS = 2500;
 const LOAD_STATUS_RESET_DELAY_MS = 2500;
 
@@ -16,6 +17,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "gruendung", label: "Gründung" },
   { id: "betrieb", label: "Betrieb" },
   { id: "ende", label: "Ende" },
+  { id: "szenarien", label: "Szenarien" },
 ];
 
 function DashboardCard({ label, value, tone }: { label: string; value: string; tone: "blue" | "green" | "amber" | "violet" | "rose" | "slate" }) {
@@ -300,6 +302,11 @@ export default function Home() {
         {activeTab === "ende" && (
           <div id="tab-panel-ende" role="tabpanel" aria-labelledby="tab-ende">
             <EndeSection />
+          </div>
+        )}
+        {activeTab === "szenarien" && (
+          <div id="tab-panel-szenarien" role="tabpanel" aria-labelledby="tab-szenarien">
+            <SzenarioVergleich />
           </div>
         )}
       </main>

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
+import { CalculatorScenario, CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
 import {
   berechneBetriebsErgebnisse,
   berechneGmbhSteuerRaten,
@@ -120,12 +120,37 @@ const initialState: CalculatorState = {
   },
 };
 
+const presetScenarios = (): CalculatorScenario[] => [
+  {
+    id: "basis",
+    name: "Basisszenario",
+    beschreibung: "Aktuelle Eingaben als Ausgangspunkt.",
+    state: { ...initialState },
+  },
+  {
+    id: "konservativ",
+    name: "Konservativ",
+    beschreibung: "Vorsichtige Renditeannahme von 4 %.",
+    state: { ...initialState, betrieb: { ...initialState.betrieb, etfRendite: 4 } },
+  },
+  {
+    id: "optimistisch",
+    name: "Optimistisch",
+    beschreibung: "Höhere Renditeannahme von 9 %.",
+    state: { ...initialState, betrieb: { ...initialState.betrieb, etfRendite: 9 } },
+  },
+];
+
 interface CalculatorStore extends CalculatorState {
+  scenarios: CalculatorScenario[];
   // Actions
   setGruendung: (state: Partial<GruendungState>) => void;
   setBetrieb: (state: Partial<BetriebState>) => void;
   setEnde: (state: Partial<EndeState>) => void;
   loadState: (state: Partial<CalculatorState>) => void;
+  saveScenario: (name: string, beschreibung?: string) => string;
+  loadScenario: (id: string) => void;
+  deleteScenario: (id: string) => void;
 
   // Kosten list management
   addGruendungskosten: (position: Omit<KostenPosition, "id">) => void;
@@ -151,6 +176,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
   persist(
     (set, get) => ({
   ...initialState,
+  scenarios: presetScenarios(),
 
   setGruendung: (partial) =>
     set((state) => ({ gruendung: { ...state.gruendung, ...partial } })),
@@ -181,6 +207,32 @@ export const useCalculatorStore = create<CalculatorStore>()(
         ? { ...state.ende, ...partial.ende, holding: { ...initialState.ende.holding, ...(partial.ende.holding ?? {}) } }
         : state.ende,
     })),
+
+  saveScenario: (name, beschreibung) => {
+    const id = generateId();
+    const state = get();
+    set((current) => ({
+      scenarios: [...current.scenarios, {
+        id,
+        name: name.trim() || `Szenario ${current.scenarios.length + 1}`,
+        beschreibung,
+        state: {
+          gruendung: structuredClone(state.gruendung),
+          betrieb: structuredClone(state.betrieb),
+          ende: structuredClone(state.ende),
+        },
+      }],
+    }));
+    return id;
+  },
+
+  loadScenario: (id) => {
+    const scenario = get().scenarios.find((item) => item.id === id);
+    if (scenario) get().loadState(scenario.state);
+  },
+
+  deleteScenario: (id) =>
+    set((state) => ({ scenarios: state.scenarios.filter((scenario) => scenario.id !== id) })),
 
   addGruendungskosten: (position) =>
     set((state) => ({
@@ -347,7 +399,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }),
     {
       name: "gmbh-kalkulator",
-      version: 7,
+      version: 8,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as Partial<CalculatorState>;
@@ -356,6 +408,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
           && (state?.betrieb?.benefits?.essenszuschussTageProJahr ?? 0) === 0;
         return {
           ...initialState,
+          scenarios: state?.scenarios ?? presetScenarios(),
           ...state,
           gruendung: {
             ...initialState.gruendung,
@@ -406,6 +459,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
         gruendung: state.gruendung,
         betrieb: state.betrieb,
         ende: state.ende,
+        scenarios: state.scenarios,
       }),
     }
   )
