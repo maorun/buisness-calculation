@@ -17,7 +17,7 @@ import {
   DEFAULT_GEWERBESTEUER_SATZ,
   DEFAULT_STILLER_GESELLSCHAFTER_CONFIG,
 } from "@/lib/calculations/betrieb";
-import { berechneEndeErgebnisse } from "@/lib/calculations/ende";
+import { berechneEndeErgebnisse, berechneHoldingSzenarioVergleich, HoldingSzenarioVergleich } from "@/lib/calculations/ende";
 import { berechneGesamtkosten } from "@/lib/calculations/gruendung";
 import { JahresErgebnis } from "@/lib/types";
 
@@ -143,7 +143,8 @@ interface CalculatorStore extends CalculatorState {
   // Derived getters
   getGruendungsGesamtkosten: () => number;
   getBetriebsErgebnisse: () => JahresErgebnis[];
-  getEndeErgebnisse: () => JahresErgebnis[];
+  getEndeErgebnisse: (endeOverride?: Partial<EndeState>) => JahresErgebnis[];
+  getHoldingSzenarioVergleich: () => HoldingSzenarioVergleich;
 }
 
 export const useCalculatorStore = create<CalculatorStore>()(
@@ -263,7 +264,8 @@ export const useCalculatorStore = create<CalculatorStore>()(
 
   getBetriebsErgebnisse: () => berechneBetriebsErgebnisse(get().betrieb),
 
-  getEndeErgebnisse: () => {
+  getEndeErgebnisse: (endeOverride) => {
+    const endeState = { ...get().ende, ...endeOverride };
     const betriebErgebnisse = berechneBetriebsErgebnisse(get().betrieb);
     const letztesBetriebsergebnis = betriebErgebnisse.length > 0
       ? betriebErgebnisse[betriebErgebnisse.length - 1]
@@ -306,7 +308,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
     }
 
     return berechneEndeErgebnisse(
-      get().ende,
+      endeState,
       initialEtfInput,
       offenesDarlehen,
       get().betrieb.darlehen.zinssatz,
@@ -318,6 +320,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
         ...get().betrieb.benefits,
         ...get().ende.benefitAktiv,
       },
+
       {
         ...(get().betrieb.firmenhandy ?? DEFAULT_FIRMENHANDY_CONFIG),
         aktiv: get().ende.benefitAktiv?.firmenhandyAktiv ?? (get().betrieb.firmenhandy?.aktiv ?? DEFAULT_FIRMENHANDY_CONFIG.aktiv),
@@ -332,6 +335,14 @@ export const useCalculatorStore = create<CalculatorStore>()(
       initialInvestitionsKapitalWerte,
       initialInvestitionsKreditRestschuldWerte
     );
+  },
+
+  getHoldingSzenarioVergleich: () => {
+    const mitHolding = get().getEndeErgebnisse();
+    const ohneHolding = get().getEndeErgebnisse({
+      holding: { ...get().ende.holding, aktiv: false },
+    });
+    return berechneHoldingSzenarioVergleich(mitHolding, ohneHolding);
   },
     }),
     {

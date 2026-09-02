@@ -43,6 +43,47 @@ export {
 export const DEFAULT_ZIELNETTO_BEREICH1 = 17000;
 export const DEFAULT_ZIELNETTO_BEREICH2 = 17000;
 
+export interface HoldingSzenarioVergleich {
+  mitHolding: {
+    kumulierteSteuer: number;
+    nettoAusschuettungGesamt: number;
+    gesamtwertFinal: number;
+  };
+  ohneHolding: {
+    kumulierteSteuer: number;
+    nettoAusschuettungGesamt: number;
+    gesamtwertFinal: number;
+  };
+  steuervorteil: number;
+  steuervorteilProzent: number;
+}
+
+export function berechneHoldingSzenarioVergleich(
+  mitHolding: JahresErgebnis[],
+  ohneHolding: JahresErgebnis[],
+): HoldingSzenarioVergleich {
+  const aggregiere = (ergebnisse: JahresErgebnis[]) => ({
+    kumulierteSteuer: ergebnisse.reduce((summe, ergebnis) => summe + ergebnis.steuer, 0),
+    nettoAusschuettungGesamt: ergebnisse.reduce(
+      (summe, ergebnis) => summe + (ergebnis.details.nettoAusschuettung ?? 0),
+      0
+    ),
+    gesamtwertFinal: ergebnisse[ergebnisse.length - 1]?.gesamtvermoegen ?? 0,
+  });
+  const mit = aggregiere(mitHolding);
+  const ohne = aggregiere(ohneHolding);
+  const steuervorteil = ohne.kumulierteSteuer - mit.kumulierteSteuer;
+
+  return {
+    mitHolding: mit,
+    ohneHolding: ohne,
+    steuervorteil,
+    steuervorteilProzent: ohne.kumulierteSteuer > 0
+      ? (steuervorteil / ohne.kumulierteSteuer) * 100
+      : 0,
+  };
+}
+
 // Default constants for backward compatibility (based on DEFAULT_STEUERJAHR)
 const defaultParams = getSteuerjahrParameter(DEFAULT_STEUERJAHR);
 export const MIDIJOB_MONAT_MIN = defaultParams.midijobMonatMin;

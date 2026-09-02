@@ -65,9 +65,10 @@ function InputField({
 }
 
 export function EndeSection() {
-  const { ende, setEnde, betrieb, getEndeErgebnisse, getBetriebsErgebnisse } = useCalculatorStore();
+  const { ende, setEnde, betrieb, getEndeErgebnisse, getBetriebsErgebnisse, getHoldingSzenarioVergleich } = useCalculatorStore();
   const ergebnisse = getEndeErgebnisse();
   const betriebsErgebnisse = getBetriebsErgebnisse();
+  const holdingVergleich = getHoldingSzenarioVergleich();
   const letzterBetriebsstand = betriebsErgebnisse.length > 0
     ? betriebsErgebnisse[betriebsErgebnisse.length - 1]
     : undefined;
@@ -332,6 +333,30 @@ export function EndeSection() {
             <label htmlFor="endeDarlehenEndfaellig" className="text-sm text-gray-700">
               Darlehen in der Ende-Phase endfällig
             </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-purple-50 rounded-xl border border-purple-200 p-4 md:p-6">
+        <h3 className="font-semibold text-purple-900 mb-2">Holding-Szenariovergleich</h3>
+        <p className="text-xs text-purple-700 mb-4">
+          Vergleich der Ende-Phase mit und ohne Holding-Struktur auf Basis der aktuellen Einstellungen.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-purple-700">Kumulierte Steuer mit Holding</p>
+            <p className="font-bold text-purple-900">{holdingVergleich.mitHolding.kumulierteSteuer.toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</p>
+          </div>
+          <div>
+            <p className="text-xs text-purple-700">Kumulierte Steuer ohne Holding</p>
+            <p className="font-bold text-purple-900">{holdingVergleich.ohneHolding.kumulierteSteuer.toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</p>
+          </div>
+          <div>
+            <p className="text-xs text-purple-700">Steuervorteil</p>
+            <p className={`font-bold ${holdingVergleich.steuervorteil >= 0 ? "text-green-700" : "text-orange-700"}`}>
+              {holdingVergleich.steuervorteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })} €
+              <span className="font-normal"> ({holdingVergleich.steuervorteilProzent.toLocaleString("de-DE", { maximumFractionDigits: 1 })} %)</span>
+            </p>
           </div>
         </div>
       </div>
