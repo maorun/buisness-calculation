@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { CalculatorScenario, CalculatorState, GruendungState, BetriebState, EndeState, KostenPosition, InvestitionsPosition } from "@/lib/types";
 import {
   berechneBetriebsErgebnisse,
@@ -171,6 +171,12 @@ interface CalculatorStore extends CalculatorState {
   getEndeErgebnisse: (endeOverride?: Partial<EndeState>) => JahresErgebnis[];
   getHoldingSzenarioVergleich: () => HoldingSzenarioVergleich;
 }
+
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
 
 type PersistedCalculatorState = Partial<CalculatorState> & { scenarios?: CalculatorScenario[] };
 
@@ -402,7 +408,7 @@ export const useCalculatorStore = create<CalculatorStore>()(
     {
       name: "gmbh-kalkulator",
       version: 8,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => (typeof localStorage !== "undefined" ? localStorage : noopStorage)),
       migrate: (persistedState, persistedVersion) => {
         const state = persistedState as PersistedCalculatorState;
         const shouldMigrateMealDaysDefault =
